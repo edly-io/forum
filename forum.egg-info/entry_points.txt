@@ -1,0 +1,2 @@
+[lms.djangoapp]
+forum = forum.apps:ForumConfig

@@ -22,6 +22,7 @@ backports-zoneinfo==0.2.1
     # via
     #   -r requirements/test.txt
     #   django
+    #   djangorestframework
 beautifulsoup4==4.12.3
     # via pydata-sphinx-theme
 build==1.2.1
@@ -31,13 +32,17 @@ cachetools==5.4.0
     #   -r requirements/test.txt
     #   tox
 certifi==2024.7.4
-    # via requests
+    # via
+    #   -r requirements/test.txt
+    #   requests
 chardet==5.2.0
     # via
     #   -r requirements/test.txt
     #   tox
 charset-normalizer==3.3.2
-    # via requests
+    # via
+    #   -r requirements/test.txt
+    #   requests
 click==8.1.7
     # via
     #   -r requirements/test.txt
@@ -60,6 +65,9 @@ django==4.2.14
     # via
     #   -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
     #   -r requirements/test.txt
+    #   djangorestframework
+djangorestframework==3.15.2
+    # via -r requirements/test.txt
 doc8==1.1.1
     # via -r requirements/doc.in
 docutils==0.19
@@ -79,7 +87,9 @@ filelock==3.15.4
     #   tox
     #   virtualenv
 idna==3.7
-    # via requests
+    # via
+    #   -r requirements/test.txt
+    #   requests
 imagesize==1.4.1
     # via sphinx
 importlib-metadata==6.11.0
@@ -188,6 +198,7 @@ readme-renderer==43.0
     # via twine
 requests==2.32.3
     # via
+    #   -r requirements/test.txt
     #   requests-toolbelt
     #   sphinx
     #   twine
@@ -256,6 +267,7 @@ typing-extensions==4.12.2
     #   rich
 urllib3==2.2.2
     # via
+    #   -r requirements/test.txt
     #   requests
     #   twine
 virtualenv==20.26.3

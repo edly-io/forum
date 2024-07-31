@@ -59,3 +59,5 @@ TEMPLATES = [{
         ],
     },
 }]
+
+FORUM_PORT = "4567"

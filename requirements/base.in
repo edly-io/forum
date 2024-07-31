@@ -4,4 +4,6 @@
 Django             # Web application framework
 
 
+djangorestframework
 openedx-atlas
+requests
