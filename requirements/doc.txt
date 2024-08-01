@@ -68,6 +68,10 @@ django==4.2.14
     #   djangorestframework
 djangorestframework==3.15.2
     # via -r requirements/test.txt
+dnspython==2.6.1
+    # via
+    #   -r requirements/test.txt
+    #   pymongo
 doc8==1.1.1
     # via -r requirements/doc.in
 docutils==0.19
@@ -109,7 +113,7 @@ jaraco-classes==3.4.0
     # via keyring
 jaraco-context==5.3.0
     # via keyring
-jaraco-functools==4.0.1
+jaraco-functools==4.0.2
     # via keyring
 jinja2==3.1.4
     # via
@@ -126,6 +130,8 @@ markupsafe==2.1.5
     #   jinja2
 mdurl==0.1.2
     # via markdown-it-py
+mongomock==4.1.2
+    # via -r requirements/test.txt
 more-itertools==10.3.0
     # via
     #   jaraco-classes
@@ -138,6 +144,7 @@ packaging==24.1
     # via
     #   -r requirements/test.txt
     #   build
+    #   mongomock
     #   pydata-sphinx-theme
     #   pyproject-api
     #   pytest
@@ -169,6 +176,8 @@ pygments==2.18.0
     #   readme-renderer
     #   rich
     #   sphinx
+pymongo==4.8.0
+    # via -r requirements/test.txt
 pyproject-api==1.7.1
     # via
     #   -r requirements/test.txt
@@ -210,6 +219,10 @@ rfc3986==2.0.0
     # via twine
 rich==13.7.1
     # via twine
+sentinels==1.0.0
+    # via
+    #   -r requirements/test.txt
+    #   mongomock
 snowballstemmer==2.2.0
     # via sphinx
 soupsieve==2.5

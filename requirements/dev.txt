@@ -66,7 +66,7 @@ coverage[toml]==7.6.0
     # via
     #   -r requirements/quality.txt
     #   pytest-cov
-diff-cover==7.7.0
+diff-cover==9.1.1
     # via -r requirements/dev.in
 dill==0.3.8
     # via
@@ -85,6 +85,10 @@ django==4.2.14
     #   edx-i18n-tools
 djangorestframework==3.15.2
     # via -r requirements/quality.txt
+dnspython==2.6.1
+    # via
+    #   -r requirements/quality.txt
+    #   pymongo
 edx-i18n-tools==1.6.2
     # via -r requirements/dev.in
 edx-lint==5.3.7
@@ -131,6 +135,8 @@ mccabe==0.7.0
     # via
     #   -r requirements/quality.txt
     #   pylint
+mongomock==4.1.2
+    # via -r requirements/quality.txt
 openedx-atlas==0.6.1
     # via -r requirements/quality.txt
 packaging==24.1
@@ -139,6 +145,7 @@ packaging==24.1
     #   -r requirements/pip-tools.txt
     #   -r requirements/quality.txt
     #   build
+    #   mongomock
     #   pyproject-api
     #   pytest
     #   tox
@@ -192,6 +199,8 @@ pylint-plugin-utils==0.8.2
     #   -r requirements/quality.txt
     #   pylint-celery
     #   pylint-django
+pymongo==4.8.0
+    # via -r requirements/quality.txt
 pyproject-api==1.7.1
     # via
     #   -r requirements/ci.txt
@@ -222,6 +231,10 @@ pyyaml==6.0.1
     #   edx-i18n-tools
 requests==2.32.3
     # via -r requirements/quality.txt
+sentinels==1.0.0
+    # via
+    #   -r requirements/quality.txt
+    #   mongomock
 six==1.16.0
     # via
     #   -r requirements/quality.txt
