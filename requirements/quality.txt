@@ -16,14 +16,23 @@ backports-zoneinfo==0.2.1
     # via
     #   -r requirements/test.txt
     #   django
+    #   djangorestframework
 cachetools==5.4.0
     # via
     #   -r requirements/test.txt
     #   tox
+certifi==2024.7.4
+    # via
+    #   -r requirements/test.txt
+    #   requests
 chardet==5.2.0
     # via
     #   -r requirements/test.txt
     #   tox
+charset-normalizer==3.3.2
+    # via
+    #   -r requirements/test.txt
+    #   requests
 click==8.1.7
     # via
     #   -r requirements/test.txt
@@ -54,6 +63,9 @@ django==4.2.14
     # via
     #   -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
     #   -r requirements/test.txt
+    #   djangorestframework
+djangorestframework==3.15.2
+    # via -r requirements/test.txt
 edx-lint==5.3.7
     # via -r requirements/quality.in
 exceptiongroup==1.2.2
@@ -65,6 +77,10 @@ filelock==3.15.4
     #   -r requirements/test.txt
     #   tox
     #   virtualenv
+idna==3.7
+    # via
+    #   -r requirements/test.txt
+    #   requests
 iniconfig==2.0.0
     # via
     #   -r requirements/test.txt
@@ -145,6 +161,8 @@ pyyaml==6.0.1
     # via
     #   -r requirements/test.txt
     #   code-annotations
+requests==2.32.3
+    # via -r requirements/test.txt
 six==1.16.0
     # via edx-lint
 snowballstemmer==2.2.0
@@ -179,6 +197,10 @@ typing-extensions==4.12.2
     #   asgiref
     #   astroid
     #   pylint
+urllib3==2.2.2
+    # via
+    #   -r requirements/test.txt
+    #   requests
 virtualenv==20.26.3
     # via
     #   -r requirements/test.txt

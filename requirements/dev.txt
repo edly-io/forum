@@ -17,6 +17,7 @@ backports-zoneinfo==0.2.1
     # via
     #   -r requirements/quality.txt
     #   django
+    #   djangorestframework
 build==1.2.1
     # via
     #   -r requirements/pip-tools.txt
@@ -26,12 +27,20 @@ cachetools==5.4.0
     #   -r requirements/ci.txt
     #   -r requirements/quality.txt
     #   tox
+certifi==2024.7.4
+    # via
+    #   -r requirements/quality.txt
+    #   requests
 chardet==5.2.0
     # via
     #   -r requirements/ci.txt
     #   -r requirements/quality.txt
     #   diff-cover
     #   tox
+charset-normalizer==3.3.2
+    # via
+    #   -r requirements/quality.txt
+    #   requests
 click==8.1.7
     # via
     #   -r requirements/pip-tools.txt
@@ -57,7 +66,7 @@ coverage[toml]==7.6.0
     # via
     #   -r requirements/quality.txt
     #   pytest-cov
-diff-cover==9.1.1
+diff-cover==7.7.0
     # via -r requirements/dev.in
 dill==0.3.8
     # via
@@ -72,8 +81,11 @@ django==4.2.14
     # via
     #   -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
     #   -r requirements/quality.txt
+    #   djangorestframework
     #   edx-i18n-tools
-edx-i18n-tools==1.6.0
+djangorestframework==3.15.2
+    # via -r requirements/quality.txt
+edx-i18n-tools==1.6.2
     # via -r requirements/dev.in
 edx-lint==5.3.7
     # via -r requirements/quality.txt
@@ -87,6 +99,10 @@ filelock==3.15.4
     #   -r requirements/quality.txt
     #   tox
     #   virtualenv
+idna==3.7
+    # via
+    #   -r requirements/quality.txt
+    #   requests
 importlib-metadata==6.11.0
     # via
     #   -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
@@ -105,12 +121,8 @@ jinja2==3.1.4
     #   -r requirements/quality.txt
     #   code-annotations
     #   diff-cover
-lxml[html-clean,html_clean]==5.2.2
-    # via
-    #   edx-i18n-tools
-    #   lxml-html-clean
-lxml-html-clean==0.1.1
-    # via lxml
+lxml==5.2.2
+    # via edx-i18n-tools
 markupsafe==2.1.5
     # via
     #   -r requirements/quality.txt
@@ -130,7 +142,7 @@ packaging==24.1
     #   pyproject-api
     #   pytest
     #   tox
-path==16.14.0
+path==16.16.0
     # via edx-i18n-tools
 pbr==6.0.0
     # via
@@ -208,6 +220,8 @@ pyyaml==6.0.1
     #   -r requirements/quality.txt
     #   code-annotations
     #   edx-i18n-tools
+requests==2.32.3
+    # via -r requirements/quality.txt
 six==1.16.0
     # via
     #   -r requirements/quality.txt
@@ -254,6 +268,10 @@ typing-extensions==4.12.2
     #   asgiref
     #   astroid
     #   pylint
+urllib3==2.2.2
+    # via
+    #   -r requirements/quality.txt
+    #   requests
 virtualenv==20.26.3
     # via
     #   -r requirements/ci.txt
