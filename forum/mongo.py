@@ -1,14 +1,15 @@
+"""Mongo module for forum app."""
 
 import logging
 
+from django.conf import settings
 from pymongo import MongoClient
-
 
 log = logging.getLogger(__name__)
 
 
 class MongoBackend:
-    """Class for mongoDB cs_comments_service backend"""
+    """Class for mongoDB cs_comments_service backend."""
 
     def __init__(self, **kwargs):
         """
@@ -22,35 +23,32 @@ class MongoBackend:
           - `password`: collection user password
           - `database`: name of the database
           - `collection`: name of the collection
-          - 'authsource': name of the authentication database
+          - `authsource`: name of the authentication database
           - `extra`: parameters to pymongo.MongoClient not listed above
 
         """
-
-        super().__init__(**kwargs)  # lint-amnesty, pylint: disable=super-with-arguments
-
         # Extract connection parameters from kwargs
 
-        host = kwargs.get('host', 'localhost')
-        port = kwargs.get('port', 27017)
+        host = kwargs.get("host", settings.MONGO_HOST)
+        port = kwargs.get("port", settings.MONGO_PORT)
 
-        user = kwargs.get('user', '')
-        password = kwargs.get('password', '')
+        user = kwargs.get("user", "")
+        password = kwargs.get("password", "")
 
-        db_name = kwargs.get('database', 'cs_comments_service')
-        collection_name = kwargs.get('collection', '')
+        db_name = kwargs.get("database", "cs_comments_service")
+        collection_name = kwargs.get("collection", "")
 
-        auth_source = kwargs.get('authsource') or None
+        auth_source = kwargs.get("authsource") or None
 
         # Other mongo connection arguments
-        extra = kwargs.get('extra', {})
+        extra = kwargs.get("extra", {})
 
         # By default disable write acknowledgments, reducing the time
         # blocking during an insert
-        extra['w'] = extra.get('w', 0)
+        extra["w"] = extra.get("w", 0)
 
         # Make timezone aware by default
-        extra['tz_aware'] = extra.get('tz_aware', True)
+        extra["tz_aware"] = extra.get("tz_aware", True)
 
         # Connect to database and get collection
 
