@@ -66,6 +66,10 @@ django==4.2.14
     #   djangorestframework
 djangorestframework==3.15.2
     # via -r requirements/test.txt
+dnspython==2.6.1
+    # via
+    #   -r requirements/test.txt
+    #   pymongo
 edx-lint==5.3.7
     # via -r requirements/quality.in
 exceptiongroup==1.2.2
@@ -99,11 +103,14 @@ markupsafe==2.1.5
     #   jinja2
 mccabe==0.7.0
     # via pylint
+mongomock==4.1.2
+    # via -r requirements/test.txt
 openedx-atlas==0.6.1
     # via -r requirements/test.txt
 packaging==24.1
     # via
     #   -r requirements/test.txt
+    #   mongomock
     #   pyproject-api
     #   pytest
     #   tox
@@ -140,6 +147,8 @@ pylint-plugin-utils==0.8.2
     # via
     #   pylint-celery
     #   pylint-django
+pymongo==4.8.0
+    # via -r requirements/test.txt
 pyproject-api==1.7.1
     # via
     #   -r requirements/test.txt
@@ -163,6 +172,10 @@ pyyaml==6.0.1
     #   code-annotations
 requests==2.32.3
     # via -r requirements/test.txt
+sentinels==1.0.0
+    # via
+    #   -r requirements/test.txt
+    #   mongomock
 six==1.16.0
     # via edx-lint
 snowballstemmer==2.2.0
