@@ -4,6 +4,8 @@ Database models for forum.
 
 from abc import ABC, abstractmethod
 
+from bson import ObjectId
+
 from forum.mongo import MongoBackend
 
 
@@ -36,12 +38,20 @@ class MongoBaseModel(ABC):
         """Insert a new document"""
         raise NotImplementedError
 
-    @abstractmethod
-    def delete(self, external_id):
-        """Delete a document by ID"""
-        raise NotImplementedError
+    def delete(self, _id: str):
+        """
+        Deletes a document from the database based on the id.
+
+        Args:
+            _id: The ID of the document.
+
+        Returns:
+            The number of documents deleted.
+        """
+        result = self.collection.delete_one({"_id": ObjectId(_id)})
+        return result.deleted_count
 
     @abstractmethod
-    def update(self, external_id, **kwargs):
+    def update(self, _id: str, **kwargs):
         """Update a document by ID"""
         raise NotImplementedError

@@ -44,6 +44,7 @@ class Users(MongoBaseModel):
 
         """
         user_data = {
+            "_id": external_id,
             "external_id": external_id,
             "username": username,
             "email": email,
@@ -54,18 +55,18 @@ class Users(MongoBaseModel):
         result = self.collection.insert_one(user_data)
         return str(result.inserted_id)
 
-    def delete(self, external_id):
+    def delete(self, _id):
         """
-        Deletes a user document from the database based on the external_id.
+        Deletes a user document from the database based on the id.
 
         Args:
-            external_id: The external ID of the user.
+            id: The ID of the user.
 
         Returns:
             The number of documents deleted.
 
         """
-        result = self.collection.delete_one({"external_id": external_id})
+        result = self.collection.delete_one({"_id": _id})
         return result.deleted_count
 
     def update(

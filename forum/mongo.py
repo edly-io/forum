@@ -43,10 +43,6 @@ class MongoBackend:
         # Other mongo connection arguments
         extra = kwargs.get("extra", {})
 
-        # By default disable write acknowledgments, reducing the time
-        # blocking during an insert
-        extra["w"] = extra.get("w", 0)
-
         # Make timezone aware by default
         extra["tz_aware"] = extra.get("tz_aware", True)
 
