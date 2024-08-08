@@ -18,7 +18,7 @@ class MongoBaseModel(ABC):
     @property
     def collection(self):
         """Get mongo db collection"""
-        return self.client.collection
+        return self.get_client.collection
 
     @property
     def get_client(self):
