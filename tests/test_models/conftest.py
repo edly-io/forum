@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import mongomock
 import pytest
 
+from forum.models.notifications import Notifications
 from forum.models.threads import CommentThread
 from forum.models.users import Users
 from forum.mongo import MongoBackend
@@ -21,6 +22,9 @@ def fixture_mock_mongo_backend():
     collections = {
         "contents": db["contents"],
         "users": db["users"],
+        "notifications": db["notifications"],
+        # TODO: there's no collection named as notifications in mongo db
+        # change the above collection name where notifications are being saved
     }
 
     mock_backend = MagicMock(spec=MongoBackend)
@@ -47,3 +51,9 @@ def fixture_users_model(patch_mongo_backend):
 def fixture_comment_thread_model(patch_mongo_backend):
     """Get CommentThread model with patched backend."""
     return CommentThread(client=patch_mongo_backend.contents)
+
+
+@pytest.fixture(name="notifications_model")
+def fixture_notifications_model(patch_mongo_backend):
+    """Get Notifications model with patched backend."""
+    return Notifications(client=patch_mongo_backend.notifications)
