@@ -1,2 +1,0 @@
-# forum
-openedx forum app
