@@ -13,35 +13,6 @@ class CommentThread(Contents):
 
     content_type = "CommentThread"
 
-    def get_votes(self, up=None, down=None):
-        """
-        Calculates and returns the vote summary for a thread.
-
-        Args:
-            up (list, optional): A list of user IDs who upvoted the thread.
-            down (list, optional): A list of user IDs who downvoted the thread.
-
-        Returns:
-            dict: A dictionary containing the vote summary with the following keys:
-                - "up" (list): The list of user IDs who upvoted.
-                - "down" (list): The list of user IDs who downvoted.
-                - "up_count" (int): The count of upvotes.
-                - "down_count" (int): The count of downvotes.
-                - "count" (int): The total number of votes (upvotes + downvotes).
-                - "point" (int): The vote score (upvotes - downvotes).
-        """
-        up = up or []
-        down = down or []
-        votes = {
-            "up": up,
-            "down": down,
-            "up_count": len(up),
-            "down_count": len(down),
-            "count": len(up) + len(down),
-            "point": len(up) - len(down),
-        }
-        return votes
-
     def insert(
         self,
         title: str,
@@ -85,7 +56,7 @@ class CommentThread(Contents):
 
         date = datetime.now()
         thread_data = {
-            "votes": self.get_votes(up=[], down=[]),
+            "votes": self.get_votes_dict(up=[], down=[]),
             "abuse_flaggers": [],
             "historical_abuse_flaggers": [],
             "thread_type": thread_type,
