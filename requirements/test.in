@@ -9,3 +9,4 @@ code-annotations          # provides commands used by the pii_check make target.
 backports.zoneinfo==0.2.1;python_version<"3.9"
 tox
 mongomock
+mypy

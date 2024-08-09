@@ -137,6 +137,12 @@ mccabe==0.7.0
     #   pylint
 mongomock==4.1.2
     # via -r requirements/quality.txt
+mypy==1.11.1
+    # via -r requirements/quality.txt
+mypy-extensions==1.0.0
+    # via
+    #   -r requirements/quality.txt
+    #   mypy
 openedx-atlas==0.6.1
     # via -r requirements/quality.txt
 packaging==24.1
@@ -262,6 +268,7 @@ tomli==2.0.1
     #   -r requirements/quality.txt
     #   build
     #   coverage
+    #   mypy
     #   pip-tools
     #   pylint
     #   pyproject-api
@@ -280,6 +287,7 @@ typing-extensions==4.12.2
     #   -r requirements/quality.txt
     #   asgiref
     #   astroid
+    #   mypy
     #   pylint
 urllib3==2.2.2
     # via
