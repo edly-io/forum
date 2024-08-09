@@ -10,8 +10,8 @@ asgiref==3.8.1
     #   django
 backports-zoneinfo==0.2.1 ; python_version < "3.9"
     # via
+    #   -c requirements/constraints.txt
     #   -r requirements/base.txt
-    #   -r requirements/test.in
     #   django
     #   djangorestframework
 cachetools==5.4.0

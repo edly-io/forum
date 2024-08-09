@@ -8,8 +8,10 @@ asgiref==3.8.1
     # via
     #   django
     #   django-stubs
-backports-zoneinfo==0.2.1
-    # via django
+backports-zoneinfo==0.2.1 ; python_version < "3.9"
+    # via
+    #   -c requirements/constraints.txt
+    #   django
 cachetools==5.4.0
     # via tox
 certifi==2024.7.4
