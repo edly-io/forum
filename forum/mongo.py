@@ -4,8 +4,8 @@ import logging
 from typing import Any, Dict
 
 from django.conf import settings
-from pymongo import MongoClient
-from pymongo.collection import Collection
+from pymongo import MongoClient  # type: ignore
+from pymongo.collection import Collection  # type: ignore
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class MongoBackend:
 
         # Connect to database and get collection
 
-        self.connection: MongoClient = MongoClient(host=host, port=port, **extra)  # type: ignore
+        self.connection: MongoClient = MongoClient(host=host, port=port, **extra)
 
         database = self.connection[db_name]
 

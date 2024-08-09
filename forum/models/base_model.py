@@ -5,9 +5,9 @@ Database models for forum.
 from abc import ABC, abstractmethod
 from typing import Optional, Any, Dict
 
-from bson import ObjectId
-from pymongo.collection import Collection
-from pymongo.cursor import Cursor
+from bson import ObjectId  # type: ignore
+from pymongo.collection import Collection  # type: ignore
+from pymongo.cursor import Cursor  # type: ignore
 
 from forum.mongo import MongoBackend
 
