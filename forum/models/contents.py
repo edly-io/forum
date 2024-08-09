@@ -48,3 +48,9 @@ class Contents(MongoBaseModel):
         Return not implemented error on the insert
         """
         raise NotImplementedError
+
+    def update(self, **kwargs):  # pylint: disable=arguments-differ
+        """
+        Return not implemented error on the insert
+        """
+        raise NotImplementedError
