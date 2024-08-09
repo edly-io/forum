@@ -3,16 +3,14 @@
 import logging
 
 import requests
-from requests.models import Response
 from django.conf import settings
 from django.http import HttpRequest
+from requests.models import Response
 
 logger = logging.getLogger(__name__)
 
 
-def handle_proxy_requests(
-    request: HttpRequest, suffix: str, method: str
-) -> Response:
+def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Response:
     """
     Catches all requests and sends them to forum/cs_comments_service URLs.
     """

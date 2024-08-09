@@ -1,7 +1,7 @@
 """Content Class for mongo backend."""
 
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from forum.models.contents import Contents
 
@@ -107,83 +107,33 @@ class CommentThread(Contents):
 
         Args:
             thread_id (str): The ID of the thread to update.
-            thread_type (Optional[str], optional): The type of the thread, either 'question' or 'discussion'.
-            title (Optional[str], optional): The title of the thread.
-            body (Optional[str], optional): The body content of the thread.
-            course_id (Optional[str], optional): The ID of the course the thread is associated with.
-            anonymous (Optional[bool], optional): Whether the thread is posted anonymously.
-            anonymous_to_peers (Optional[bool], optional): Whether the thread is anonymous to peers.
-            commentable_id (Optional[str], optional): The ID of the commentable entity.
-            at_position_list (Optional[List[str]], optional): A list of positions for @mentions.
-            closed (Optional[bool], optional): Whether the thread is closed.
-            context (Optional[str], optional): The context of the thread, either 'course' or 'standalone'.
-            author_id (Optional[str], optional): The ID of the author who created the thread.
-            author_username (Optional[str], optional): The username of the author.
-            votes (Optional[Dict[str, int]], optional): The votes for the thread.
-            abuse_flaggers (Optional[List[str]], optional): A list of users who flagged the thread for abuse.
-            closed_by (Optional[str], optional): The ID of the user who closed the thread.
-            pinned (Optional[bool], optional): Whether the thread is pinned.
-            comments_count (Optional[int], optional): The number of comments on the thread.
+            ...
             endorsed (Optional[bool], optional): Whether the thread is endorsed.
 
         Returns:
             int: The number of documents modified.
         """
-        update_data = {}
-        thread_type = kwargs.get("thread_type")
-        title = kwargs.get("title")
-        body = kwargs.get("body")
-        course_id = kwargs.get("course_id")
-        anonymous = kwargs.get("anonymous")
-        anonymous_to_peers = kwargs.get("anonymous_to_peers")
-        commentable_id = kwargs.get("commentable_id")
-        at_position_list = kwargs.get("at_position_list")
-        closed = kwargs.get("closed")
-        context = kwargs.get("context")
-        author_id = kwargs.get("author_id")
-        author_username = kwargs.get("author_username")
-        votes = kwargs.get("votes")
-        abuse_flaggers = kwargs.get("abuse_flaggers")
-        closed_by = kwargs.get("closed_by")
-        pinned = kwargs.get("pinned")
-        comments_count = kwargs.get("comments_count")
-        endorsed = kwargs.get("endorsed")
-        if thread_type:
-            update_data["thread_type"] = thread_type
-        if title:
-            update_data["title"] = title
-        if body:
-            update_data["body"] = body
-        if course_id:
-            update_data["course_id"] = course_id
-        if anonymous:
-            update_data["anonymous"] = anonymous
-        if anonymous_to_peers:
-            update_data["anonymous_to_peers"] = anonymous_to_peers
-        if commentable_id:
-            update_data["commentable_id"] = commentable_id
-        if at_position_list:
-            update_data["at_position_list"] = at_position_list
-        if closed:
-            update_data["closed"] = closed
-        if context:
-            update_data["context"] = context
-        if author_id:
-            update_data["author_id"] = author_id
-        if author_username:
-            update_data["author_username"] = author_username
-        if votes:
-            update_data["votes"] = votes
-        if abuse_flaggers:
-            update_data["abuse_flaggers"] = abuse_flaggers
-        if closed_by:
-            update_data["closed_by"] = closed_by
-        if pinned:
-            update_data["pinned"] = pinned
-        if comments_count:
-            update_data["comments_count"] = comments_count
-        if endorsed:
-            update_data["endorsed"] = endorsed
+        fields = [
+            "thread_type",
+            "title",
+            "body",
+            "course_id",
+            "anonymous",
+            "anonymous_to_peers",
+            "commentable_id",
+            "at_position_list",
+            "closed",
+            "context",
+            "author_id",
+            "author_username",
+            "votes",
+            "abuse_flaggers",
+            "closed_by",
+            "pinned",
+            "comments_count",
+            "endorsed",
+        ]
+        update_data = {field: kwargs[field] for field in fields if field in kwargs}
 
         date = datetime.now()
         update_data["updated_at"] = date

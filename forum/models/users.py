@@ -1,6 +1,6 @@
 """Users Class for mongo backend."""
 
-from typing import Optional, Any, Dict
+from typing import Any, Dict, Optional
 
 from forum.models.base_model import MongoBaseModel
 from forum.mongo import MongoBackend
@@ -65,6 +65,7 @@ class Users(MongoBaseModel):
         """
         result = self.collection.delete_one({"_id": _id})
         return result.deleted_count
+
     def update(self, **kwargs: Any) -> int:
         """
         Updates a user document in the database based on the external_id.

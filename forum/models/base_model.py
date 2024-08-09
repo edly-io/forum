@@ -3,7 +3,7 @@ Database models for forum.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Any, Dict
+from typing import Any, Dict, Optional
 
 from bson import ObjectId  # type: ignore
 from pymongo.collection import Collection  # type: ignore
