@@ -2,8 +2,10 @@
 Common settings for forum app.
 """
 
+from typing import Any
 
-def plugin_settings(settings):
+
+def plugin_settings(settings: Any) -> None:
     """
     Common settings for forum app
     Set these variables in the Tutor Config or lms.yml for local testing

@@ -1,7 +1,7 @@
 """Content Class for mongo backend."""
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from forum.models.contents import Contents
 
@@ -13,7 +13,9 @@ class CommentThread(Contents):
 
     content_type = "CommentThread"
 
-    def get_votes(self, up=None, down=None):
+    def get_votes(
+        self, up: Optional[List[str]] = None, down: Optional[List[str]] = None
+    ) -> Dict[str, object]:
         """
         Calculates and returns the vote summary for a thread.
 
@@ -42,19 +44,7 @@ class CommentThread(Contents):
         }
         return votes
 
-    def insert(
-        self,
-        title: str,
-        body: str,
-        course_id: str,
-        commentable_id: str,
-        author_id: str,
-        author_username: str,
-        anonymous: bool = False,
-        anonymous_to_peers: bool = False,
-        thread_type: str = "discussion",
-        context: str = "course",
-    ):  # pylint: disable=arguments-differ
+    def insert(self, **kwargs: Any) -> str:
         """
         Inserts a new thread document into the database.
 
@@ -77,9 +67,11 @@ class CommentThread(Contents):
         Returns:
             str: The ID of the inserted document.
         """
+        thread_type = kwargs.get("thread_type", "discussion")
         if thread_type not in ["question", "discussion"]:
             raise ValueError("Invalid thread_type")
 
+        context = kwargs.get("context", "course")
         if context not in ["course", "standalone"]:
             raise ValueError("Invalid context")
 
@@ -92,16 +84,16 @@ class CommentThread(Contents):
             "context": context,
             "comment_count": 0,
             "at_position_list": [],
-            "title": title,
-            "body": body,
-            "course_id": course_id,
-            "commentable_id": commentable_id,
+            "title": kwargs.get("title", ""),
+            "body": kwargs.get("body", ""),
+            "course_id": kwargs.get("course_id", ""),
+            "commentable_id": kwargs.get("commentable_id", ""),
             "_type": self.content_type,
-            "anonymous": anonymous,
-            "anonymous_to_peers": anonymous_to_peers,
+            "anonymous": kwargs.get("anonymous", False),
+            "anonymous_to_peers": kwargs.get("anonymous_to_peers", False),
             "closed": False,
-            "author_id": author_id,
-            "author_username": author_username,
+            "author_id": kwargs.get("author_id", ""),
+            "author_username": kwargs.get("author_username", ""),
             "created_at": date,
             "updated_at": date,
             "last_activity_at": date,
@@ -109,28 +101,29 @@ class CommentThread(Contents):
         result = self.collection.insert_one(thread_data)
         return str(result.inserted_id)
 
-    def update(
-        self,
-        thread_id: str,
-        thread_type: Optional[str] = None,
-        title: Optional[str] = None,
-        body: Optional[str] = None,
-        course_id: Optional[str] = None,
-        anonymous: Optional[bool] = None,
-        anonymous_to_peers: Optional[bool] = None,
-        commentable_id: Optional[str] = None,
-        at_position_list: Optional[List[str]] = None,
-        closed: Optional[bool] = None,
-        context: Optional[str] = None,
-        author_id: Optional[str] = None,
-        author_username: Optional[str] = None,
-        votes: Optional[Dict[str, int]] = None,
-        abuse_flaggers: Optional[List[str]] = None,
-        closed_by: Optional[str] = None,
-        pinned: Optional[bool] = None,
-        comments_count: Optional[int] = None,
-        endorsed: Optional[bool] = None,
-    ):  # pylint: disable=arguments-differ
+    def update(self, **kwargs: Any) -> int:
+        # def update(
+        #     self,
+        #     thread_id: str,
+        #     thread_type: Optional[str] = None,
+        #     title: Optional[str] = None,
+        #     body: Optional[str] = None,
+        #     course_id: Optional[str] = None,
+        #     anonymous: Optional[bool] = None,
+        #     anonymous_to_peers: Optional[bool] = None,
+        #     commentable_id: Optional[str] = None,
+        #     at_position_list: Optional[List[str]] = None,
+        #     closed: Optional[bool] = None,
+        #     context: Optional[str] = None,
+        #     author_id: Optional[str] = None,
+        #     author_username: Optional[str] = None,
+        #     votes: Optional[Dict[str, int]] = None,
+        #     abuse_flaggers: Optional[List[str]] = None,
+        #     closed_by: Optional[str] = None,
+        #     pinned: Optional[bool] = None,
+        #     comments_count: Optional[int] = None,
+        #     endorsed: Optional[bool] = None,
+        # ) -> int:  # pylint: disable=arguments-differ
         """
         Updates a thread document in the database.
 
@@ -159,6 +152,24 @@ class CommentThread(Contents):
             int: The number of documents modified.
         """
         update_data = {}
+        thread_type = kwargs.get("thread_type")
+        title = kwargs.get("title")
+        body = kwargs.get("body")
+        course_id = kwargs.get("course_id")
+        anonymous = kwargs.get("anonymous")
+        anonymous_to_peers = kwargs.get("anonymous_to_peers")
+        commentable_id = kwargs.get("commentable_id")
+        at_position_list = kwargs.get("at_position_list")
+        closed = kwargs.get("closed")
+        context = kwargs.get("context")
+        author_id = kwargs.get("author_id")
+        author_username = kwargs.get("author_username")
+        votes = kwargs.get("votes")
+        abuse_flaggers = kwargs.get("abuse_flaggers")
+        closed_by = kwargs.get("closed_by")
+        pinned = kwargs.get("pinned")
+        comments_count = kwargs.get("comments_count")
+        endorsed = kwargs.get("endorsed")
         if thread_type:
             update_data["thread_type"] = thread_type
         if title:
@@ -200,7 +211,7 @@ class CommentThread(Contents):
         update_data["updated_at"] = date
         update_data["last_activity_at"] = date
         result = self.collection.update_one(
-            {"_id": thread_id},
+            {"_id": kwargs.get("thread_id", "")},
             {"$set": update_data},
         )
         return result.modified_count

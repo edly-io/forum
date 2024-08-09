@@ -3,3 +3,7 @@
 -c constraints.txt
 
 tox                       # Virtualenv management for tests
+
+# add below 3 packages as mypy giving errors of missing stubs
+djangorestframework-stubs
+types-requests

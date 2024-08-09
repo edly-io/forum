@@ -3,14 +3,18 @@
 import logging
 
 import requests
+from requests.models import Response
 from django.conf import settings
+from django.http import HttpRequest
 
 logger = logging.getLogger(__name__)
 
 
-def handle_proxy_requests(request, suffix, method):
+def handle_proxy_requests(
+    request: HttpRequest, suffix: str, method: str
+) -> Response:
     """
-    Catches all requests and sends it to forum/cs_comments_service urls.
+    Catches all requests and sends them to forum/cs_comments_service URLs.
     """
     comments_service_url = f"http://forum:{settings.FORUM_PORT}"
     url = f"{comments_service_url}/api/v1/{suffix}"
@@ -18,7 +22,7 @@ def handle_proxy_requests(request, suffix, method):
         "X-Edx-Api-Key": request.headers.get("X-Edx-Api-Key"),
         "Accept-Language": request.headers.get("Accept-Language"),
     }
-    request_data = request.POST.dict() or request.data
+    request_data = request.POST.dict()
     request_params = request.GET.dict()
 
     logger.info(f"{method} request to cs_comments_service url: {url}")
