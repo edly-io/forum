@@ -19,10 +19,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version:
-          - "3.11"
-          - "3.12"
-        toxenv: [py, quality]
+        python-version: ['3.11', '3.12']
+        toxenv: [py, quality, django42]
 
     steps:
       - uses: actions/checkout@v4
@@ -36,9 +34,6 @@ jobs:
 
       - name: Install Dependencies
         run: pip install -r requirements/ci.txt
-
-      - name: Upgrade Setuptools
-        run: pip install --upgrade setuptools
 
       - name: Run Tests
         env:

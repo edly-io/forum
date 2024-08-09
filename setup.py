@@ -6,7 +6,7 @@ import os
 import re
 import sys
 
-from setuptools import find_packages, setup
+from setuptools import find_packages, setup  # pylint: disable=E0401
 
 
 def get_version(*file_paths):
