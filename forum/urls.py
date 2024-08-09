@@ -2,7 +2,7 @@
 URLs for forum.
 """
 
-from django.urls import path, include
+from django.urls import include, path
 
 from forum.views.proxy import ForumProxyAPIView
 
