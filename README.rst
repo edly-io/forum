@@ -61,31 +61,36 @@ There are no changes needed in the `Discussion MFE <https://github.com/openedx/f
 
 In certain scenarios, you may need to mount the Forum package for extending or debugging features. For this, you need to install the `forumv2 <https://gist.github.com/taimoor-ahmed-1/9e947a06d127498a328475877e41d7c0>`_ plugin. Follow these steps to accomplish this:
 
-1. Clone the forum repo::
+1. Mount the edx-platfrom:
+
+    Mount the edx-patfrom using `forum_v2 <https://github.com/edly-io/edx-platform/tree/forum_v2>`_ branch.
+    The branch contains updates for better logging to test the Forum V2 APIs
+
+2. Clone the forum repo::
 
     git clone git@github.com:edly-io/forum.git
 
-2. Mount the repo::
+3. Mount the repo::
 
     tutor mounts add path/to/forum/repo
 
-3. Install this plugin::
+4. Install this plugin::
 
     tutor plugins install https://gist.githubusercontent.com/taimoor-ahmed-1/9e947a06d127498a328475877e41d7c0/raw/6152bdc312f941e79d50e2043f00d3d059de70a7/forum-v2.py
 
-4. Enable the plugin::
+5. Enable the plugin::
 
     tutor plugins enable forumv2
 
-5. Save Changes::
+6. Save Changes::
 
     tutor config save
 
-6. Build the openedx-dev Docker image::
+7. Build the openedx-dev Docker image::
 
     tutor images build openedx-dev
 
-7. Launch the platform::
+8. Launch the platform::
 
     tutor dev launch
 
