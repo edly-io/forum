@@ -12,7 +12,7 @@ astroid==3.2.4
     # via
     #   pylint
     #   pylint-celery
-backports-zoneinfo==0.2.1
+backports-zoneinfo==0.2.1 ; python_version < "3.9"
     # via
     #   -r requirements/test.txt
     #   django
@@ -49,7 +49,7 @@ colorama==0.4.6
     # via
     #   -r requirements/test.txt
     #   tox
-coverage[toml]==7.6.0
+coverage[toml]==7.6.1
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -59,7 +59,7 @@ distlib==0.3.8
     # via
     #   -r requirements/test.txt
     #   virtualenv
-django==4.2.14
+django==4.2.15
     # via
     #   -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
     #   -r requirements/test.txt
@@ -129,7 +129,7 @@ pluggy==1.5.0
     #   -r requirements/test.txt
     #   pytest
     #   tox
-pycodestyle==2.12.0
+pycodestyle==2.12.1
     # via -r requirements/quality.in
 pydocstyle==6.3.0
     # via -r requirements/quality.in
@@ -166,7 +166,7 @@ python-slugify==8.0.4
     # via
     #   -r requirements/test.txt
     #   code-annotations
-pyyaml==6.0.1
+pyyaml==6.0.2
     # via
     #   -r requirements/test.txt
     #   code-annotations
@@ -202,7 +202,7 @@ tomli==2.0.1
     #   tox
 tomlkit==0.13.0
     # via pylint
-tox==4.16.0
+tox==4.17.1
     # via -r requirements/test.txt
 typing-extensions==4.12.2
     # via
