@@ -102,28 +102,6 @@ class CommentThread(Contents):
         return str(result.inserted_id)
 
     def update(self, **kwargs: Any) -> int:
-        # def update(
-        #     self,
-        #     thread_id: str,
-        #     thread_type: Optional[str] = None,
-        #     title: Optional[str] = None,
-        #     body: Optional[str] = None,
-        #     course_id: Optional[str] = None,
-        #     anonymous: Optional[bool] = None,
-        #     anonymous_to_peers: Optional[bool] = None,
-        #     commentable_id: Optional[str] = None,
-        #     at_position_list: Optional[List[str]] = None,
-        #     closed: Optional[bool] = None,
-        #     context: Optional[str] = None,
-        #     author_id: Optional[str] = None,
-        #     author_username: Optional[str] = None,
-        #     votes: Optional[Dict[str, int]] = None,
-        #     abuse_flaggers: Optional[List[str]] = None,
-        #     closed_by: Optional[str] = None,
-        #     pinned: Optional[bool] = None,
-        #     comments_count: Optional[int] = None,
-        #     endorsed: Optional[bool] = None,
-        # ) -> int:  # pylint: disable=arguments-differ
         """
         Updates a thread document in the database.
 
