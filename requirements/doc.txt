@@ -20,6 +20,7 @@ backports-tarfile==1.2.0
     # via jaraco-context
 backports-zoneinfo==0.2.1 ; python_version < "3.9"
     # via
+    #   -c requirements/constraints.txt
     #   -r requirements/test.txt
     #   django
     #   djangorestframework
@@ -136,6 +137,12 @@ more-itertools==10.4.0
     # via
     #   jaraco-classes
     #   jaraco-functools
+mypy==1.11.1
+    # via -r requirements/test.txt
+mypy-extensions==1.0.0
+    # via
+    #   -r requirements/test.txt
+    #   mypy
 nh3==0.2.18
     # via readme-renderer
 openedx-atlas==0.6.1
@@ -265,6 +272,7 @@ tomli==2.0.1
     #   build
     #   coverage
     #   doc8
+    #   mypy
     #   pyproject-api
     #   pytest
     #   tox
@@ -276,6 +284,7 @@ typing-extensions==4.12.2
     # via
     #   -r requirements/test.txt
     #   asgiref
+    #   mypy
     #   pydata-sphinx-theme
     #   rich
 urllib3==2.2.2

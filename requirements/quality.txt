@@ -14,6 +14,7 @@ astroid==3.2.4
     #   pylint-celery
 backports-zoneinfo==0.2.1 ; python_version < "3.9"
     # via
+    #   -c requirements/constraints.txt
     #   -r requirements/test.txt
     #   django
     #   djangorestframework
@@ -105,6 +106,14 @@ mccabe==0.7.0
     # via pylint
 mongomock==4.1.2
     # via -r requirements/test.txt
+mypy==1.11.1
+    # via
+    #   -r requirements/quality.in
+    #   -r requirements/test.txt
+mypy-extensions==1.0.0
+    # via
+    #   -r requirements/test.txt
+    #   mypy
 openedx-atlas==0.6.1
     # via -r requirements/test.txt
 packaging==24.1
@@ -196,6 +205,7 @@ tomli==2.0.1
     # via
     #   -r requirements/test.txt
     #   coverage
+    #   mypy
     #   pylint
     #   pyproject-api
     #   pytest
@@ -209,6 +219,7 @@ typing-extensions==4.12.2
     #   -r requirements/test.txt
     #   asgiref
     #   astroid
+    #   mypy
     #   pylint
 urllib3==2.2.2
     # via
