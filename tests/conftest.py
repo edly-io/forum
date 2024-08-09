@@ -6,8 +6,8 @@ Init file for tests.
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
 import mongomock
+import pytest
 from django.test import Client
 
 from forum.models.contents import Contents

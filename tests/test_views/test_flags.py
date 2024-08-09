@@ -1,12 +1,12 @@
-import json
 from unittest.mock import patch, Mock
-
-from forum.models.base_model import MongoBaseModel
-from forum.models.users import Users
-from forum.models.contents import Contents
 
 
 def test_comment_flag_api(api_client, users_model, content_model):
+    """
+    Test the comment flag API.
+
+    This test checks that a user can flag a comment for abuse and then unflag it.
+    """
     user_id = users_model.collection.insert_one({"_id": "1"}).inserted_id
     comment_id = content_model.collection.insert_one(
         {
@@ -41,7 +41,11 @@ def test_comment_flag_api(api_client, users_model, content_model):
 
 
 def test_comment_flag_api_invalid_data(api_client, users_model, content_model):
+    """
+    Test the comment flag API with invalid data.
 
+    This test checks that the API returns a 400 error when the user or comment does not exist.
+    """
     user_id = users_model.collection.insert_one({"_id": "1"}).inserted_id
     mock_users_class = Mock(return_value=users_model)
     mock_contents_class = Mock(return_value=content_model)
@@ -56,6 +60,11 @@ def test_comment_flag_api_invalid_data(api_client, users_model, content_model):
 
 
 def test_comment_thread_api(api_client, users_model, content_model):
+    """
+    Test the comment thread flag API.
+
+    This test checks that a user can flag a comment thread for abuse and then unflag it.
+    """
     user_id = users_model.collection.insert_one({"_id": "1"}).inserted_id
     comment_thread_id = content_model.collection.insert_one(
         {
