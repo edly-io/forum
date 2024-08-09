@@ -6,8 +6,10 @@
 #
 asgiref==3.8.1
     # via
+    #   -r requirements/ci.txt
     #   -r requirements/quality.txt
     #   django
+    #   django-stubs
 astroid==3.2.4
     # via
     #   -r requirements/quality.txt
@@ -15,6 +17,7 @@ astroid==3.2.4
     #   pylint-celery
 backports-zoneinfo==0.2.1 ; python_version < "3.9"
     # via
+    #   -r requirements/ci.txt
     #   -r requirements/quality.txt
     #   django
     #   djangorestframework
@@ -29,6 +32,7 @@ cachetools==5.4.0
     #   tox
 certifi==2024.7.4
     # via
+    #   -r requirements/ci.txt
     #   -r requirements/quality.txt
     #   requests
 chardet==5.2.0
@@ -39,6 +43,7 @@ chardet==5.2.0
     #   tox
 charset-normalizer==3.3.2
     # via
+    #   -r requirements/ci.txt
     #   -r requirements/quality.txt
     #   requests
 click==8.1.7
@@ -80,11 +85,24 @@ distlib==0.3.8
 django==4.2.15
     # via
     #   -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
+    #   -r requirements/ci.txt
     #   -r requirements/quality.txt
+    #   django-stubs
+    #   django-stubs-ext
     #   djangorestframework
     #   edx-i18n-tools
+django-stubs==5.0.4
+    # via
+    #   -r requirements/ci.txt
+    #   djangorestframework-stubs
+django-stubs-ext==5.0.4
+    # via
+    #   -r requirements/ci.txt
+    #   django-stubs
 djangorestframework==3.15.2
     # via -r requirements/quality.txt
+djangorestframework-stubs==3.15.0
+    # via -r requirements/ci.txt
 dnspython==2.6.1
     # via
     #   -r requirements/quality.txt
@@ -105,6 +123,7 @@ filelock==3.15.4
     #   virtualenv
 idna==3.7
     # via
+    #   -r requirements/ci.txt
     #   -r requirements/quality.txt
     #   requests
 importlib-metadata==6.11.0
@@ -236,7 +255,10 @@ pyyaml==6.0.2
     #   code-annotations
     #   edx-i18n-tools
 requests==2.32.3
-    # via -r requirements/quality.txt
+    # via
+    #   -r requirements/ci.txt
+    #   -r requirements/quality.txt
+    #   djangorestframework-stubs
 sentinels==1.0.0
     # via
     #   -r requirements/quality.txt
@@ -251,6 +273,7 @@ snowballstemmer==2.2.0
     #   pydocstyle
 sqlparse==0.5.1
     # via
+    #   -r requirements/ci.txt
     #   -r requirements/quality.txt
     #   django
 stevedore==5.2.0
@@ -268,6 +291,7 @@ tomli==2.0.1
     #   -r requirements/quality.txt
     #   build
     #   coverage
+    #   django-stubs
     #   mypy
     #   pip-tools
     #   pylint
@@ -282,17 +306,32 @@ tox==4.17.1
     # via
     #   -r requirements/ci.txt
     #   -r requirements/quality.txt
+types-pyyaml==6.0.12.20240808
+    # via
+    #   -r requirements/ci.txt
+    #   django-stubs
+    #   djangorestframework-stubs
+types-requests==2.32.0.20240712
+    # via
+    #   -r requirements/ci.txt
+    #   djangorestframework-stubs
 typing-extensions==4.12.2
     # via
+    #   -r requirements/ci.txt
     #   -r requirements/quality.txt
     #   asgiref
     #   astroid
+    #   django-stubs
+    #   django-stubs-ext
+    #   djangorestframework-stubs
     #   mypy
     #   pylint
 urllib3==2.2.2
     # via
+    #   -r requirements/ci.txt
     #   -r requirements/quality.txt
     #   requests
+    #   types-requests
 virtualenv==20.26.3
     # via
     #   -r requirements/ci.txt

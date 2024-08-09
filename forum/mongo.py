@@ -1,9 +1,11 @@
 """Mongo module for forum app."""
 
 import logging
+from typing import Any, Dict
 
 from django.conf import settings
 from pymongo import MongoClient
+from pymongo.collection import Collection
 
 log = logging.getLogger(__name__)
 
@@ -11,7 +13,7 @@ log = logging.getLogger(__name__)
 class MongoBackend:
     """Class for mongoDB cs_comments_service backend."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """
         Connect to MongoDB.
 
@@ -48,15 +50,11 @@ class MongoBackend:
 
         # Connect to database and get collection
 
-        self.connection = MongoClient(
-            host=host,
-            port=port,
-            **extra
-        )
+        self.connection: MongoClient = MongoClient(host=host, port=port, **extra)  # type: ignore
 
         database = self.connection[db_name]
 
         if user or password:
             database.authenticate(user, password, source=auth_source)
 
-        self.collection = database[collection_name]
+        self.collection: Collection[Dict[str, Any]] = database[collection_name]
