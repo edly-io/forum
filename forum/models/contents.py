@@ -1,6 +1,7 @@
 """Content Class for mongo backend."""
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from forum.models.base_model import MongoBaseModel
 from forum.mongo import MongoBackend
 
