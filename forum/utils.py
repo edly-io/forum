@@ -13,7 +13,7 @@ def handle_proxy_requests(request, suffix, method):
     Catches all requests and sends it to forum/cs_comments_service urls.
     """
     comments_service_url = f"http://forum:{settings.FORUM_PORT}"
-    url = comments_service_url + suffix
+    url = f"{comments_service_url}/api/v1/{suffix}"
     request_headers = {
         "X-Edx-Api-Key": request.headers.get("X-Edx-Api-Key"),
         "Accept-Language": request.headers.get("Accept-Language"),
