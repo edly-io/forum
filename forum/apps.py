@@ -16,7 +16,7 @@ class ForumConfig(AppConfig):
         "url_config": {
             "lms.djangoapp": {
                 "namespace": "forum",
-                "regex": r"^forum",
+                "regex": r"^forum/",
                 "relative_path": "urls",
             }
         },
