@@ -11,15 +11,12 @@ def test_get(users_model: Users) -> None:
     external_id = "test_external_id"
     username = "test_username"
     email = "test_email"
-    users_model.collection.insert_one(
-        {
-            "_id": external_id,
-            "external_id": external_id,
-            "username": username,
-            "email": email,
-        }
+    users_model.insert(
+        external_id,
+        username,
+        email,
     )
-    user_data = users_model.get(external_id=external_id)
+    user_data = users_model.get(external_id)
     assert user_data is not None
     assert user_data["_id"] == external_id
     assert user_data["external_id"] == external_id
@@ -34,7 +31,7 @@ def test_insert(users_model: Users) -> None:
     email = "test_email"
     result = users_model.insert(external_id, username, email)
     assert result is not None
-    user_data = users_model.get(external_id=external_id)
+    user_data = users_model.get(external_id)
     assert user_data is not None
     assert user_data["_id"] == external_id
     assert user_data["external_id"] == external_id
@@ -45,21 +42,29 @@ def test_insert(users_model: Users) -> None:
 def test_delete(users_model: Users) -> None:
     """Test delete user from mongodb"""
     external_id = "test_external_id"
-    users_model.collection.insert_one({"_id": external_id, "external_id": external_id})
+    users_model.insert(external_id, "test_username", "test_email")
     result = users_model.delete(external_id)
     assert result == 1
-    user_data = users_model.get(external_id=external_id)
+    user_data = users_model.get(external_id)
     assert user_data is None
 
 
 def test_list(users_model: Users) -> None:
     """Test list user from mongodb"""
-    users_model.collection.insert_many(
-        [
-            {"_id": "user1", "external_id": "user1", "username": "user1"},
-            {"_id": "user2", "external_id": "user2", "username": "user2"},
-            {"_id": "user3", "external_id": "user3", "username": "user3"},
-        ]
+    users_model.insert(
+        external_id="user1",
+        username="user1",
+        email="user1",
+    )
+    users_model.insert(
+        external_id="user2",
+        username="user2",
+        email="user1",
+    )
+    users_model.insert(
+        external_id="user3",
+        username="user3",
+        email="user1",
     )
     users_list = users_model.list()
     assert len(list(users_list)) == 3
@@ -71,21 +76,23 @@ def test_update(users_model: Users) -> None:
     external_id = "test_external_id"
     username = "test_username"
     email = "test_email"
-    users_model.collection.insert_one(
-        {
-            "_id": external_id,
-            "external_id": external_id,
-            "username": username,
-            "email": email,
-        }
+    users_model.insert(
+        external_id=external_id,
+        username=username,
+        email=email,
     )
 
     new_username = "new_username"
     new_email = "new_email"
-    result = users_model.update(external_id, new_username, new_email)
+    result = users_model.update(
+        external_id,
+        username=new_username,
+        email=new_email
+    )
     assert result is not None
     assert result == 1
-    user_data = users_model.get(external_id=external_id)
+
+    user_data = users_model.get(external_id)
     assert user_data is not None
     assert user_data["external_id"] == external_id
     assert user_data["username"] == new_username

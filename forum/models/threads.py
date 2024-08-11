@@ -48,7 +48,7 @@ class CommentThread(Contents):
         }
         return votes
 
-    def insert(
+    def insert(  # type: ignore
         self,
         title: str,
         body: str,
@@ -112,10 +112,10 @@ class CommentThread(Contents):
             "updated_at": date,
             "last_activity_at": date,
         }
-        result = self.collection.insert_one(thread_data)
+        result = self._collection.insert_one(thread_data)
         return str(result.inserted_id)
 
-    def update(
+    def update(  # type: ignore
         self,
         thread_id: str,
         thread_type: Optional[str] = None,
@@ -191,7 +191,7 @@ class CommentThread(Contents):
         date = datetime.now()
         update_data["updated_at"] = date
         update_data["last_activity_at"] = date
-        result = self.collection.update_one(
+        result = self._collection.update_one(
             {"_id": ObjectId(thread_id)},
             {"$set": update_data},
         )

@@ -23,22 +23,22 @@ class MongoBaseModel(ABC):
         self.client: MongoBackend = client or MongoBackend(collection=collection_name)
 
     @property
-    def collection(self) -> Collection[Dict[str, Any]]:
+    def _collection(self) -> Collection[Dict[str, Any]]:
         """Get mongo db collection"""
-        return self.client.collection
+        return self.get_client.collection
 
     @property
     def get_client(self) -> MongoBackend:
         """Get mongo client"""
         return self.client
 
-    def get(self, **kwargs: Any) -> Optional[Dict[str, Any]]:
+    def get(self, _id: str) -> Optional[Dict[str, Any]]:
         """Get a document by filter"""
-        return self.collection.find_one(kwargs)
+        return self._collection.find_one({"_id": _id})
 
     def list(self, **kwargs: Any) -> Cursor[Dict[str, Any]]:
         """Get a list of all documents filtered by kwargs"""
-        return self.collection.find(kwargs)
+        return self._collection.find(kwargs)
 
     @abstractmethod
     def insert(self, *args: Any, **kwargs: Any) -> str:
@@ -55,7 +55,7 @@ class MongoBaseModel(ABC):
         Returns:
             The number of documents deleted.
         """
-        result = self.collection.delete_one({"_id": ObjectId(_id)})
+        result = self._collection.delete_one({"_id": ObjectId(_id)})
         return result.deleted_count
 
     @abstractmethod
