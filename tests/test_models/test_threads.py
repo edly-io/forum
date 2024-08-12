@@ -2,10 +2,13 @@
 """
 Tests for the `CommentThread` model.
 """
+
 from bson import ObjectId
 
+from forum.models.threads import CommentThread
 
-def test_insert(comment_thread_model):
+
+def test_insert(comment_thread_model: CommentThread) -> None:
     """Test insert a comment thread into MongoDB."""
     thread_id = comment_thread_model.insert(
         title="Test Thread",
@@ -22,7 +25,7 @@ def test_insert(comment_thread_model):
     assert thread_data["body"] == "This is a test thread"
 
 
-def test_delete(comment_thread_model):
+def test_delete(comment_thread_model: CommentThread) -> None:
     """Test delete a comment thread from MongoDB."""
     thread_id = comment_thread_model.insert(
         title="Test Thread",
@@ -32,13 +35,13 @@ def test_delete(comment_thread_model):
         author_id="author1",
         author_username="author_user",
     )
-    result = comment_thread_model.delete(ObjectId(thread_id))
+    result = comment_thread_model.delete(thread_id)
     assert result == 1
     thread_data = comment_thread_model.get(_id=ObjectId(thread_id))
     assert thread_data is None
 
 
-def test_list(comment_thread_model):
+def test_list(comment_thread_model: CommentThread) -> None:
     """Test list all comment threads from MongoDB."""
     comment_thread_model.collection.insert_many(
         [
@@ -52,7 +55,7 @@ def test_list(comment_thread_model):
     assert all(thread["title"].startswith("Thread") for thread in threads_list)
 
 
-def test_update(comment_thread_model):
+def test_update(comment_thread_model: CommentThread) -> None:
     """Test update a comment thread in MongoDB."""
     thread_id = comment_thread_model.insert(
         title="Test Thread",
@@ -64,13 +67,14 @@ def test_update(comment_thread_model):
     )
 
     result = comment_thread_model.update(
-        thread_id=ObjectId(thread_id),
+        thread_id=thread_id,
         title="Updated Title",
         body="Updated body",
         commentable_id="new_commentable_id",
     )
     assert result == 1
     thread_data = comment_thread_model.get(_id=ObjectId(thread_id))
+    assert thread_data is not None
     assert thread_data["title"] == "Updated Title"
     assert thread_data["body"] == "Updated body"
     assert thread_data["commentable_id"] == "new_commentable_id"

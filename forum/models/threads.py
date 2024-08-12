@@ -5,6 +5,8 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from bson import ObjectId
+
 from forum.models.contents import Contents
 
 
@@ -190,7 +192,7 @@ class CommentThread(Contents):
         update_data["updated_at"] = date
         update_data["last_activity_at"] = date
         result = self.collection.update_one(
-            {"_id": thread_id},
+            {"_id": ObjectId(thread_id)},
             {"$set": update_data},
         )
         return result.modified_count

@@ -32,6 +32,9 @@ docs: ## generate Sphinx HTML documentation, including API docs
 	tox -e docs
 	$(BROWSER)docs/_build/html/index.html
 
+mypy_check:
+	mypy forum/ tests/ test_utils/
+
 # Define PIP_COMPILE_OPTS=-v to get more information during make upgrade.
 PIP_COMPILE = pip-compile --upgrade $(PIP_COMPILE_OPTS)
 
