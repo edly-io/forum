@@ -1,7 +1,9 @@
+# pylint: disable=arguments-differ
+
 """Content Class for mongo backend."""
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from forum.models.contents import Contents
 
@@ -13,7 +15,9 @@ class CommentThread(Contents):
 
     content_type = "CommentThread"
 
-    def get_votes(self, up=None, down=None):
+    def get_votes(
+        self, up: Optional[List[str]] = None, down: Optional[List[str]] = None
+    ) -> Dict[str, object]:
         """
         Calculates and returns the vote summary for a thread.
 
@@ -54,7 +58,7 @@ class CommentThread(Contents):
         anonymous_to_peers: bool = False,
         thread_type: str = "discussion",
         context: str = "course",
-    ):  # pylint: disable=arguments-differ
+    ) -> str:
         """
         Inserts a new thread document into the database.
 
@@ -130,71 +134,57 @@ class CommentThread(Contents):
         pinned: Optional[bool] = None,
         comments_count: Optional[int] = None,
         endorsed: Optional[bool] = None,
-    ):  # pylint: disable=arguments-differ
+    ) -> int:
         """
         Updates a thread document in the database.
 
         Args:
-            thread_id (str): The ID of the thread to update.
-            thread_type (Optional[str], optional): The type of the thread, either 'question' or 'discussion'.
-            title (Optional[str], optional): The title of the thread.
-            body (Optional[str], optional): The body content of the thread.
-            course_id (Optional[str], optional): The ID of the course the thread is associated with.
-            anonymous (Optional[bool], optional): Whether the thread is posted anonymously.
-            anonymous_to_peers (Optional[bool], optional): Whether the thread is anonymous to peers.
-            commentable_id (Optional[str], optional): The ID of the commentable entity.
-            at_position_list (Optional[List[str]], optional): A list of positions for @mentions.
-            closed (Optional[bool], optional): Whether the thread is closed.
-            context (Optional[str], optional): The context of the thread, either 'course' or 'standalone'.
-            author_id (Optional[str], optional): The ID of the author who created the thread.
-            author_username (Optional[str], optional): The username of the author.
-            votes (Optional[Dict[str, int]], optional): The votes for the thread.
-            abuse_flaggers (Optional[List[str]], optional): A list of users who flagged the thread for abuse.
-            closed_by (Optional[str], optional): The ID of the user who closed the thread.
-            pinned (Optional[bool], optional): Whether the thread is pinned.
-            comments_count (Optional[int], optional): The number of comments on the thread.
-            endorsed (Optional[bool], optional): Whether the thread is endorsed.
+            thread_id: ID of thread to update.
+            thread_type: The type of the thread, either 'question' or 'discussion'.
+            title: The title of the thread.
+            body: The body content of the thread.
+            course_id: The ID of the course the thread is associated with.
+            anonymous: Whether the thread is posted anonymously.
+            anonymous_to_peers: Whether the thread is anonymous to peers.
+            commentable_id: The ID of the commentable entity.
+            at_position_list: A list of positions for @mentions.
+            closed: Whether the thread is closed.
+            context: The context of the thread, either 'course' or 'standalone'.
+            author_id: The ID of the author who created the thread.
+            author_username: The username of the author.
+            votes: The votes for the thread.
+            abuse_flaggers: A list of users who flagged the thread for abuse.
+            closed_by: The ID of the user who closed the thread.
+            pinned: Whether the thread is pinned.
+            comments_count: The number of comments on the thread.
+            endorsed: Whether the thread is endorsed.
 
         Returns:
             int: The number of documents modified.
         """
-        update_data = {}
-        if thread_type:
-            update_data["thread_type"] = thread_type
-        if title:
-            update_data["title"] = title
-        if body:
-            update_data["body"] = body
-        if course_id:
-            update_data["course_id"] = course_id
-        if anonymous:
-            update_data["anonymous"] = anonymous
-        if anonymous_to_peers:
-            update_data["anonymous_to_peers"] = anonymous_to_peers
-        if commentable_id:
-            update_data["commentable_id"] = commentable_id
-        if at_position_list:
-            update_data["at_position_list"] = at_position_list
-        if closed:
-            update_data["closed"] = closed
-        if context:
-            update_data["context"] = context
-        if author_id:
-            update_data["author_id"] = author_id
-        if author_username:
-            update_data["author_username"] = author_username
-        if votes:
-            update_data["votes"] = votes
-        if abuse_flaggers:
-            update_data["abuse_flaggers"] = abuse_flaggers
-        if closed_by:
-            update_data["closed_by"] = closed_by
-        if pinned:
-            update_data["pinned"] = pinned
-        if comments_count:
-            update_data["comments_count"] = comments_count
-        if endorsed:
-            update_data["endorsed"] = endorsed
+        fields = [
+            ("thread_type", thread_type),
+            ("title", title),
+            ("body", body),
+            ("course_id", course_id),
+            ("anonymous", anonymous),
+            ("anonymous_to_peers", anonymous_to_peers),
+            ("commentable_id", commentable_id),
+            ("at_position_list", at_position_list),
+            ("closed", closed),
+            ("context", context),
+            ("author_id", author_id),
+            ("author_username", author_username),
+            ("votes", votes),
+            ("abuse_flaggers", abuse_flaggers),
+            ("closed_by", closed_by),
+            ("pinned", pinned),
+            ("comments_count", comments_count),
+            ("endorsed", endorsed),
+        ]
+        update_data: dict[str, Any] = {
+            field: value for field, value in fields if value is not None
+        }
 
         date = datetime.now()
         update_data["updated_at"] = date

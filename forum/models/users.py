@@ -1,6 +1,11 @@
+# pylint: disable=arguments-differ
+
 """Users Class for mongo backend."""
 
+from typing import Any, Dict, List, Optional
+
 from forum.models.base_model import MongoBaseModel
+from forum.mongo import MongoBackend
 
 
 class Users(MongoBaseModel):
@@ -8,7 +13,9 @@ class Users(MongoBaseModel):
     Users class for cs_comments_service user model
     """
 
-    def __init__(self, collection_name="users", client=None):
+    def __init__(
+        self, collection_name: str = "users", client: Optional[MongoBackend] = None
+    ) -> None:
         """
         Initializes the Users class.
 
@@ -21,13 +28,13 @@ class Users(MongoBaseModel):
 
     def insert(
         self,
-        external_id,
-        username,
-        email,
-        default_sort_key="date",
-        read_states=None,
-        course_stats=None,
-    ):  # pylint: disable=arguments-differ
+        external_id: str,
+        username: str,
+        email: str,
+        default_sort_key: str = "date",
+        read_states: Optional[List[Dict[str, Any]]] = None,
+        course_stats: Optional[List[Dict[str, Any]]] = None,
+    ) -> str:
         """
         Inserts a new user document into the database.
 
@@ -43,7 +50,7 @@ class Users(MongoBaseModel):
             The ID of the inserted document.
 
         """
-        user_data = {
+        user_data: Dict[str, Any] = {
             "_id": external_id,
             "external_id": external_id,
             "username": username,
@@ -55,12 +62,12 @@ class Users(MongoBaseModel):
         result = self.collection.insert_one(user_data)
         return str(result.inserted_id)
 
-    def delete(self, _id):
+    def delete(self, _id: Any) -> int:
         """
         Deletes a user document from the database based on the id.
 
         Args:
-            id: The ID of the user.
+            _id: The ID of the user.
 
         Returns:
             The number of documents deleted.
@@ -71,13 +78,13 @@ class Users(MongoBaseModel):
 
     def update(
         self,
-        external_id,
-        username=None,
-        email=None,
-        default_sort_key=None,
-        read_states=None,
-        course_stats=None,
-    ):  # pylint: disable=arguments-differ
+        external_id: str,
+        username: Optional[str] = None,
+        email: Optional[str] = None,
+        default_sort_key: Optional[str] = None,
+        read_states: Optional[List[Dict[str, Any]]] = None,
+        course_stats: Optional[List[Dict[str, Any]]] = None,
+    ) -> int:
         """
         Updates a user document in the database based on the external_id.
 
@@ -93,17 +100,16 @@ class Users(MongoBaseModel):
             The number of documents modified.
 
         """
-        update_data = {}
-        if username:
-            update_data["username"] = username
-        if email:
-            update_data["email"] = email
-        if default_sort_key:
-            update_data["default_sort_key"] = default_sort_key
-        if read_states:
-            update_data["read_states"] = read_states
-        if course_stats:
-            update_data["course_stats"] = course_stats
+        fields = [
+            ("username", username),
+            ("email", email),
+            ("default_sort_key", default_sort_key),
+            ("read_states", read_states),
+            ("course_stats", course_stats),
+        ]
+        update_data: dict[str, Any] = {
+            field: value for field, value in fields if value is not None
+        }
 
         result = self.collection.update_one(
             {"external_id": external_id},

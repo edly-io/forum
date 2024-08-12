@@ -1,5 +1,6 @@
 """Forum Views."""
 
+from django.http import HttpRequest
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,35 +10,35 @@ from forum.utils import handle_proxy_requests
 
 class ForumProxyAPIView(APIView):
     """
-    An Proxy API View to Redirect All API requests to forum/cs_comments_service urls.
+    A Proxy API View to Redirect All API requests to forum/cs_comments_service urls.
     """
 
     permission_classes = (AllowAny,)
 
-    def post(self, request, suffix):
+    def post(self, request: HttpRequest, suffix: str) -> Response:
         """
-        Catches post requests and sends it to forum/cs_comments_service post urls.
+        Catches post requests and sends them to forum/cs_comments_service post URLs.
         """
         response = handle_proxy_requests(request, suffix, "post")
         return Response(data=response.json(), status=response.status_code)
 
-    def get(self, request, suffix):
+    def get(self, request: HttpRequest, suffix: str) -> Response:
         """
-        Catches get requests and sends it to forum/cs_comments_service get urls.
+        Catches get requests and sends them to forum/cs_comments_service get URLs.
         """
         response = handle_proxy_requests(request, suffix, "get")
         return Response(data=response.json(), status=response.status_code)
 
-    def delete(self, request, suffix):
+    def delete(self, request: HttpRequest, suffix: str) -> Response:
         """
-        Catches delete requests and sends it to forum/cs_comments_service delete urls.
+        Catches delete requests and sends them to forum/cs_comments_service delete URLs.
         """
         response = handle_proxy_requests(request, suffix, "delete")
         return Response(data=response.json(), status=response.status_code)
 
-    def put(self, request, suffix):
+    def put(self, request: HttpRequest, suffix: str) -> Response:
         """
-        Catches post requests and sends it to forum/cs_comments_service post urls.
+        Catches put requests and sends them to forum/cs_comments_service put URLs.
         """
         response = handle_proxy_requests(request, suffix, "put")
         return Response(data=response.json(), status=response.status_code)

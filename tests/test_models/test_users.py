@@ -80,7 +80,7 @@ def test_update(users_model):
     new_email = "new_email"
     result = users_model.update(external_id, new_username, new_email)
     assert result is not None
-
+    assert result == 1
     user_data = users_model.get(external_id=external_id)
     assert user_data["external_id"] == external_id
     assert user_data["username"] == new_username
