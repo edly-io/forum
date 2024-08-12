@@ -3,8 +3,10 @@
 Tests for the `forum` models module.
 """
 
+from forum.models.users import Users
 
-def test_get(users_model):
+
+def test_get(users_model: Users) -> None:
     """Test get user from mongodb"""
     external_id = "test_external_id"
     username = "test_username"
@@ -18,13 +20,14 @@ def test_get(users_model):
         }
     )
     user_data = users_model.get(external_id=external_id)
+    assert user_data is not None
     assert user_data["_id"] == external_id
     assert user_data["external_id"] == external_id
     assert user_data["username"] == username
     assert user_data["email"] == email
 
 
-def test_insert(users_model):
+def test_insert(users_model: Users) -> None:
     """Test insert user from mongodb"""
     external_id = "test_external_id"
     username = "test_username"
@@ -32,13 +35,14 @@ def test_insert(users_model):
     result = users_model.insert(external_id, username, email)
     assert result is not None
     user_data = users_model.get(external_id=external_id)
+    assert user_data is not None
     assert user_data["_id"] == external_id
     assert user_data["external_id"] == external_id
     assert user_data["username"] == username
     assert user_data["email"] == email
 
 
-def test_delete(users_model):
+def test_delete(users_model: Users) -> None:
     """Test delete user from mongodb"""
     external_id = "test_external_id"
     users_model.collection.insert_one({"_id": external_id, "external_id": external_id})
@@ -48,7 +52,7 @@ def test_delete(users_model):
     assert user_data is None
 
 
-def test_list(users_model):
+def test_list(users_model: Users) -> None:
     """Test list user from mongodb"""
     users_model.collection.insert_many(
         [
@@ -62,7 +66,7 @@ def test_list(users_model):
     assert all(user["username"] in ["user1", "user2", "user3"] for user in users_list)
 
 
-def test_update(users_model):
+def test_update(users_model: Users) -> None:
     """Test update user from mongodb"""
     external_id = "test_external_id"
     username = "test_username"
@@ -82,6 +86,7 @@ def test_update(users_model):
     assert result is not None
     assert result == 1
     user_data = users_model.get(external_id=external_id)
+    assert user_data is not None
     assert user_data["external_id"] == external_id
     assert user_data["username"] == new_username
     assert user_data["email"] == new_email
