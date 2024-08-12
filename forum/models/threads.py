@@ -44,7 +44,19 @@ class CommentThread(Contents):
         }
         return votes
 
-    def insert(self, **kwargs: Any) -> str:
+    def insert(
+        self,
+        title: str,
+        body: str,
+        course_id: str,
+        commentable_id: str,
+        author_id: str,
+        author_username: str,
+        anonymous: bool = False,
+        anonymous_to_peers: bool = False,
+        thread_type: str = "discussion",
+        context: str = "course",
+    ) -> str:  # pylint: disable=arguments-differ
         """
         Inserts a new thread document into the database.
 
@@ -67,11 +79,9 @@ class CommentThread(Contents):
         Returns:
             str: The ID of the inserted document.
         """
-        thread_type = kwargs.get("thread_type", "discussion")
         if thread_type not in ["question", "discussion"]:
             raise ValueError("Invalid thread_type")
 
-        context = kwargs.get("context", "course")
         if context not in ["course", "standalone"]:
             raise ValueError("Invalid context")
 
@@ -84,16 +94,16 @@ class CommentThread(Contents):
             "context": context,
             "comment_count": 0,
             "at_position_list": [],
-            "title": kwargs.get("title", ""),
-            "body": kwargs.get("body", ""),
-            "course_id": kwargs.get("course_id", ""),
-            "commentable_id": kwargs.get("commentable_id", ""),
+            "title": title,
+            "body": body,
+            "course_id": course_id,
+            "commentable_id": commentable_id,
             "_type": self.content_type,
-            "anonymous": kwargs.get("anonymous", False),
-            "anonymous_to_peers": kwargs.get("anonymous_to_peers", False),
+            "anonymous": anonymous,
+            "anonymous_to_peers": anonymous_to_peers,
             "closed": False,
-            "author_id": kwargs.get("author_id", ""),
-            "author_username": kwargs.get("author_username", ""),
+            "author_id": author_id,
+            "author_username": author_username,
             "created_at": date,
             "updated_at": date,
             "last_activity_at": date,
@@ -101,45 +111,84 @@ class CommentThread(Contents):
         result = self.collection.insert_one(thread_data)
         return str(result.inserted_id)
 
-    def update(self, **kwargs: Any) -> int:
+    def update(
+        self,
+        thread_id: str,
+        thread_type: Optional[str] = None,
+        title: Optional[str] = None,
+        body: Optional[str] = None,
+        course_id: Optional[str] = None,
+        anonymous: Optional[bool] = None,
+        anonymous_to_peers: Optional[bool] = None,
+        commentable_id: Optional[str] = None,
+        at_position_list: Optional[List[str]] = None,
+        closed: Optional[bool] = None,
+        context: Optional[str] = None,
+        author_id: Optional[str] = None,
+        author_username: Optional[str] = None,
+        votes: Optional[Dict[str, int]] = None,
+        abuse_flaggers: Optional[List[str]] = None,
+        closed_by: Optional[str] = None,
+        pinned: Optional[bool] = None,
+        comments_count: Optional[int] = None,
+        endorsed: Optional[bool] = None,
+    ) -> int:  # pylint: disable=arguments-differ
         """
         Updates a thread document in the database.
 
         Args:
-            thread_id (str): The ID of the thread to update.
-            ...
-            endorsed (Optional[bool], optional): Whether the thread is endorsed.
+            thread_id: ID of thread to update.
+            thread_type: The type of the thread, either 'question' or 'discussion'.
+            title: The title of the thread.
+            body: The body content of the thread.
+            course_id: The ID of the course the thread is associated with.
+            anonymous: Whether the thread is posted anonymously.
+            anonymous_to_peers: Whether the thread is anonymous to peers.
+            commentable_id: The ID of the commentable entity.
+            at_position_list: A list of positions for @mentions.
+            closed: Whether the thread is closed.
+            context: The context of the thread, either 'course' or 'standalone'.
+            author_id: The ID of the author who created the thread.
+            author_username: The username of the author.
+            votes: The votes for the thread.
+            abuse_flaggers: A list of users who flagged the thread for abuse.
+            closed_by: The ID of the user who closed the thread.
+            pinned: Whether the thread is pinned.
+            comments_count: The number of comments on the thread.
+            endorsed: Whether the thread is endorsed.
 
         Returns:
             int: The number of documents modified.
         """
         fields = [
-            "thread_type",
-            "title",
-            "body",
-            "course_id",
-            "anonymous",
-            "anonymous_to_peers",
-            "commentable_id",
-            "at_position_list",
-            "closed",
-            "context",
-            "author_id",
-            "author_username",
-            "votes",
-            "abuse_flaggers",
-            "closed_by",
-            "pinned",
-            "comments_count",
-            "endorsed",
+            ("thread_type", thread_type),
+            ("title", title),
+            ("body", body),
+            ("course_id", course_id),
+            ("anonymous", anonymous),
+            ("anonymous_to_peers", anonymous_to_peers),
+            ("commentable_id", commentable_id),
+            ("at_position_list", at_position_list),
+            ("closed", closed),
+            ("context", context),
+            ("author_id", author_id),
+            ("author_username", author_username),
+            ("votes", votes),
+            ("abuse_flaggers", abuse_flaggers),
+            ("closed_by", closed_by),
+            ("pinned", pinned),
+            ("comments_count", comments_count),
+            ("endorsed", endorsed),
         ]
-        update_data = {field: kwargs[field] for field in fields if field in kwargs}
+        update_data: dict[str, Any] = {
+            field: value for field, value in fields if value is not None
+        }
 
         date = datetime.now()
         update_data["updated_at"] = date
         update_data["last_activity_at"] = date
         result = self.collection.update_one(
-            {"_id": kwargs.get("thread_id", "")},
+            {"_id": thread_id},
             {"$set": update_data},
         )
         return result.modified_count

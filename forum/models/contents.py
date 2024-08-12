@@ -53,7 +53,7 @@ class Contents(MongoBaseModel):
             kwargs["_type"] = self.content_type
         return self.collection.find(kwargs)
 
-    def insert(self, **kwargs: Any) -> str:
+    def insert(self, *args: Any, **kwargs: Any) -> str:
         """
         Return not implemented error on the insert.
         """

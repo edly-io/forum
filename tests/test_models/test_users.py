@@ -26,19 +26,16 @@ def test_get(users_model):
 
 def test_insert(users_model):
     """Test insert user from mongodb"""
-    user_data = {
-        "_id": "test_external_id",
-        "external_id": "test_external_id",
-        "username": "test_username",
-        "email": "test_email",
-    }
-    result = users_model.insert(**user_data)
+    external_id = "test_external_id"
+    username = "test_username"
+    email = "test_email"
+    result = users_model.insert(external_id, username, email)
     assert result is not None
-    fetched_user = users_model.get(_id=user_data["_id"])
-    assert fetched_user["_id"] == user_data["external_id"]
-    assert fetched_user["external_id"] == user_data["external_id"]
-    assert fetched_user["username"] == user_data["username"]
-    assert fetched_user["email"] == user_data["email"]
+    user_data = users_model.get(external_id=external_id)
+    assert user_data["_id"] == external_id
+    assert user_data["external_id"] == external_id
+    assert user_data["username"] == username
+    assert user_data["email"] == email
 
 
 def test_delete(users_model):
@@ -81,14 +78,10 @@ def test_update(users_model):
 
     new_username = "new_username"
     new_email = "new_email"
-    user_new_data = {
-        "external_id": external_id,
-        "username": new_username,
-        "email": new_email,
-    }
-    result = users_model.update(**user_new_data)
+    result = users_model.update(external_id, new_username, new_email)
     assert result is not None
     assert result == 1
     user_data = users_model.get(external_id=external_id)
+    assert user_data["external_id"] == external_id
     assert user_data["username"] == new_username
     assert user_data["email"] == new_email

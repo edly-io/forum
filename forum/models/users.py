@@ -1,6 +1,6 @@
 """Users Class for mongo backend."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from forum.models.base_model import MongoBaseModel
 from forum.mongo import MongoBackend
@@ -24,7 +24,15 @@ class Users(MongoBaseModel):
         """
         super().__init__(collection_name, client)
 
-    def insert(self, **kwargs: Any) -> str:
+    def insert(
+        self,
+        external_id: str,
+        username: str,
+        email: str,
+        default_sort_key: str = "date",
+        read_states: Optional[List[Dict[str, Any]]] = None,
+        course_stats: Optional[List[Dict[str, Any]]] = None,
+    ) -> str:  # pylint: disable=arguments-differ
         """
         Inserts a new user document into the database.
 
@@ -41,13 +49,13 @@ class Users(MongoBaseModel):
 
         """
         user_data: Dict[str, Any] = {
-            "_id": kwargs.get("external_id"),
-            "external_id": kwargs.get("external_id"),
-            "username": kwargs.get("username"),
-            "email": kwargs.get("email"),
-            "default_sort_key": kwargs.get("default_sort_key", "date"),
-            "read_states": kwargs.get("read_states"),
-            "course_stats": kwargs.get("course_stats"),
+            "_id": external_id,
+            "external_id": external_id,
+            "username": username,
+            "email": email,
+            "default_sort_key": default_sort_key,
+            "read_states": read_states,
+            "course_stats": course_stats,
         }
         result = self.collection.insert_one(user_data)
         return str(result.inserted_id)
@@ -66,7 +74,15 @@ class Users(MongoBaseModel):
         result = self.collection.delete_one({"_id": _id})
         return result.deleted_count
 
-    def update(self, **kwargs: Any) -> int:
+    def update(
+        self,
+        external_id: str,
+        username: Optional[str] = None,
+        email: Optional[str] = None,
+        default_sort_key: Optional[str] = None,
+        read_states: Optional[List[Dict[str, Any]]] = None,
+        course_stats: Optional[List[Dict[str, Any]]] = None,
+    ) -> int:  # pylint: disable=arguments-differ
         """
         Updates a user document in the database based on the external_id.
 
@@ -82,24 +98,17 @@ class Users(MongoBaseModel):
             The number of documents modified.
 
         """
-        update_data: Dict[str, Any] = {}
-        username = kwargs.get("username")
-        if username:
-            update_data["username"] = username
-        email = kwargs.get("email")
-        if email:
-            update_data["email"] = email
-        default_sort_key = kwargs.get("email", "date")
-        if default_sort_key:
-            update_data["default_sort_key"] = default_sort_key
-        read_states = kwargs.get("read_states")
-        if read_states:
-            update_data["read_states"] = read_states
-        course_stats = kwargs.get("course_stats")
-        if course_stats:
-            update_data["course_stats"] = course_stats
+        fields = [
+            ("username", username),
+            ("email", email),
+            ("default_sort_key", default_sort_key),
+            ("read_states", read_states),
+            ("course_stats", course_stats),
+        ]
+        update_data: dict[str, Any] = {
+            field: value for field, value in fields if value is not None
+        }
 
-        external_id = kwargs.get("external_id")
         result = self.collection.update_one(
             {"external_id": external_id},
             {"$set": update_data},

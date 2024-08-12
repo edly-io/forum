@@ -5,9 +5,9 @@ Database models for forum.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-from bson import ObjectId  # type: ignore
-from pymongo.collection import Collection  # type: ignore
-from pymongo.cursor import Cursor  # type: ignore
+from bson import ObjectId
+from pymongo.collection import Collection
+from pymongo.cursor import Cursor
 
 from forum.mongo import MongoBackend
 
@@ -41,7 +41,7 @@ class MongoBaseModel(ABC):
         return self.collection.find(kwargs)
 
     @abstractmethod
-    def insert(self, **kwargs: Any) -> str:
+    def insert(self, *args: Any, **kwargs: Any) -> str:
         """Insert a new document"""
         raise NotImplementedError
 
@@ -59,6 +59,6 @@ class MongoBaseModel(ABC):
         return result.deleted_count
 
     @abstractmethod
-    def update(self, **kwargs: Any) -> int:
+    def update(self, *args: Any, **kwargs: Any) -> int:
         """Update a document by ID"""
         raise NotImplementedError
