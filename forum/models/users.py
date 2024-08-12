@@ -1,3 +1,5 @@
+# pylint: disable=arguments-differ
+
 """Users Class for mongo backend."""
 
 from typing import Any, Dict, List, Optional
@@ -32,7 +34,7 @@ class Users(MongoBaseModel):
         default_sort_key: str = "date",
         read_states: Optional[List[Dict[str, Any]]] = None,
         course_stats: Optional[List[Dict[str, Any]]] = None,
-    ) -> str:  # pylint: disable=arguments-differ
+    ) -> str:
         """
         Inserts a new user document into the database.
 
@@ -82,7 +84,7 @@ class Users(MongoBaseModel):
         default_sort_key: Optional[str] = None,
         read_states: Optional[List[Dict[str, Any]]] = None,
         course_stats: Optional[List[Dict[str, Any]]] = None,
-    ) -> int:  # pylint: disable=arguments-differ
+    ) -> int:
         """
         Updates a user document in the database based on the external_id.
 

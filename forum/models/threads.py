@@ -1,3 +1,5 @@
+# pylint: disable=arguments-differ
+
 """Content Class for mongo backend."""
 
 from datetime import datetime
@@ -56,7 +58,7 @@ class CommentThread(Contents):
         anonymous_to_peers: bool = False,
         thread_type: str = "discussion",
         context: str = "course",
-    ) -> str:  # pylint: disable=arguments-differ
+    ) -> str:
         """
         Inserts a new thread document into the database.
 
@@ -132,7 +134,7 @@ class CommentThread(Contents):
         pinned: Optional[bool] = None,
         comments_count: Optional[int] = None,
         endorsed: Optional[bool] = None,
-    ) -> int:  # pylint: disable=arguments-differ
+    ) -> int:
         """
         Updates a thread document in the database.
 
