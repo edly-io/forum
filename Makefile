@@ -1,6 +1,9 @@
-.PHONY: clean clean_tox compile_translations coverage diff_cover docs dummy_translations \
-        extract_translations fake_translations help pii_check pull_translations push_translations \
-        quality requirements selfcheck test test-all upgrade validate install_transifex_client
+.PHONY: clean clean_tox compile_translations coverage docs dummy_translations \
+        extract_translations fake_translations help pull_translations push_translations \
+        quality requirements selfcheck test test-all upgrade install_transifex_client
+
+SRC_FILES_PROD = forum tests test_utils manage.py
+SRC_FILES = ${SRC_FILES_PROD} setup.py test_settings.py
 
 .DEFAULT_GOAL := help
 
@@ -32,35 +35,27 @@ docs: ## generate Sphinx HTML documentation, including API docs
 	tox -e docs
 	$(BROWSER)docs/_build/html/index.html
 
-mypy_check:
-	mypy forum/ tests/ test_utils/
-
-# Define PIP_COMPILE_OPTS=-v to get more information during make upgrade.
-PIP_COMPILE = pip-compile --upgrade $(PIP_COMPILE_OPTS)
-
-upgrade: export CUSTOM_COMPILE_COMMAND=make upgrade
-upgrade: ## update the requirements/*.txt files with the latest packages satisfying requirements/*.in
-	pip install -qr requirements/pip-tools.txt
+# Define PIP_COMPILE_OPTS="-v" to get more information during make compile-requirements.
+compile-requirements: export CUSTOM_COMPILE_COMMAND=make upgrade
+compile-requirements: ## Re-compile *.in requirements to *.txt
+	pip install --quiet -r requirements/pip-tools.txt
 	# Make sure to compile files after any other files they include!
-	$(PIP_COMPILE) --allow-unsafe -o requirements/pip.txt requirements/pip.in
-	$(PIP_COMPILE) -o requirements/pip-tools.txt requirements/pip-tools.in
-	pip install -qr requirements/pip.txt
-	pip install -qr requirements/pip-tools.txt
-	$(PIP_COMPILE) -o requirements/base.txt requirements/base.in
-	$(PIP_COMPILE) -o requirements/test.txt requirements/test.in
-	$(PIP_COMPILE) -o requirements/doc.txt requirements/doc.in
-	$(PIP_COMPILE) -o requirements/quality.txt requirements/quality.in
-	$(PIP_COMPILE) -o requirements/ci.txt requirements/ci.in
-	$(PIP_COMPILE) -o requirements/dev.txt requirements/dev.in
+	pip-compile $(COMPILE_OPTS) --allow-unsafe requirements/pip.in
+	pip-compile $(COMPILE_OPTS) requirements/pip-tools.in
+	pip install --quiet -r requirements/pip.txt
+	pip install --quiet -r requirements/pip-tools.txt
+	pip-compile $(COMPILE_OPTS) requirements/base.in
+	pip-compile $(COMPILE_OPTS) requirements/test.in
+	pip-compile $(COMPILE_OPTS) requirements/doc.in
+	pip-compile $(COMPILE_OPTS) requirements/quality.in
+	pip-compile $(COMPILE_OPTS) requirements/ci.in
+	pip-compile $(COMPILE_OPTS) requirements/dev.in
 	# Let tox control the Django version for tests
 	sed '/^[dD]jango==/d' requirements/test.txt > requirements/test.tmp
 	mv requirements/test.tmp requirements/test.txt
 
-quality: ## check coding style with pycodestyle and pylint
-	tox -e quality
-
-pii_check: ## check for PII annotations on all Django models
-	tox -e pii_check
+upgrade: ## update the requirements/*.txt files with the latest packages satisfying requirements/*.in
+	$(MAKE) compile-requirements COMPILE_OPTS="--upgrade"
 
 piptools: ## install pinned version of pip-compile and pip-sync
 	pip install -r requirements/pip.txt
@@ -69,17 +64,29 @@ piptools: ## install pinned version of pip-compile and pip-sync
 requirements: clean_tox piptools ## install development environment requirements
 	pip-sync -q requirements/dev.txt requirements/private.*
 
-test: clean ## run tests in the current virtualenv
+test-all: clean test test-quality test-pii selfcheck ## run all tests
+
+test: ## run unit tests
 	pytest
 
-diff_cover: test ## find diff lines that need test coverage
-	diff-cover coverage.xml
+test-quality: test-lint test-codestyle test-isort test-mypy ## run static coverage tests
 
-test-all: quality pii_check ## run tests on every supported Python/Django combination
-	tox
-	tox -e docs
+test-lint: ## run pylint
+	pylint ${SRC_FILES}
 
-validate: quality pii_check test ## run tests and quality checks
+test-codestyle: ## run pycodestyle, pydocstyle
+	pycodestyle ${SRC_FILES}
+	pydocstyle ${SRC_FILES}
+
+test-isort: ## run isort checks
+	isort --check-only --diff ${SRC_FILES}
+
+test-mypy: ## run type tests
+	mypy ${SRC_FILES_PROD}
+
+test-pii: export DJANGO_SETTINGS_MODULE=test_settings
+test-pii: ## # check for PII annotations on all Django models
+	 code_annotations django_find_annotations --config_file .pii_annotations.yml --lint --report --coverage
 
 selfcheck: ## check that the Makefile is well-formed
 	@echo "The Makefile is well-formed."
