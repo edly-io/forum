@@ -44,9 +44,9 @@ ROOT_URLCONF = 'forum.urls'
 SECRET_KEY = 'insecure-secret-key'
 
 MIDDLEWARE = (
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
 )
 
 TEMPLATES = [{
@@ -61,3 +61,5 @@ TEMPLATES = [{
 }]
 
 FORUM_PORT = "4567"
+MONGO_HOST = "mongo-test-url"
+MONGO_PORT = 27017
