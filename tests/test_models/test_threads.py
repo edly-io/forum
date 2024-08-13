@@ -3,7 +3,7 @@
 Tests for the `CommentThread` model.
 """
 
-from forum.models.threads import CommentThread
+from forum.models import CommentThread
 
 
 def test_insert(comment_thread_model: CommentThread) -> None:

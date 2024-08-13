@@ -13,9 +13,7 @@ from django.http.response import HttpResponse
 from django.test import Client
 from pymongo import MongoClient
 
-from forum.models.contents import Contents
-from forum.models.threads import CommentThread
-from forum.models.users import Users
+from forum.models import Comment, CommentThread, Contents, Users
 from forum.mongo import MongoBackend
 
 
@@ -56,6 +54,12 @@ def fixture_users_model(patch_mongo_backend: MagicMock) -> Users:
 def fixture_comment_thread_model(patch_mongo_backend: MagicMock) -> CommentThread:
     """Get CommentThread model with patched backend."""
     return CommentThread(client=patch_mongo_backend.contents)
+
+
+@pytest.fixture(name="comment_model")
+def fixture_comment_model(patch_mongo_backend: MagicMock) -> Comment:
+    """Get Comment model with patched backend."""
+    return Comment(client=patch_mongo_backend.contents)
 
 
 @pytest.fixture(name="content_model")

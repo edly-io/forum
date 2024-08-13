@@ -2,10 +2,8 @@
 Production settings for forum app.
 """
 
-from typing import Any
 
-
-def plugin_settings(settings: Any) -> None:
+def plugin_settings(settings):  # type: ignore
     """
     Production settings for forum app
     """

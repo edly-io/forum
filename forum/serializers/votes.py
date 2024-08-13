@@ -4,6 +4,8 @@ Serializer for votes data.
 Serializes the votes field in the ContentSerializer.
 """
 
+from typing import Any, Dict
+
 from rest_framework import serializers
 
 
@@ -28,3 +30,57 @@ class VotesSerializer(serializers.Serializer):  # type: ignore
     down_count = serializers.IntegerField()
     count = serializers.IntegerField()
     point = serializers.IntegerField()
+
+    def create(self, validated_data: Dict[str, Any]) -> Any:
+        """Raise NotImplementedError"""
+        raise NotImplementedError
+
+    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+        """Raise NotImplementedError"""
+        raise NotImplementedError
+
+
+class VotesInputSerializer(serializers.Serializer):  # type: ignore
+    """
+    Serializer for handling votes on a content item.
+
+    Attributes:
+        user_id (str): The ID of the user casting the vote.
+        value (str): The value of the vote, either "up" or "down".
+    """
+
+    user_id = serializers.CharField(required=True)
+    value = serializers.ChoiceField(choices=["up", "down"], required=True)
+
+    def create(self, validated_data: Dict[str, Any]) -> Any:
+        """Raise NotImplementedError"""
+        raise NotImplementedError
+
+    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+        """Raise NotImplementedError"""
+        raise NotImplementedError
+
+
+class VoteSummarySerializer(serializers.Serializer):  # type: ignore
+    """
+    Serializer for summarizing votes on a content item.
+
+    Attributes:
+        count (int): The total number of votes.
+        up_count (int): The number of upvotes.
+        down_count (int): The number of downvotes.
+        point (int): The net score (upvotes minus downvotes).
+    """
+
+    count = serializers.IntegerField(min_value=0)
+    up_count = serializers.IntegerField(min_value=0)
+    down_count = serializers.IntegerField(min_value=0)
+    point = serializers.IntegerField()
+
+    def create(self, validated_data: Dict[str, Any]) -> Any:
+        """Raise NotImplementedError"""
+        raise NotImplementedError
+
+    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+        """Raise NotImplementedError"""
+        raise NotImplementedError

@@ -39,6 +39,9 @@ pii_report/
 /.venv/
 /.venv-*/
 
+# Pyenv
+.python-version
+
 # The Silver Searcher
 .agignore
 
