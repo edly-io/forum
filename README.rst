@@ -1,33 +1,98 @@
 forum
 #############################
 
-.. note::
-
-  This README was auto-generated. Maintainer: please review its contents and
-  update all relevant sections. Instructions to you are marked with
-  "PLACEHOLDER" or "TODO". Update or remove those sections, and remove this
-  note when you are done.
-
-|pypi-badge| |ci-badge| |codecov-badge| |doc-badge| |pyversions-badge|
-|license-badge| |status-badge|
+|ci-badge| |license-badge|
 
 Purpose
 *******
 
 openedx forum app
 
-TODO: The ``README.rst`` file should start with a brief description of the repository and its purpose.
-It should be described in the context of other repositories under the ``openedx``
-organization. It should make clear where this fits into the overall Open edX
-codebase and should be oriented towards people who are new to the Open edX
-project.
+The Edly Forum app is designed to replace the `CS Comments Service <https://github.com/openedx/cs_comments_service>`_, providing a more robust and flexible forum solution for Open edX instances. This new forum is built in Python and uses MySQL, which enhances performance and maintainability compared to the previous Ruby and MongoDB implementation. The motivation for this rewrite stems from a need for a more streamlined and integrated discussion platform within Open edX, as outlined in the `Axim Funded Contribution Proposal <https://discuss.openedx.org/t/axim-funded-contribution-proposal-forum-rewrite-from-ruby-mongodb-to-python-mysql/12788>`_.
 
 Getting Started with Development
 ********************************
 
-Please see the Open edX documentation for `guidance on Python development`_ in this repo.
+Prerequisites
+==============================================
 
-.. _guidance on Python development: https://docs.openedx.org/en/latest/developers/how-tos/get-ready-for-python-dev.html
+
+Before you begin, ensure you have the following installed:
+
+- A working Open edX instance using the Tutor platform.
+
+Installation Steps
+==============================================
+
+
+Follow the steps below to install the Forum app in your Tutor environment:
+
+1. Add a Forum App to the openedX Dependencies
+----------------------------------------------
+
+To add this package to the Open edX dependencies, include it in the `OPENEDX_EXTRA_PIP_REQUIREMENTS`. Since the package is not yet available on PyPI, we will install it directly from the Git repository.
+
+Run the following command to append the package to your Tutor configuration::
+
+    tutor config save --append 'OPENEDX_EXTRA_PIP_REQUIREMENTS=git+https://github.com/edly-io/forum.git@master'
+
+2. Save Config and Rebuild open-edX Image
+-----------------------------------------
+
+Run the following commands to save the configuration and rebuild the Open edX image::
+
+    tutor config save
+    tutor images build openedx
+
+3. Run Launch
+-------------
+
+Run the launch command. It is necessary for building the migrations present in the Forum app::
+
+    tutor dev launch
+
+4. Accessing the Forum
+----------------------
+
+There are no changes needed in the `Discussion MFE <https://github.com/openedx/frontend-app-discussions>`_. You should see the forum interface where users can start discussions, post comments, and interact with each other. In the backend, the API calls are made via the Forum app instead of the CS Comments Service.
+
+5. Development (For Developers)
+-------------------------------
+
+In certain scenarios, you may need to mount the Forum package for extending or debugging features. For this, you need to install the `forumv2 <https://gist.github.com/taimoor-ahmed-1/9e947a06d127498a328475877e41d7c0>`_ plugin. Follow these steps to accomplish this:
+
+1. Mount the edx-platfrom:
+
+    Mount the edx-patfrom using `forum_v2 <https://github.com/edly-io/edx-platform/tree/forum_v2>`_ branch.
+    The branch contains updates for better logging to test the Forum V2 APIs
+
+2. Clone the forum repo::
+
+    git clone git@github.com:edly-io/forum.git
+
+3. Mount the repo::
+
+    tutor mounts add path/to/forum/repo
+
+4. Install this plugin::
+
+    tutor plugins install https://gist.githubusercontent.com/taimoor-ahmed-1/9e947a06d127498a328475877e41d7c0/raw/6152bdc312f941e79d50e2043f00d3d059de70a7/forum-v2.py
+
+5. Enable the plugin::
+
+    tutor plugins enable forumv2
+
+6. Save Changes::
+
+    tutor config save
+
+7. Build the openedx-dev Docker image::
+
+    tutor images build openedx-dev
+
+8. Launch the platform::
+
+    tutor dev launch
 
 Deploying
 *********
@@ -114,28 +179,12 @@ Reporting Security Issues
 
 Please do not report security issues in public. Please email security@openedx.org.
 
-.. |pypi-badge| image:: https://img.shields.io/pypi/v/forum.svg
-    :target: https://pypi.python.org/pypi/forum/
-    :alt: PyPI
-
-.. |ci-badge| image:: https://github.com/openedx/forum/workflows/Python%20CI/badge.svg?branch=main
-    :target: https://github.com/openedx/forum/actions
+.. |ci-badge| image:: https://github.com/edly-io/forum/workflows/Python%20CI/badge.svg?branch=master
+    :target: https://github.com/edly-io/forum/actions
     :alt: CI
 
-.. |codecov-badge| image:: https://codecov.io/github/openedx/forum/coverage.svg?branch=main
-    :target: https://codecov.io/github/openedx/forum?branch=main
-    :alt: Codecov
-
-.. |doc-badge| image:: https://readthedocs.org/projects/forum/badge/?version=latest
-    :target: https://docs.openedx.org/projects/forum
-    :alt: Documentation
-
-.. |pyversions-badge| image:: https://img.shields.io/pypi/pyversions/forum.svg
-    :target: https://pypi.python.org/pypi/forum/
-    :alt: Supported Python versions
-
 .. |license-badge| image:: https://img.shields.io/github/license/openedx/forum.svg
-    :target: https://github.com/openedx/forum/blob/main/LICENSE.txt
+    :target: https://github.com/edly-io/forum/blob/master/LICENSE.txt
     :alt: License
 
 .. TODO: Choose one of the statuses below and remove the other status-badge lines.
