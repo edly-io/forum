@@ -2,7 +2,6 @@
 
 from unittest.mock import Mock, patch
 
-from bson import ObjectId
 from django.test import Client
 
 from forum.models.contents import Contents

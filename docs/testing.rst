@@ -3,13 +3,12 @@
 Testing
 #######
 
-forum has an assortment of test cases and code quality
-checks to catch potential problems during development.  To run them all in the
+This project has an assortment of test cases and code quality checks to catch potential problems during development. To run them all in the
 version of Python you chose for your virtualenv:
 
 .. code-block:: bash
 
-    $ make validate
+    $ make test-all
 
 To run just the unit tests:
 
@@ -17,24 +16,24 @@ To run just the unit tests:
 
     $ make test
 
-To run just the unit tests and check diff coverage
+To run just the unit tests and check the difference in coverage with the master branch:
 
 .. code-block:: bash
 
-    $ make diff_cover
+    $ diff-cover --compare-branch=master coverage.xml
 
-To run just the code quality checks:
+To run just the code quality checks (including mypy checks):
 
 .. code-block:: bash
 
-    $ make quality
+    $ make test-quality
 
 To run the unit tests under every supported Python version and the code
 quality checks:
 
 .. code-block:: bash
 
-    $ make test-all
+    $ tox -e pii_check,quality,py,docs
 
 To generate and open an HTML report of how much of the code is covered by
 test cases:

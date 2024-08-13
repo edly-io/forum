@@ -3,12 +3,3 @@
 -c constraints.txt
 
 -r quality.txt            # Core and quality check dependencies
-
-tox                       # Virtualenv management for tests
-
-# mypy for typing checks
-mypy
-
-# add below 2 packages as mypy giving errors of missing stubs
-djangorestframework-stubs
-types-requests
