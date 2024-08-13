@@ -29,6 +29,7 @@ class CommentThread(Contents):
         anonymous_to_peers: bool = False,
         thread_type: str = "discussion",
         context: str = "course",
+        pinned: bool = False,
     ) -> str:
         """
         Inserts a new thread document into the database.
@@ -44,6 +45,7 @@ class CommentThread(Contents):
             anonymous_to_peers (bool, optional): Whether the thread is anonymous to peers. Defaults to False.
             thread_type (str, optional): The type of the thread, either 'question' or 'discussion'.
             context (str, optional): The context of the thread, either 'course' or 'standalone'.
+            pinned (bool): Whether the thread is pinned. Defaults to False.
 
         Raises:
             ValueError: If `thread_type` is not 'question' or 'discussion'.
@@ -80,6 +82,7 @@ class CommentThread(Contents):
             "created_at": date,
             "updated_at": date,
             "last_activity_at": date,
+            "pinned": pinned,
         }
         result = self._collection.insert_one(thread_data)
         return str(result.inserted_id)
