@@ -9,8 +9,7 @@ import mongomock
 import pytest
 from pymongo import MongoClient
 
-from forum.models.threads import CommentThread
-from forum.models.users import Users
+from forum.models import CommentThread, Users
 from forum.mongo import MongoBackend
 
 

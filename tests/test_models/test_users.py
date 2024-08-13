@@ -3,7 +3,7 @@
 Tests for the `forum` models module.
 """
 
-from forum.models.users import Users
+from forum.models import Users
 
 
 def test_get(users_model: Users) -> None:

@@ -2,11 +2,9 @@
 
 from unittest.mock import Mock, patch
 
-from bson import ObjectId
 from django.test import Client
 
-from forum.models.contents import Contents
-from forum.models.users import Users
+from forum.models import Contents, Users
 
 
 def test_comment_thread_api(api_client: Client, users_model: Users, content_model: Contents) -> None:
@@ -27,8 +25,8 @@ def test_comment_thread_api(api_client: Client, users_model: Users, content_mode
     )
     mock_users_class = Mock(return_value=users_model)
     mock_contents_class = Mock(return_value=content_model)
-    with patch("forum.models.users.Users", new=mock_users_class):
-        with patch("forum.models.contents.Contents", new=mock_contents_class):
+    with patch("forum.models.Users", new=mock_users_class):
+        with patch("forum.models.Contents", new=mock_contents_class):
             response = api_client.put(
                 f"/api/v2/threads/{comment_thread_id}/abuse_flag",
                 data={"user_id": str(user_id)},
@@ -65,8 +63,8 @@ def test_comment_flag_api(api_client: Client, users_model: Users, content_model:
     )
     mock_users_class = Mock(return_value=users_model)
     mock_contents_class = Mock(return_value=content_model)
-    with patch("forum.models.users.Users", new=mock_users_class):
-        with patch("forum.models.contents.Contents", new=mock_contents_class):
+    with patch("forum.models.Users", new=mock_users_class):
+        with patch("forum.models.Contents", new=mock_contents_class):
             response = api_client.put(
                 f"/api/v2/comments/{comment_id}/abuse_flag",
                 data={"user_id": str(user_id)},
@@ -104,8 +102,8 @@ def test_comment_flag_api_invalid_data(api_client: Client, users_model: Users, c
     users_model.insert(user_id, username="user1", email="email1")
     mock_users_class = Mock(return_value=users_model)
     mock_contents_class = Mock(return_value=content_model)
-    with patch("forum.models.users.Users", new=mock_users_class):
-        with patch("forum.models.contents.Contents", new=mock_contents_class):
+    with patch("forum.models.Users", new=mock_users_class):
+        with patch("forum.models.Contents", new=mock_contents_class):
             response = api_client.put(
                 path="/api/v2/comments/66ace22474ba69001e1440bd/abuse_flag",
                 data={"user_id": str(user_id)},

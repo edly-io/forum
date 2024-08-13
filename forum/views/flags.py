@@ -6,9 +6,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.models.contents import Contents
+from forum.models import Contents, Users
 from forum.models.model_utils import flag_as_abuse, un_flag_all_as_abuse, un_flag_as_abuse
-from forum.models.users import Users
 from forum.serializers.contents import ContentSerializer
 
 
