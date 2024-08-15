@@ -2,7 +2,7 @@
 Database models for forum.
 """
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any, Optional
 
 from bson import ObjectId
@@ -39,11 +39,6 @@ class MongoBaseModel(ABC):
         """Get a list of all documents filtered by kwargs"""
         return self._collection.find(kwargs)
 
-    @abstractmethod
-    def insert(self, *args: Any, **kwargs: Any) -> str:
-        """Insert a new document"""
-        raise NotImplementedError
-
     def delete(self, _id: str) -> int:
         """
         Deletes a document from the database based on the id.
@@ -56,8 +51,3 @@ class MongoBaseModel(ABC):
         """
         result = self._collection.delete_one({"_id": ObjectId(_id)})
         return result.deleted_count
-
-    @abstractmethod
-    def update(self, *args: Any, **kwargs: Any) -> int:
-        """Update a document by ID"""
-        raise NotImplementedError

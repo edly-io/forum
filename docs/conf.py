@@ -1,4 +1,3 @@
-# pylint: disable=invalid-name
 """
 forum documentation build configuration file.
 
