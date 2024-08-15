@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional
 from bson import ObjectId
 
 from forum.models.base_model import MongoBaseModel
-from forum.mongo import MongoBackend
 
 
 class Contents(MongoBaseModel):
@@ -17,18 +16,7 @@ class Contents(MongoBaseModel):
     """
 
     content_type: str = ""
-
-    def __init__(
-        self, collection_name: str = "contents", client: Optional[MongoBackend] = None
-    ) -> None:
-        """
-        Initializes the Content class.
-
-        Args:
-            collection_name: The name of the MongoDB collection.
-            client: The MongoDB client.
-        """
-        super().__init__(collection_name, client)
+    COLLECTION_NAME: str = "contents"
 
     def get(
         self, _id: str

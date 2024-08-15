@@ -7,9 +7,7 @@ from django.test import Client
 from forum.models import Contents, Users
 
 
-def test_comment_thread_api(
-    api_client: Client, users_model: Users, content_model: Contents
-) -> None:
+def test_comment_thread_api(api_client: Client) -> None:
     """
     Test the comment thread flag API.
 
@@ -17,16 +15,16 @@ def test_comment_thread_api(
     """
     user_id = "1"
     comment_thread_id = "66ace22474ba69001e1440cd"
-    users_model.insert(user_id, username="user1", email="email1")
-    content_model.insert(
+    Users().insert(user_id, username="user1", email="email1")
+    Contents().insert(
         comment_thread_id,
         "3",
         abuse_flaggers=[],
         historical_abuse_flaggers=[],
         visible=True,
     )
-    mock_users_class = Mock(return_value=users_model)
-    mock_contents_class = Mock(return_value=content_model)
+    mock_users_class = Mock(return_value=Users())
+    mock_contents_class = Mock(return_value=Contents())
     with patch("forum.models.Users", new=mock_users_class):
         with patch("forum.models.Contents", new=mock_contents_class):
             response = api_client.put(
@@ -42,14 +40,12 @@ def test_comment_thread_api(
                 data={"user_id": str(user_id)},
             )
             assert response.status_code == 200
-            comment = content_model.get(comment_thread_id)
+            comment = Contents().get(comment_thread_id)
             assert comment is not None
             assert comment["abuse_flaggers"] == []
 
 
-def test_comment_flag_api(
-    api_client: Client, users_model: Users, content_model: Contents
-) -> None:
+def test_comment_flag_api(api_client: Client) -> None:
     """
     Test the comment flag API.
 
@@ -57,16 +53,16 @@ def test_comment_flag_api(
     """
     user_id = "1"
     comment_id = "66ace22474ba69001e1440cd"
-    users_model.insert(user_id, username="user1", email="email1")
-    content_model.insert(
+    Users().insert(user_id, username="user1", email="email1")
+    Contents().insert(
         comment_id,
         "3",
         abuse_flaggers=[],
         historical_abuse_flaggers=[],
         visible=True,
     )
-    mock_users_class = Mock(return_value=users_model)
-    mock_contents_class = Mock(return_value=content_model)
+    mock_users_class = Mock(return_value=Users())
+    mock_contents_class = Mock(return_value=Contents())
     with patch("forum.models.Users", new=mock_users_class):
         with patch("forum.models.Contents", new=mock_contents_class):
             response = api_client.put(
@@ -82,7 +78,7 @@ def test_comment_flag_api(
                 data={"user_id": str(user_id)},
             )
             assert response.status_code == 200
-            comment = content_model.get(comment_id)
+            comment = Contents().get(comment_id)
             assert comment is not None
             assert comment["abuse_flaggers"] == []
 
@@ -91,23 +87,21 @@ def test_comment_flag_api(
                 data={"user_id": str(user_id)},
             )
             assert response.status_code == 200
-            comment = content_model.get(comment_id)
+            comment = Contents().get(comment_id)
             assert comment is not None
             assert comment["abuse_flaggers"] == []
 
 
-def test_comment_flag_api_invalid_data(
-    api_client: Client, users_model: Users, content_model: Contents
-) -> None:
+def test_comment_flag_api_invalid_data(api_client: Client) -> None:
     """
     Test the comment flag API with invalid data.
 
     This test checks that the API returns a 400 error when the user or comment does not exist.
     """
     user_id = "1"
-    users_model.insert(user_id, username="user1", email="email1")
-    mock_users_class = Mock(return_value=users_model)
-    mock_contents_class = Mock(return_value=content_model)
+    Users().insert(user_id, username="user1", email="email1")
+    mock_users_class = Mock(return_value=Users())
+    mock_contents_class = Mock(return_value=Contents())
     with patch("forum.models.Users", new=mock_users_class):
         with patch("forum.models.Contents", new=mock_contents_class):
             response = api_client.put(
