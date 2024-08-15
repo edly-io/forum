@@ -2,7 +2,7 @@
 Search API Views
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from rest_framework import status
 from rest_framework.request import Request
@@ -39,19 +39,19 @@ class SearchThreadsView(APIView):
             raise ValueError("invalid sort_key")
 
     def _get_thread_ids_from_indexes(
-        self, context: str, group_ids: List[int], params: Dict[str, Any], text: str
-    ) -> Tuple[List[str], Optional[str]]:
+        self, context: str, group_ids: list[int], params: dict[str, Any], text: str
+    ) -> Tuple[list[str], Optional[str]]:
         """
         Retrieve thread IDs based on the search text and suggested corrections if necessary.
 
         Args:
             context (str): The context in which the search is performed, e.g., "course".
-            group_ids (List[int]): List of group IDs to filter the search.
-            params (Dict[str, Any]): Query parameters for the search.
+            group_ids (list[int]): list of group IDs to filter the search.
+            params (dict[str, Any]): Query parameters for the search.
             text (str): The search text used to find threads.
 
         Returns:
-            Tuple[Optional[List[str]], Optional[str]]:
+            Tuple[Optional[list[str]], Optional[str]]:
                 - A list of thread IDs that match the search criteria.
                 - A suggested correction for the search text, or None if no correction is found.
         """
@@ -104,13 +104,13 @@ class SearchThreadsView(APIView):
         if sort_key not in ["activity", "comments", "date", "votes"]:
             sort_key = "date"
 
-        group_ids: List[int] = self.get_group_ids_from_params(request.GET)
+        group_ids: list[int] = self.get_group_ids_from_params(request.GET)
 
         thread_ids, corrected_text = self._get_thread_ids_from_indexes(
             context, group_ids, request.GET, text
         )
 
-        data: Dict[str, Any] = handle_threads_query(
+        data: dict[str, Any] = handle_threads_query(
             thread_ids,
             user_id,
             course_id,
@@ -146,15 +146,15 @@ class SearchThreadsView(APIView):
 
         return Response(data)
 
-    def get_group_ids_from_params(self, params: Dict[str, Any]) -> List[int]:
+    def get_group_ids_from_params(self, params: dict[str, Any]) -> list[int]:
         """
         Extract group IDs from the query parameters.
 
         Args:
-            params (Dict[str, Any]): Query parameters from the request.
+            params (dict[str, Any]): Query parameters from the request.
 
         Returns:
-            List[int]: A list of group IDs extracted from the query parameters.
+            list[int]: A list of group IDs extracted from the query parameters.
         """
         group_id: Optional[str] = params.get("group_id")
         group_ids: Optional[str] = params.get("group_ids")

@@ -2,7 +2,7 @@
 Elastic Search Index Manager.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from django.conf import settings
 from elasticsearch import Elasticsearch
@@ -25,11 +25,11 @@ class ElasticsearchManager:
 
     def execute_search(
         self,
-        must_clause: Optional[List[Dict[str, Any]]] = None,
-        filter_clause: Optional[List[Dict[str, Any]]] = None,
-        sort_criteria: Optional[List[Dict[str, str]]] = None,
+        must_clause: Optional[list[dict[str, Any]]] = None,
+        filter_clause: Optional[list[dict[str, Any]]] = None,
+        sort_criteria: Optional[list[dict[str, str]]] = None,
         size: Optional[int] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute a search query using Elasticsearch.
 
@@ -39,7 +39,7 @@ class ElasticsearchManager:
         :param size: The maximum number of search results to retrieve
         :return: Elasticsearch response
         """
-        body: Dict[str, Any] = {
+        body: dict[str, Any] = {
             "size": size or self.max_search_count,
             "sort": sort_criteria or [{"updated_at": "desc"}],
             "query": {
@@ -49,7 +49,7 @@ class ElasticsearchManager:
         return self.client.search(index=self.index_names, body=body)
 
     def get_suggested_text(
-        self, search_text: str, suggestion_fields: Optional[List[str]] = None
+        self, search_text: str, suggestion_fields: Optional[list[str]] = None
     ) -> Optional[str]:
         """
         Retrieve text suggestions for a given search query.
@@ -61,7 +61,7 @@ class ElasticsearchManager:
         if not suggestion_fields:
             suggestion_fields = ["body", "title"]
 
-        suggest_body: Dict[str, Any] = {
+        suggest_body: dict[str, Any] = {
             "suggest": {
                 f"{field}_suggestions": {
                     "text": search_text,
@@ -70,7 +70,7 @@ class ElasticsearchManager:
                 for field in suggestion_fields
             }
         }
-        response: Dict[str, Any] = self.client.search(
+        response: dict[str, Any] = self.client.search(
             index=self.index_names, body=suggest_body
         )
         return self._extract_suggestion(
@@ -79,13 +79,13 @@ class ElasticsearchManager:
 
     @staticmethod
     def _extract_suggestion(
-        response: Dict[str, Any], suggestion_types: List[str]
+        response: dict[str, Any], suggestion_types: list[str]
     ) -> Optional[str]:
         """
         Extract suggestions from the Elasticsearch response.
         """
         for suggestion_type in suggestion_types:
-            suggestions: List[Dict[str, Any]] = response.get("suggest", {}).get(
+            suggestions: list[dict[str, Any]] = response.get("suggest", {}).get(
                 suggestion_type, []
             )
             options = suggestions and suggestions[0].get("options", [])
@@ -100,12 +100,12 @@ class ThreadSearchManager(ElasticsearchManager):
     """
 
     def build_must_clause(
-        self, params: Dict[str, str], search_text: str
-    ) -> List[Dict[str, Any]]:
+        self, params: dict[str, str], search_text: str
+    ) -> list[dict[str, Any]]:
         """
         Build the 'must' clause for thread-specific Elasticsearch queries based on input parameters.
         """
-        must: List[Dict[str, Any]] = []
+        must: list[dict[str, Any]] = []
 
         if params.get("commentable_id"):
             must.append({"term": {"commentable_id": params["commentable_id"]}})
@@ -131,12 +131,12 @@ class ThreadSearchManager(ElasticsearchManager):
     def build_filter_clause(
         self,
         context: str,
-        group_ids: Optional[List[int]] = None,
-    ) -> List[Dict[str, Any]]:
+        group_ids: Optional[list[int]] = None,
+    ) -> list[dict[str, Any]]:
         """
         Build the 'filter' clause for thread-specific Elasticsearch queries based on context and group parameters.
         """
-        filter_clause: List[Dict[str, Any]] = []
+        filter_clause: list[dict[str, Any]] = []
 
         filter_clause.extend(
             [
@@ -166,20 +166,20 @@ class ThreadSearchManager(ElasticsearchManager):
     def get_thread_ids(
         self,
         context: str,
-        group_ids: List[int],
-        params: Dict[str, str],
+        group_ids: list[int],
+        params: dict[str, str],
         search_text: str,
-        sort_criteria: Optional[List[Dict[str, str]]] = None,
-    ) -> List[str]:
+        sort_criteria: Optional[list[dict[str, str]]] = None,
+    ) -> list[str]:
         """
         Retrieve thread IDs based on search criteria.
         """
-        must_clause: List[Dict[str, Any]] = self.build_must_clause(params, search_text)
-        filter_clause: List[Dict[str, Any]] = self.build_filter_clause(
+        must_clause: list[dict[str, Any]] = self.build_must_clause(params, search_text)
+        filter_clause: list[dict[str, Any]] = self.build_filter_clause(
             context, group_ids
         )
 
-        response: Dict[str, Any] = self.execute_search(
+        response: dict[str, Any] = self.execute_search(
             must_clause, filter_clause, sort_criteria
         )
 

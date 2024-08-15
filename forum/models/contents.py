@@ -1,7 +1,7 @@
 """Content Class for mongo backend."""
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, List
 
 from bson import ObjectId
 
@@ -18,20 +18,20 @@ class BaseContents(MongoBaseModel):
     COLLECTION_NAME: str = "contents"
 
     @classmethod
-    def mapping(cls) -> Dict[str, Any]:
+    def mapping(cls) -> dict[str, Any]:
         """
         Implement this method in the child class
         """
         raise NotImplementedError
 
     @classmethod
-    def doc_to_hash(cls, doc: Dict[str, Any]) -> Dict[str, Any]:
+    def doc_to_hash(cls, doc: dict[str, Any]) -> dict[str, Any]:
         """
         Implement this method in the child class
         """
         raise NotImplementedError
 
-    def override_query(self, query: Dict[str, Any]) -> Dict[str, Any]:
+    def override_query(self, query: dict[str, Any]) -> dict[str, Any]:
         """
         Override the query with the _type field.
         """
@@ -53,7 +53,7 @@ class BaseContents(MongoBaseModel):
         return self._collection.find(kwargs)
 
     @classmethod
-    def get_votes_dict(cls, up: List[str], down: List[str]) -> Dict[str, Any]:
+    def get_votes_dict(cls, up: List[str], down: List[str]) -> dict[str, Any]:
         """
         Calculates and returns the vote summary for a thread.
 
@@ -82,13 +82,13 @@ class BaseContents(MongoBaseModel):
         }
         return votes
 
-    def update_votes(self, content_id: str, votes: Dict[str, Any]) -> int:
+    def update_votes(self, content_id: str, votes: dict[str, Any]) -> int:
         """
         Updates a votes in the content document.
 
         Args:
         content_id: The id of the content model
-        votes (Optional[Dict[str, int]], optional): The votes for the thread.
+        votes (Optional[dict[str, int]], optional): The votes for the thread.
         """
         update_data = {"votes": votes, "updated_at": datetime.now()}
         result = self._collection.update_one(
@@ -107,8 +107,8 @@ class Contents(BaseContents):
         self,
         _id: str,
         author_id: str,
-        abuse_flaggers: List[str],
-        historical_abuse_flaggers: List[str],
+        abuse_flaggers: list[str],
+        historical_abuse_flaggers: list[str],
         visible: bool,
     ) -> str:
         """
@@ -117,8 +117,8 @@ class Contents(BaseContents):
         Args:
             _id (str): The ID of the content.
             author_id (str): The ID of the author who created the content.
-            abuse_flaggers (List[str]): A list of IDs of users who flagged the content as abusive.
-            historical_abuse_flaggers (List[str]): A list of IDs of users who previously flagged the content as abusive.
+            abuse_flaggers (list[str]): A list of IDs of users who flagged the content as abusive.
+            historical_abuse_flaggers (list[str]): A list of IDs of users who previously flagged the content as abusive.
             visible (bool): Whether the content is visible or not.
 
         Returns:

@@ -2,7 +2,7 @@
 Vote Views
 """
 
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from rest_framework import status
 from rest_framework.request import Request
@@ -43,7 +43,7 @@ class ThreadVoteView(APIView):
 
     def _get_thread_and_user(
         self, thread_id: str, user_id: str
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         Fetches the thread and user based on provided IDs.
 
@@ -68,8 +68,8 @@ class ThreadVoteView(APIView):
         return thread, user
 
     def _prepare_response(
-        self, thread: Dict[str, Any], user: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, thread: dict[str, Any], user: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Prepares the serialized response data after voting.
 
@@ -177,7 +177,7 @@ class CommentVoteView(APIView):
 
     def _get_comment_and_user(
         self, comment_id: str, user_id: str
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         Fetches the comment and user based on provided IDs.
 
@@ -202,8 +202,8 @@ class CommentVoteView(APIView):
         return comment, user
 
     def _prepare_response(
-        self, comment: Dict[str, Any], user: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, comment: dict[str, Any], user: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Prepares the serialized response data after voting.
 

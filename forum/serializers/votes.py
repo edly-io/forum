@@ -4,7 +4,7 @@ Serializer for votes data.
 Serializes the votes field in the ContentSerializer.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from rest_framework import serializers
 
@@ -31,11 +31,11 @@ class VotesSerializer(serializers.Serializer[dict[str, Any]]):
     count = serializers.IntegerField()
     point = serializers.IntegerField()
 
-    def create(self, validated_data: Dict[str, Any]) -> Any:
+    def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
-    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
@@ -52,11 +52,11 @@ class VotesInputSerializer(serializers.Serializer[dict[str, Any]]):
     user_id = serializers.CharField(required=True)
     value = serializers.ChoiceField(choices=["up", "down"], required=True)
 
-    def create(self, validated_data: Dict[str, Any]) -> Any:
+    def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
-    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
@@ -77,10 +77,10 @@ class VoteSummarySerializer(serializers.Serializer[dict[str, Any]]):
     down_count = serializers.IntegerField(min_value=0)
     point = serializers.IntegerField()
 
-    def create(self, validated_data: Dict[str, Any]) -> Any:
+    def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
-    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError

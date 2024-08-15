@@ -2,7 +2,7 @@
 Serializer for the thread data.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from rest_framework import serializers
 
@@ -47,26 +47,26 @@ class UserThreadSerializer(UserContentSerializer):
     pinned = serializers.BooleanField(default=False)
     comments_count = serializers.SerializerMethodField()
 
-    def create(self, validated_data: Dict[str, Any]) -> Any:
+    def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
-    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
-    def get_comments_count(self, obj: Dict[str, Any]) -> int:
+    def get_comments_count(self, obj: dict[str, Any]) -> int:
         """Retrieve the count of comments for the given thread."""
-        count = get_comments_count(obj["id"])
+        count = get_comments_count(obj["_id"])
         return count
 
-    def get_closed_by(self, obj: Dict[str, Any]) -> Optional[str]:
+    def get_closed_by(self, obj: dict[str, Any]) -> Optional[str]:
         """Retrieve the username of the person who closed the object."""
         if closed_by_id := obj.get("closed_by_id"):
             return get_username_from_id(closed_by_id)
         return None
 
-    def to_representation(self, instance: Dict[str, Any]) -> Dict[str, Any]:
+    def to_representation(self, instance: dict[str, Any]) -> dict[str, Any]:
         """Convert the instance dictionary to its representation format by removing specific fields."""
         data = super().to_representation(instance)
         data.pop("closed_by_id")
@@ -110,7 +110,7 @@ class ThreadSerializer(UserThreadSerializer):
             **kwargs: Keyword arguments for serializer initialization, including 'context'.
 
         Keyword Args:
-            context (Dict[str, Any]): Contextual data to customize the serializer's behavior.
+            context (dict[str, Any]): Contextual data to customize the serializer's behavior.
                 - 'with_responses' (bool): Whether to include response-related fields.
                 - 'count_flagged' (bool): Whether to include abuse-flagged count.
                 - 'include_endorsed' (bool): Whether to include endorsement status.
@@ -141,12 +141,12 @@ class ThreadSerializer(UserThreadSerializer):
 
         super().__init__(*args, **kwargs)
 
-    def get_read(self, obj: Dict[str, Any]) -> Optional[bool]:
+    def get_read(self, obj: dict[str, Any]) -> Optional[bool]:
         """
         Retrieve the read state of the thread.
 
         Args:
-            obj (Dict[str, Any]): The dictionary or object representing the thread.
+            obj (dict[str, Any]): The dictionary or object representing the thread.
 
         Returns:
             Optional[bool]: True if the thread is read, otherwise False or None.
@@ -163,12 +163,12 @@ class ThreadSerializer(UserThreadSerializer):
             return is_read
         return None
 
-    def get_unread_comments_count(self, obj: Dict[str, Any]) -> Optional[int]:
+    def get_unread_comments_count(self, obj: dict[str, Any]) -> Optional[int]:
         """
         Retrieve the count of unread comments for the thread.
 
         Args:
-            obj (Dict[str, Any]): The dictionary or object representing the thread.
+            obj (dict[str, Any]): The dictionary or object representing the thread.
 
         Returns:
             Optional[int]: The number of unread comments or None.
@@ -185,12 +185,12 @@ class ThreadSerializer(UserThreadSerializer):
             return unread_count
         return None
 
-    def get_endorsed(self, obj: Dict[str, Any]) -> Optional[bool]:
+    def get_endorsed(self, obj: dict[str, Any]) -> Optional[bool]:
         """
         Determine if the thread is endorsed.
 
         Args:
-            obj (Dict[str, Any]): The dictionary or object representing the thread.
+            obj (dict[str, Any]): The dictionary or object representing the thread.
 
         Returns:
             Optional[bool]: True if the thread is endorsed, otherwise False or None.
@@ -202,12 +202,12 @@ class ThreadSerializer(UserThreadSerializer):
             return get_endorsed([thread_key]).get(thread_key, False)
         return None
 
-    def get_abuse_flagged_count(self, obj: Dict[str, Any]) -> int:
+    def get_abuse_flagged_count(self, obj: dict[str, Any]) -> int:
         """
         Retrieve the count of abuse-flagged instances for the thread.
 
         Args:
-            obj (Dict[str, Any]): The dictionary or object representing the thread.
+            obj (dict[str, Any]): The dictionary or object representing the thread.
 
         Returns:
             int: The count of abuse-flagged instances, defaulting to 0 if not applicable.
@@ -219,12 +219,12 @@ class ThreadSerializer(UserThreadSerializer):
             return get_abuse_flagged_count([thread_key]).get(thread_key, 0)
         return 0
 
-    def get_children(self, obj: Dict[str, Any]) -> Optional[Any]:
+    def get_children(self, obj: dict[str, Any]) -> Optional[Any]:
         """
         Retrieve the children (responses) for the thread if applicable.
 
         Args:
-            obj (Dict[str, Any]): The dictionary or object representing the thread.
+            obj (dict[str, Any]): The dictionary or object representing the thread.
 
         Returns:
             Optional[Any]: The responses or children related to the thread, or None if not included.
@@ -234,12 +234,12 @@ class ThreadSerializer(UserThreadSerializer):
             print(obj)
         return []
 
-    def get_resp_total(self, obj: Dict[str, Any]) -> int:
+    def get_resp_total(self, obj: dict[str, Any]) -> int:
         """
         Retrieve the total number of responses for the thread if applicable.
 
         Args:
-            obj (Dict[str, Any]): The dictionary or object representing the thread.
+            obj (dict[str, Any]): The dictionary or object representing the thread.
 
         Returns:
             int: The total number of responses, defaulting to 0 if not included.
@@ -249,15 +249,15 @@ class ThreadSerializer(UserThreadSerializer):
             print(obj)
         return 0
 
-    def to_representation(self, instance: Dict[str, Any]) -> Dict[str, Any]:
+    def to_representation(self, instance: dict[str, Any]) -> dict[str, Any]:
         """
         Convert the instance to its representation format, removing fields based on conditions.
 
         Args:
-            instance (Dict[str, Any]): The dictionary representing the instance to be converted.
+            instance (dict[str, Any]): The dictionary representing the instance to be converted.
 
         Returns:
-            Dict[str, Any]: The dictionary representation of the instance with certain fields removed.
+            dict[str, Any]: The dictionary representation of the instance with certain fields removed.
         """
         data = super().to_representation(instance)
         if not data.get("abuse_flagged_count", None):
@@ -266,10 +266,10 @@ class ThreadSerializer(UserThreadSerializer):
             data.pop("close_reason_code", None)
         return data
 
-    def create(self, validated_data: Dict[str, Any]) -> Any:
+    def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
-    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError

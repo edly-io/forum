@@ -1,6 +1,6 @@
 """Forum Pin/Unpin thread API Views."""
 
-from typing import Any, Dict
+from typing import Any
 
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -32,7 +32,7 @@ class PinThreadAPIView(APIView):
             A response with the updated thread data.
         """
         try:
-            thread_data: Dict[str, Any] = handle_pin_unpin_thread_request(
+            thread_data: dict[str, Any] = handle_pin_unpin_thread_request(
                 request.data.get("user_id", ""), thread_id, "pin", UserThreadSerializer
             )
         except ValueError as e:
@@ -61,7 +61,7 @@ class UnpinThreadAPIView(APIView):
             A response with the updated thread data.
         """
         try:
-            thread_data: Dict[str, Any] = handle_pin_unpin_thread_request(
+            thread_data: dict[str, Any] = handle_pin_unpin_thread_request(
                 request.data.get("user_id", ""),
                 thread_id,
                 "unpin",

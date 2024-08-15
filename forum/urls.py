@@ -9,6 +9,11 @@ from forum.views.flags import CommentFlagAPIView, ThreadFlagAPIView
 from forum.views.pins import PinThreadAPIView, UnpinThreadAPIView
 from forum.views.proxy import ForumProxyAPIView
 from forum.views.search import SearchThreadsView
+from forum.views.subscriptions import (
+    SubscriptionAPIView,
+    ThreadSubscriptionAPIView,
+    UserSubscriptionAPIView,
+)
 from forum.views.votes import CommentVoteView, ThreadVoteView
 
 api_patterns = [
@@ -57,6 +62,22 @@ api_patterns = [
         "threads/<str:thread_id>/comments",
         CreateThreadCommentAPIView.as_view(),
         name="create-parent-comment-api",
+    ),
+    # subscription APIs
+    path(
+        "users/<str:user_id>/subscriptions",
+        SubscriptionAPIView.as_view(),
+        name="subscriptions",
+    ),
+    path(
+        "users/<str:user_id>/subscribed_threads",
+        UserSubscriptionAPIView.as_view(),
+        name="user-subscriptions",
+    ),
+    path(
+        "threads/<str:thread_id>/subscriptions",
+        ThreadSubscriptionAPIView.as_view(),
+        name="thread-subscriptions",
     ),
     # Proxy view for various API endpoints
     path(
