@@ -54,6 +54,9 @@ compile-requirements: ## Re-compile *.in requirements to *.txt
 	sed '/^[dD]jango==/d' requirements/test.txt > requirements/test.tmp
 	mv requirements/test.tmp requirements/test.txt
 
+format:
+	black ${SRC_FILES}
+
 upgrade: ## update the requirements/*.txt files with the latest packages satisfying requirements/*.in
 	$(MAKE) compile-requirements COMPILE_OPTS="--upgrade"
 
@@ -69,7 +72,7 @@ test-all: clean test test-quality test-pii selfcheck ## run all tests
 test: ## run unit tests
 	pytest
 
-test-quality: test-lint test-codestyle test-isort test-mypy ## run static coverage tests
+test-quality: test-lint test-codestyle test-isort test-mypy test-format ## run static coverage tests
 
 test-lint: ## run pylint
 	pylint ${SRC_FILES}
@@ -83,6 +86,9 @@ test-isort: ## run isort checks
 
 test-mypy: ## run type tests
 	mypy ${SRC_FILES_PROD}
+
+test-format: ## Run code formatting tests
+	black --check ${SRC_FILES}
 
 test-pii: export DJANGO_SETTINGS_MODULE=test_settings
 test-pii: ## # check for PII annotations on all Django models
