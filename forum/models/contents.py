@@ -1,5 +1,3 @@
-# pylint: disable=arguments-differ
-
 """Content Class for mongo backend."""
 
 from datetime import datetime
@@ -10,17 +8,16 @@ from bson import ObjectId
 from forum.models.base_model import MongoBaseModel
 
 
-class Contents(MongoBaseModel):
+class BaseContents(MongoBaseModel):
     """
-    Contents class for cs_comments_service contents collection
+    BaseContents class: same as Contents, but without "update" and "insert" methods,
+    because child classes will have different signatures for these methods.
     """
 
     content_type: str = ""
     COLLECTION_NAME: str = "contents"
 
-    def get(
-        self, _id: str
-    ) -> Optional[Dict[str, Any]]:  # pylint: disable=arguments-differ
+    def get(self, _id: str) -> Optional[Dict[str, Any]]:
         """
         Retrieves a contents document from the database based on the provided _id.
         Args:
@@ -43,60 +40,6 @@ class Contents(MongoBaseModel):
         if self.content_type:
             kwargs["_type"] = self.content_type
         return self._collection.find(kwargs)
-
-    def insert(  # pylint: disable=arguments-differ
-        self,
-        _id: str,
-        author_id: str,
-        abuse_flaggers: List[str],
-        historical_abuse_flaggers: List[str],
-        visible: bool,
-    ) -> str:
-        """
-        Inserts a new content document into the database.
-
-        Args:
-            _id (str): The ID of the content.
-            author_id (str): The ID of the author who created the content.
-            abuse_flaggers (List[str]): A list of IDs of users who flagged the content as abusive.
-            historical_abuse_flaggers (List[str]): A list of IDs of users who previously flagged the content as abusive.
-            visible (bool): Whether the content is visible or not.
-
-        Returns:
-            str: The ID of the inserted document.
-        """
-        content_data = {
-            "_id": ObjectId(_id),
-            "author_id": author_id,
-            "abuse_flaggers": abuse_flaggers,
-            "historical_abuse_flaggers": historical_abuse_flaggers,
-            "visible": visible,
-        }
-        result = self._collection.insert_one(content_data)
-        return str(result.inserted_id)
-
-    def update(
-        self, _id: str, **kwargs: Any
-    ) -> int:  # pylint: disable=arguments-differ
-        """
-        Updates a contents document in the database based on the provided _id.
-
-        Args:
-            _id: The id of the contents document to update.
-            **kwargs: The fields to update in the contents document.
-
-        Returns:
-            The number of documents modified.
-        """
-        update_data = {}
-
-        update_data["abuse_flaggers"] = kwargs.get("abuse_flaggers")
-
-        result = self._collection.update_one(
-            {"_id": ObjectId(_id)},
-            {"$set": update_data},
-        )
-        return result.modified_count
 
     @classmethod
     def get_votes_dict(cls, up: List[str], down: List[str]) -> Dict[str, Any]:
@@ -140,5 +83,59 @@ class Contents(MongoBaseModel):
         result = self._collection.update_one(
             {"_id": ObjectId(content_id)},
             {"$set": update_data},
+        )
+        return result.modified_count
+
+
+class Contents(BaseContents):
+    """
+    Contents class for cs_comments_service contents collection
+    """
+
+    def insert(
+        self,
+        _id: str,
+        author_id: str,
+        abuse_flaggers: List[str],
+        historical_abuse_flaggers: List[str],
+        visible: bool,
+    ) -> str:
+        """
+        Inserts a new content document into the database.
+
+        Args:
+            _id (str): The ID of the content.
+            author_id (str): The ID of the author who created the content.
+            abuse_flaggers (List[str]): A list of IDs of users who flagged the content as abusive.
+            historical_abuse_flaggers (List[str]): A list of IDs of users who previously flagged the content as abusive.
+            visible (bool): Whether the content is visible or not.
+
+        Returns:
+            str: The ID of the inserted document.
+        """
+        content_data = {
+            "_id": ObjectId(_id),
+            "author_id": author_id,
+            "abuse_flaggers": abuse_flaggers,
+            "historical_abuse_flaggers": historical_abuse_flaggers,
+            "visible": visible,
+        }
+        result = self._collection.insert_one(content_data)
+        return str(result.inserted_id)
+
+    def update(self, _id: str, **kwargs: Any) -> int:
+        """
+        Updates a contents document in the database based on the provided _id.
+
+        Args:
+            _id: The id of the contents document to update.
+            **kwargs: The fields to update in the contents document.
+
+        Returns:
+            The number of documents modified.
+        """
+        result = self._collection.update_one(
+            {"_id": ObjectId(_id)},
+            {"$set": {"abuse_flaggers": kwargs.get("abuse_flaggers")}},
         )
         return result.modified_count

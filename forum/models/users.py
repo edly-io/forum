@@ -1,5 +1,3 @@
-# pylint: disable=arguments-differ
-
 """Users Class for mongo backend."""
 
 from typing import Any, Dict, List, Optional

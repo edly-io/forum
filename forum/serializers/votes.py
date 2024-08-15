@@ -9,7 +9,7 @@ from typing import Any, Dict
 from rest_framework import serializers
 
 
-class VotesSerializer(serializers.Serializer):  # type: ignore
+class VotesSerializer(serializers.Serializer[dict[str, Any]]):
     """
     Serializer for votes data.
 
@@ -40,7 +40,7 @@ class VotesSerializer(serializers.Serializer):  # type: ignore
         raise NotImplementedError
 
 
-class VotesInputSerializer(serializers.Serializer):  # type: ignore
+class VotesInputSerializer(serializers.Serializer[dict[str, Any]]):
     """
     Serializer for handling votes on a content item.
 
@@ -61,7 +61,7 @@ class VotesInputSerializer(serializers.Serializer):  # type: ignore
         raise NotImplementedError
 
 
-class VoteSummarySerializer(serializers.Serializer):  # type: ignore
+class VoteSummarySerializer(serializers.Serializer[dict[str, Any]]):
     """
     Serializer for summarizing votes on a content item.
 

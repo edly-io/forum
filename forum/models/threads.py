@@ -1,5 +1,3 @@
-# pylint: disable=arguments-differ
-
 """Content Class for mongo backend."""
 
 from datetime import datetime
@@ -7,17 +5,17 @@ from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
 
-from forum.models.contents import Contents
+from forum.models.contents import BaseContents
 
 
-class CommentThread(Contents):
+class CommentThread(BaseContents):
     """
     CommentThread class for cs_comments_service content model
     """
 
     content_type = "CommentThread"
 
-    def insert(  # type: ignore
+    def insert(
         self,
         title: str,
         body: str,
@@ -87,7 +85,7 @@ class CommentThread(Contents):
         result = self._collection.insert_one(thread_data)
         return str(result.inserted_id)
 
-    def update(  # type: ignore
+    def update(
         self,
         thread_id: str,
         thread_type: Optional[str] = None,
