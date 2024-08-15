@@ -84,11 +84,7 @@ def test_update(users_model: Users) -> None:
 
     new_username = "new_username"
     new_email = "new_email"
-    result = users_model.update(
-        external_id,
-        username=new_username,
-        email=new_email
-    )
+    result = users_model.update(external_id, username=new_username, email=new_email)
     assert result is not None
     assert result == 1
 

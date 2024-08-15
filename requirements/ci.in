@@ -3,3 +3,5 @@
 -c constraints.txt
 
 -r quality.txt            # Core and quality check dependencies
+
+black                     # code formatter

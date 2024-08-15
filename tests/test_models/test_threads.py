@@ -42,13 +42,28 @@ def test_delete(comment_thread_model: CommentThread) -> None:
 def test_list(comment_thread_model: CommentThread) -> None:
     """Test list all comment threads from MongoDB."""
     comment_thread_model.insert(
-        "Thread 1", "Body 1", "_type", "CommentThread", "1", "user1",
+        "Thread 1",
+        "Body 1",
+        "_type",
+        "CommentThread",
+        "1",
+        "user1",
     )
     comment_thread_model.insert(
-        "Thread 2", "Body 2", "_type", "CommentThread", "1", "user1",
+        "Thread 2",
+        "Body 2",
+        "_type",
+        "CommentThread",
+        "1",
+        "user1",
     )
     comment_thread_model.insert(
-        "Thread 3", "Body 3", "_type", "CommentThread", "1", "user1",
+        "Thread 3",
+        "Body 3",
+        "_type",
+        "CommentThread",
+        "1",
+        "user1",
     )
     threads_list = comment_thread_model.list()
     assert len(list(threads_list)) == 3
