@@ -13,6 +13,14 @@ logger = logging.getLogger(__name__)
 def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Response:
     """
     Catches all requests and sends them to forum/cs_comments_service URLs.
+
+    Arguments:
+        request (HttpRequest): The incoming HTTP request.
+        suffix (str): The URL suffix for the target service.
+        method (str): The HTTP method to use for the proxy request.
+
+    Returns:
+        Response: The response from the proxied service.
     """
     comments_service_url = f"http://forum:{settings.FORUM_PORT}"
     url = f"{comments_service_url}/api/v1/{suffix}"

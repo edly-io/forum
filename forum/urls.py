@@ -5,6 +5,7 @@ URLs for forum.
 from django.urls import include, path
 
 from forum.views.flags import CommentFlagAPIView, ThreadFlagAPIView
+from forum.views.pins import PinThreadAPIView, UnpinThreadAPIView
 from forum.views.proxy import ForumProxyAPIView
 from forum.views.votes import CommentVoteView, ThreadVoteView
 
@@ -30,6 +31,13 @@ api_patterns = [
         "threads/<str:thread_id>/abuse_<str:action>",
         ThreadFlagAPIView.as_view(),
         name="thread-flags-api",
+    ),
+    # Pin/Unpin thread APIs
+    path("threads/<str:thread_id>/pin", PinThreadAPIView.as_view(), name="pin-thread"),
+    path(
+        "threads/<str:thread_id>/unpin",
+        UnpinThreadAPIView.as_view(),
+        name="unpin-thread",
     ),
     # Proxy view for various API endpoints
     path(
