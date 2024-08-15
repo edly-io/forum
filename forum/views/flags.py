@@ -7,7 +7,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from forum.models import Contents, Users
-from forum.models.model_utils import flag_as_abuse, un_flag_all_as_abuse, un_flag_as_abuse
+from forum.models.model_utils import (
+    flag_as_abuse,
+    un_flag_all_as_abuse,
+    un_flag_as_abuse,
+)
 from forum.serializers.contents import ContentSerializer
 
 
@@ -38,7 +42,7 @@ class CommentFlagAPIView(APIView):
         if not (user and content):
             return Response(
                 {"error": "User / Comment doesn't exist"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
         if action == "flag":
             comment = flag_as_abuse(user, content)
@@ -49,8 +53,7 @@ class CommentFlagAPIView(APIView):
                 comment = un_flag_as_abuse(user, content)
         else:
             return Response(
-                {"error": "Invalid action"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST
             )
         serializer = ContentSerializer(comment)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -83,7 +86,7 @@ class ThreadFlagAPIView(APIView):
         if not (user and content):
             return Response(
                 {"error": "User / Comment doesn't exist"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
         if action == "flag":
             thread = flag_as_abuse(user, content)

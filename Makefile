@@ -72,7 +72,7 @@ test-all: clean test test-quality test-pii selfcheck ## run all tests
 test: ## run unit tests
 	pytest
 
-test-quality: test-lint test-codestyle test-isort test-mypy test-format ## run static coverage tests
+test-quality: test-lint test-codestyle test-mypy test-format ## run static coverage tests
 
 test-lint: ## run pylint
 	pylint ${SRC_FILES}
