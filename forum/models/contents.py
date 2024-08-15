@@ -30,7 +30,9 @@ class Contents(MongoBaseModel):
         """
         super().__init__(collection_name, client)
 
-    def get(self, _id: str) -> Optional[Dict[str, Any]]:  # pylint: disable=arguments-differ
+    def get(
+        self, _id: str
+    ) -> Optional[Dict[str, Any]]:  # pylint: disable=arguments-differ
         """
         Retrieves a contents document from the database based on the provided _id.
         Args:
@@ -85,7 +87,9 @@ class Contents(MongoBaseModel):
         result = self._collection.insert_one(content_data)
         return str(result.inserted_id)
 
-    def update(self, _id: str, **kwargs: Any) -> int:  # pylint: disable=arguments-differ
+    def update(
+        self, _id: str, **kwargs: Any
+    ) -> int:  # pylint: disable=arguments-differ
         """
         Updates a contents document in the database based on the provided _id.
 

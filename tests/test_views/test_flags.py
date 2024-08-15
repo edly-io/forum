@@ -7,7 +7,9 @@ from django.test import Client
 from forum.models import Contents, Users
 
 
-def test_comment_thread_api(api_client: Client, users_model: Users, content_model: Contents) -> None:
+def test_comment_thread_api(
+    api_client: Client, users_model: Users, content_model: Contents
+) -> None:
     """
     Test the comment thread flag API.
 
@@ -45,7 +47,9 @@ def test_comment_thread_api(api_client: Client, users_model: Users, content_mode
             assert comment["abuse_flaggers"] == []
 
 
-def test_comment_flag_api(api_client: Client, users_model: Users, content_model: Contents) -> None:
+def test_comment_flag_api(
+    api_client: Client, users_model: Users, content_model: Contents
+) -> None:
     """
     Test the comment flag API.
 
@@ -92,7 +96,9 @@ def test_comment_flag_api(api_client: Client, users_model: Users, content_model:
             assert comment["abuse_flaggers"] == []
 
 
-def test_comment_flag_api_invalid_data(api_client: Client, users_model: Users, content_model: Contents) -> None:
+def test_comment_flag_api_invalid_data(
+    api_client: Client, users_model: Users, content_model: Contents
+) -> None:
     """
     Test the comment flag API with invalid data.
 

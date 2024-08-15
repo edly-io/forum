@@ -45,7 +45,9 @@ def flag_as_abuse(
     return Contents().get(entity["_id"])
 
 
-def un_flag_as_abuse(user: Dict[str, Any], entity: Dict[str, Any]) -> Union[Dict[str, Any], None]:
+def un_flag_as_abuse(
+    user: Dict[str, Any], entity: Dict[str, Any]
+) -> Union[Dict[str, Any], None]:
     """
     Unflag an entity as abuse.
 
