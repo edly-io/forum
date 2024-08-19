@@ -21,7 +21,7 @@ class EditHistorySerializer(serializers.Serializer):  # type: ignore
     original_body = serializers.CharField()
     reason_code = serializers.CharField(allow_null=True, default=None)
     editor_username = serializers.CharField()
-    created_at = serializers.DateTimeField()
+    created_at = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
 
     def create(self, validated_data: Dict[str, Any]) -> Any:
         """Raise NotImplementedError"""

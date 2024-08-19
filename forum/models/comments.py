@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
 
+from forum.models.users import Users
 from forum.models.contents import Contents
 
 
@@ -21,9 +22,10 @@ class Comment(Contents):
         self,
         body: str,
         course_id: str,
-        comment_thread_id: str,
+        parent_id: str,
         author_id: str,
-        author_username: str,
+        comment_thread_id: str = None,
+        author_username: str = None,
         anonymous: bool = False,
         anonymous_to_peers: bool = False,
         depth: int = 0,
@@ -44,13 +46,18 @@ class Comment(Contents):
         Returns:
             str: The ID of the inserted document.
         """
-        date = datetime.now()
+        date = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        comment = Contents().get(parent_id)
+        parent_child_count = comment.get("child_count")
+        if not comment_thread_id:
+            comment_thread_id = comment.get("comment_thread_id")
+
         comment_data = {
             "votes": self.get_votes_dict(up=[], down=[]),
             "visible": True,
             "abuse_flaggers": [],
             "historical_abuse_flaggers": [],
-            "parent_ids": [],
+            "parent_ids": [ObjectId(parent_id)] if parent_id else [],
             "at_position_list": [],
             "body": body,
             "course_id": course_id,
@@ -58,15 +65,20 @@ class Comment(Contents):
             "endorsed": False,
             "anonymous": anonymous,
             "anonymous_to_peers": anonymous_to_peers,
+            "parent_id": ObjectId(parent_id),
             "author_id": author_id,
             "comment_thread_id": ObjectId(comment_thread_id),
             "child_count": 0,
             "depth": depth,
-            "author_username": author_username,
+            "author_username": author_username or self.get_author_username(author_id),
             "created_at": date,
             "updated_at": date,
         }
         result = self._collection.insert_one(comment_data)
+        self._collection.update_one(
+            {"_id": ObjectId(parent_id)},
+            {"$set": {"child_count": parent_child_count + 1}},
+        )
         return str(result.inserted_id)
 
     def update(  # type: ignore
@@ -86,6 +98,12 @@ class Comment(Contents):
         endorsed: Optional[bool] = None,
         child_count: Optional[int] = None,
         depth: Optional[int] = None,
+        closed: Optional[bool] = None,
+        edit_history: Optional[list[dict[str, Any]]] = [],
+        original_body: Optional[str] = None,
+        editing_user_id: Optional[str] = None,
+        edit_reason_code: Optional[str] = None,
+        endorsement_user_id: Optional[str] = None,
     ) -> int:
         """
         Updates a comment document in the database.
@@ -125,15 +143,35 @@ class Comment(Contents):
             ("endorsed", endorsed),
             ("child_count", child_count),
             ("depth", depth),
+            ("closed", closed),
         ]
         update_data: Dict[str, Any] = {
             field: value for field, value in fields if value is not None
         }
+        if endorsed and endorsement_user_id:
+            update_data["endorsement"] = {
+                "user_id": endorsement_user_id,
+                "time": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
 
-        date = datetime.now()
-        update_data["updated_at"] = date
+        if editing_user_id:
+            edit_history.append(
+                {
+                    "original_body": original_body,
+                    "reason_code": edit_reason_code,
+                    "editor_username": self.get_author_username(editing_user_id),
+                    "created_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                }
+            )
+            update_data["edit_history"] = edit_history
+
+        update_data["updated_at"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         result = self._collection.update_one(
             {"_id": ObjectId(comment_id)},
             {"$set": update_data},
         )
         return result.modified_count
+
+    def get_author_username(self, author_id):
+        user = Users().get(author_id)
+        return user.get("username")

@@ -40,3 +40,7 @@ def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Res
         headers=request_headers,
         timeout=5.0,
     )
+
+
+def str_to_bool(value: str) -> bool:
+    return value.lower() in ("true", "1")

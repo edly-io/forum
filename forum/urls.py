@@ -8,9 +8,10 @@ from forum.views.flags import CommentFlagAPIView, ThreadFlagAPIView
 from forum.views.pins import PinThreadAPIView, UnpinThreadAPIView
 from forum.views.proxy import ForumProxyAPIView
 from forum.views.votes import CommentVoteView, ThreadVoteView
+from forum.views.comments import CommentsAPIView
 
 api_patterns = [
-    # Thread APIs
+    # thread votes APIs
     path(
         "threads/<str:thread_id>/votes",
         ThreadVoteView.as_view(),
@@ -21,7 +22,7 @@ api_patterns = [
         CommentVoteView.as_view(),
         name="comment-vote",
     ),
-    # Comment APIs
+    # abuse comment/thread APIs
     path(
         "comments/<str:comment_id>/abuse_<str:action>",
         CommentFlagAPIView.as_view(),
@@ -32,12 +33,18 @@ api_patterns = [
         ThreadFlagAPIView.as_view(),
         name="thread-flags-api",
     ),
-    # Pin/Unpin thread APIs
+    # pin/unpin thread APIs
     path("threads/<str:thread_id>/pin", PinThreadAPIView.as_view(), name="pin-thread"),
     path(
         "threads/<str:thread_id>/unpin",
         UnpinThreadAPIView.as_view(),
         name="unpin-thread",
+    ),
+    # comments APIs
+    path(
+        "comments/<str:comment_id>",
+        CommentsAPIView.as_view(),
+        name="comments-api",
     ),
     # Proxy view for various API endpoints
     path(
