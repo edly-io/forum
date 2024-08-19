@@ -1,13 +1,13 @@
 """Serializer class for content collection."""
 
-from typing import Any, Dict
+from typing import Any
 
 from rest_framework import serializers
 
 from forum.serializers.votes import VotesSerializer, VoteSummarySerializer
 
 
-class EditHistorySerializer(serializers.Serializer):  # type: ignore
+class EditHistorySerializer(serializers.Serializer[dict[str, Any]]):
     """
     Serializer for handling edit history of a post or comment
 
@@ -23,16 +23,16 @@ class EditHistorySerializer(serializers.Serializer):  # type: ignore
     editor_username = serializers.CharField()
     created_at = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
 
-    def create(self, validated_data: Dict[str, Any]) -> Any:
+    def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
-    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
 
-class ContentSerializer(serializers.Serializer[Dict[str, Any]]):
+class ContentSerializer(serializers.Serializer[dict[str, Any]]):
     """
     Serializer for the content data.
 
@@ -88,16 +88,16 @@ class ContentSerializer(serializers.Serializer[Dict[str, Any]]):
     updated_at = serializers.DateTimeField(allow_null=True)
     created_at = serializers.DateTimeField(allow_null=True)
 
-    def create(self, validated_data: Dict[str, Any]) -> Any:
+    def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
-    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
 
-class UserContentSerializer(serializers.Serializer):  # type: ignore
+class UserContentSerializer(serializers.Serializer[dict[str, Any]]):
     """
     Serializer for handling the content of a post or comment.
 
@@ -137,10 +137,10 @@ class UserContentSerializer(serializers.Serializer):  # type: ignore
     closed = serializers.BooleanField(default=False)
     type = serializers.CharField()
 
-    def create(self, validated_data: Dict[str, Any]) -> Any:
+    def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
-    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError

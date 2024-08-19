@@ -1,11 +1,8 @@
-# pylint: disable=arguments-differ
-
 """Users Class for mongo backend."""
 
 from typing import Any, Dict, List, Optional
 
 from forum.models.base_model import MongoBaseModel
-from forum.mongo import MongoBackend
 
 
 class Users(MongoBaseModel):
@@ -13,18 +10,7 @@ class Users(MongoBaseModel):
     Users class for cs_comments_service user model
     """
 
-    def __init__(
-        self, collection_name: str = "users", client: Optional[MongoBackend] = None
-    ) -> None:
-        """
-        Initializes the Users class.
-
-        Args:
-            collection_name: The name of the MongoDB collection.
-            client: The MongoDB client.
-
-        """
-        super().__init__(collection_name, client)
+    COLLECTION_NAME: str = "users"
 
     def insert(
         self,
