@@ -56,9 +56,9 @@ def test_comment_flag_api(api_client: APIClient) -> None:
     comment_id = Comment().insert(
         "<p>Comment 1</p>",
         course_id,
-        comment_thread_id,
         author_id,
-        author_username,
+        comment_thread_id=comment_thread_id,
+        author_username=author_username,
         abuse_flaggers=[],
         historical_abuse_flaggers=[],
     )
