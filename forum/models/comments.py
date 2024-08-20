@@ -45,10 +45,10 @@ class Comment(BaseContents):
             str: The ID of the inserted document.
         """
         date = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-        comment = BaseContents().get(parent_id)
-        parent_child_count = comment.get("child_count")
+        parent_comment = self.get(parent_id)
+        parent_child_count = parent_comment.get("child_count")
         if not comment_thread_id:
-            comment_thread_id = comment.get("comment_thread_id")
+            comment_thread_id = parent_comment.get("comment_thread_id")
 
         comment_data = {
             "votes": self.get_votes_dict(up=[], down=[]),
@@ -73,10 +73,7 @@ class Comment(BaseContents):
             "updated_at": date,
         }
         result = self._collection.insert_one(comment_data)
-        self._collection.update_one(
-            {"_id": ObjectId(parent_id)},
-            {"$set": {"child_count": parent_child_count + 1}},
-        )
+        self.update(parent_id, child_count=parent_child_count + 1)
         return str(result.inserted_id)
 
     def update(
@@ -169,6 +166,26 @@ class Comment(BaseContents):
             {"$set": update_data},
         )
         return result.modified_count
+
+    def delete(self, _id: str) -> int:
+        """
+        Deletes a comment from the database based on the id.
+
+        Args:
+            _id: The ID of the comment.
+
+        Returns:
+            The number of comments deleted.
+        """
+        comment = self.get(_id)
+        parent_comment_id = comment.get("parent_id")
+        parent_comment = parent_comment_id and self.get(parent_comment_id)
+        result = self._collection.delete_one({"_id": ObjectId(_id)})
+        if parent_comment:
+            self.update(
+                parent_comment_id, child_count=parent_comment.get("child_count") - 1
+            )
+        return result.deleted_count
 
     def get_author_username(self, author_id):
         user = Users().get(author_id)

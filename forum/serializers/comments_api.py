@@ -14,7 +14,7 @@ class EndorsementSerializer(serializers.Serializer):
     time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
 
 
-class CommentsAPICommonSerializer(serializers.Serializer):
+class CommentsAPISerializer(serializers.Serializer):
     """
     Serializer for handling user comment api calls.
     """
@@ -46,6 +46,13 @@ class CommentsAPICommonSerializer(serializers.Serializer):
     sk = serializers.SerializerMethodField()
     endorsement = EndorsementSerializer(default=None, required=False, allow_null=True)
 
+    def __init__(self, *args, **kwargs):
+        exclude_fields = kwargs.pop("exclude_fields", None)
+        super().__init__(*args, **kwargs)
+        if exclude_fields:
+            for field in exclude_fields:
+                self.fields.pop(field, None)
+
     def get_sk(self, obj):
         is_child = True if obj.get("parent_id") else False
         if is_child:
@@ -54,24 +61,3 @@ class CommentsAPICommonSerializer(serializers.Serializer):
             )
         else:
             return "{id}".format(id=obj.get("_id"))
-
-
-class CommentsAPIGetSerializer(CommentsAPICommonSerializer):
-    """
-    Serializer for handling user comment get api calls.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields.pop("sk", None)
-
-
-class CommentsAPIPostAndDeleteSerializer(CommentsAPICommonSerializer):
-    """
-    Serializer for handling user comment post and delete api calls.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields.pop("sk", None)
-        self.fields.pop("endorsement", None)
