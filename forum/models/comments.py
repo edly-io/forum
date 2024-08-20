@@ -20,10 +20,10 @@ class Comment(BaseContents):
         self,
         body: str,
         course_id: str,
-        parent_id: str,
         author_id: str,
-        comment_thread_id: str = None,
-        author_username: str = None,
+        parent_id: Optional[str] = None,
+        comment_thread_id: Optional[str] = None,
+        author_username: Optional[str] = None,
         anonymous: bool = False,
         anonymous_to_peers: bool = False,
         depth: int = 0,
@@ -45,9 +45,9 @@ class Comment(BaseContents):
             str: The ID of the inserted document.
         """
         date = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-        parent_comment = self.get(parent_id)
-        parent_child_count = parent_comment.get("child_count")
-        if not comment_thread_id:
+        parent_comment = parent_id and self.get(parent_id)
+        parent_child_count = parent_comment and parent_comment.get("child_count")
+        if parent_comment and not comment_thread_id:
             comment_thread_id = parent_comment.get("comment_thread_id")
 
         comment_data = {
@@ -73,7 +73,8 @@ class Comment(BaseContents):
             "updated_at": date,
         }
         result = self._collection.insert_one(comment_data)
-        self.update(parent_id, child_count=parent_child_count + 1)
+        if parent_id and parent_child_count:
+            self.update(parent_id, child_count=parent_child_count + 1)
         return str(result.inserted_id)
 
     def update(
@@ -94,7 +95,7 @@ class Comment(BaseContents):
         child_count: Optional[int] = None,
         depth: Optional[int] = None,
         closed: Optional[bool] = None,
-        edit_history: Optional[list[dict[str, Any]]] = [],
+        edit_history: Optional[list[dict[str, Any]]] = None,
         original_body: Optional[str] = None,
         editing_user_id: Optional[str] = None,
         edit_reason_code: Optional[str] = None,
@@ -150,6 +151,7 @@ class Comment(BaseContents):
             }
 
         if editing_user_id:
+            edit_history = [] if edit_history is None else edit_history
             edit_history.append(
                 {
                     "original_body": original_body,
@@ -178,15 +180,17 @@ class Comment(BaseContents):
             The number of comments deleted.
         """
         comment = self.get(_id)
-        parent_comment_id = comment.get("parent_id")
+        parent_comment_id = comment and comment.get("parent_id")
         parent_comment = parent_comment_id and self.get(parent_comment_id)
+        parent_comment_child_count = parent_comment and parent_comment.get(
+            "child_count"
+        )
         result = self._collection.delete_one({"_id": ObjectId(_id)})
-        if parent_comment:
-            self.update(
-                parent_comment_id, child_count=parent_comment.get("child_count") - 1
-            )
+        if parent_comment_id and parent_comment_child_count:
+            self.update(parent_comment_id, child_count=parent_comment_child_count - 1)
         return result.deleted_count
 
-    def get_author_username(self, author_id):
+    def get_author_username(self, author_id: str) -> str | None:
+        """Return username for the respective author_id(user_id)"""
         user = Users().get(author_id)
-        return user.get("username")
+        return user.get("username") if user else None

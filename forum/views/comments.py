@@ -1,6 +1,6 @@
 """Forum Comments API Views."""
 
-from typing import Any
+from typing import Any, Optional
 
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
@@ -22,7 +22,7 @@ class CommentsAPIView(APIView):
 
     permission_classes = (AllowAny,)
 
-    def _validate_comment(self, comment_id):
+    def _validate_comment(self, comment_id: str) -> dict[str, Any]:
         """
         Validates the comment if it exists or not.
 
@@ -36,7 +36,7 @@ class CommentsAPIView(APIView):
             raise ObjectDoesNotExist
         return comment
 
-    def get(self, request: Request, comment_id: str = None) -> Response:
+    def get(self, request: Request, comment_id: str) -> Response:
         """
         Retrieves a parent comment.
         For chile comments, below API is called that return all child comments in children field
@@ -59,7 +59,7 @@ class CommentsAPIView(APIView):
         data = self._prepare_response(comment, exclude_fields=["sk"])
         return Response(data, status=status.HTTP_200_OK)
 
-    def post(self, request: Request, comment_id: str = None) -> Response:
+    def post(self, request: Request, comment_id: str) -> Response:
         """
         Creates a new child comment.
         For parent comment below API is called.
@@ -80,16 +80,22 @@ class CommentsAPIView(APIView):
         data = request.data
         # TODO validations
         new_comment_id = Comment().insert(
-            body=data.get("body"),
-            course_id=data.get("course_id"),
+            body=data["body"],
+            course_id=data["course_id"],
             anonymous=data.get("anonymous", False),
             anonymous_to_peers=data.get("anonymous_to_peers", False),
-            author_id=data.get("user_id"),
+            author_id=data["user_id"],
             parent_id=comment_id,
             depth=1,
         )
         comment = Comment().get(new_comment_id)
-        data = self._prepare_response(comment, exclude_fields=["endorsement", "sk"])
+        try:
+            if comment:
+                data = self._prepare_response(
+                    comment, exclude_fields=["endorsement", "sk"]
+                )
+        except ValidationError as e:
+            return Response(e, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(data, status=status.HTTP_200_OK)
 
@@ -116,10 +122,13 @@ class CommentsAPIView(APIView):
         fields = [
             ("body", data.get("body")),
             ("course_id", data.get("course_id")),
-            ("anonymous", str_to_bool(data.get("anonymous", False))),
-            ("anonymous_to_peers", str_to_bool(data.get("anonymous_to_peers", False))),
-            ("closed", str_to_bool(data.get("closed", False))),
-            ("endorsed", str_to_bool(data.get("endorsed", False))),
+            ("anonymous", str_to_bool(data.get("anonymous", "False"))),
+            (
+                "anonymous_to_peers",
+                str_to_bool(data.get("anonymous_to_peers", "False")),
+            ),
+            ("closed", str_to_bool(data.get("closed", "False"))),
+            ("endorsed", str_to_bool(data.get("endorsed", "False"))),
             ("author_id", data.get("user_id")),
             ("editing_user_id", data.get("editing_user_id")),
             ("edit_reason_code", data.get("edit_reason_code")),
@@ -133,13 +142,18 @@ class CommentsAPIView(APIView):
 
         Comment().update(comment_id, **update_comment_data)
         updated_comment = Comment().get(comment_id)
-        data = self._prepare_response(
-            updated_comment,
-            exclude_fields=(
-                ["endorsement", "sk"] if updated_comment.get("parent_id") else ["sk"]
-            ),
-        )
-
+        try:
+            if updated_comment:
+                data = self._prepare_response(
+                    updated_comment,
+                    exclude_fields=(
+                        ["endorsement", "sk"]
+                        if updated_comment.get("parent_id")
+                        else ["sk"]
+                    ),
+                )
+        except ValidationError as e:
+            return Response(e, status=status.HTTP_400_BAD_REQUEST)
         return Response(data, status=status.HTTP_200_OK)
 
     def delete(self, request: Request, comment_id: str) -> Response:
@@ -165,7 +179,9 @@ class CommentsAPIView(APIView):
 
         return Response(data, status=status.HTTP_200_OK)
 
-    def _prepare_response(self, comment, exclude_fields=[]):
+    def _prepare_response(
+        self, comment: dict[str, Any], exclude_fields: Optional[list[str]] = None
+    ) -> dict[str, Any]:
         """
         Return serialized validated data.
 
@@ -183,7 +199,7 @@ class CommentsAPIView(APIView):
             "thread_id": str(comment.get("comment_thread_id")),
             "username": comment.get("author_username"),
             "parent_id": str(comment.get("parent_id")),
-            "type": comment.get("_type").lower(),
+            "type": str(comment.get("_type", "")).lower(),
         }
         serializer = CommentsAPISerializer(
             data=comment_data, exclude_fields=exclude_fields

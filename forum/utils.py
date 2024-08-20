@@ -43,4 +43,5 @@ def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Res
 
 
 def str_to_bool(value: str) -> bool:
+    """Convert str to bool."""
     return value.lower() in ("true", "1")
