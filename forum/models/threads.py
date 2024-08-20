@@ -13,6 +13,7 @@ class CommentThread(BaseContents):
     CommentThread class for cs_comments_service content model
     """
 
+    index_name = "comment_threads"
     content_type = "CommentThread"
 
     def insert(

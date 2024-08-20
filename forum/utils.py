@@ -25,8 +25,8 @@ def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Res
     comments_service_url = f"http://forum:{settings.FORUM_PORT}"
     url = f"{comments_service_url}/api/v1/{suffix}"
     request_headers = {
-        "X-Edx-Api-Key": request.headers.get("X-Edx-Api-Key"),
-        "Accept-Language": request.headers.get("Accept-Language"),
+        "X-Edx-Api-Key": request.headers.get("X-Edx-Api-Key", ""),
+        "Accept-Language": request.headers.get("Accept-Language", ""),
     }
     request_data = request.POST.dict()
     request_params = request.GET.dict()

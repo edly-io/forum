@@ -7,6 +7,7 @@ from django.urls import include, path
 from forum.views.flags import CommentFlagAPIView, ThreadFlagAPIView
 from forum.views.pins import PinThreadAPIView, UnpinThreadAPIView
 from forum.views.proxy import ForumProxyAPIView
+from forum.views.search import SearchThreadsView
 from forum.views.votes import CommentVoteView, ThreadVoteView
 
 api_patterns = [
@@ -38,6 +39,11 @@ api_patterns = [
         "threads/<str:thread_id>/unpin",
         UnpinThreadAPIView.as_view(),
         name="unpin-thread",
+    ),
+    path(
+        "search/threads",
+        SearchThreadsView.as_view(),
+        name="search-thread-api",
     ),
     # Proxy view for various API endpoints
     path(
