@@ -12,6 +12,12 @@ class Users(MongoBaseModel):
 
     COLLECTION_NAME: str = "users"
 
+    def get(self, _id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get the user based on the id
+        """
+        return self._collection.find_one({"_id": _id})
+
     def insert(
         self,
         external_id: str,

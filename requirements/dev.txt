@@ -22,7 +22,7 @@ build==1.2.1
     # via
     #   -r requirements/pip-tools.txt
     #   pip-tools
-cachetools==5.4.0
+cachetools==5.5.0
     # via
     #   -r requirements/ci.txt
     #   -r requirements/quality.txt
@@ -31,6 +31,7 @@ certifi==2024.7.4
     # via
     #   -r requirements/ci.txt
     #   -r requirements/quality.txt
+    #   elasticsearch
     #   requests
 chardet==5.2.0
     # via
@@ -121,6 +122,11 @@ edx-i18n-tools==1.6.2
     # via -r requirements/dev.in
 edx-lint==5.3.7
     # via
+    #   -r requirements/ci.txt
+    #   -r requirements/quality.txt
+elasticsearch==7.13.4
+    # via
+    #   -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
     #   -r requirements/ci.txt
     #   -r requirements/quality.txt
 filelock==3.15.4
@@ -344,11 +350,16 @@ types-pyyaml==6.0.12.20240808
     #   -r requirements/quality.txt
     #   django-stubs
     #   djangorestframework-stubs
-types-requests==2.32.0.20240712
+types-requests==2.31.0.6
     # via
     #   -r requirements/ci.txt
     #   -r requirements/quality.txt
     #   djangorestframework-stubs
+types-urllib3==1.26.25.14
+    # via
+    #   -r requirements/ci.txt
+    #   -r requirements/quality.txt
+    #   types-requests
 typing-extensions==4.12.2
     # via
     #   -r requirements/ci.txt
@@ -357,12 +368,12 @@ typing-extensions==4.12.2
     #   django-stubs-ext
     #   djangorestframework-stubs
     #   mypy
-urllib3==2.2.2
+urllib3==1.26.19
     # via
     #   -r requirements/ci.txt
     #   -r requirements/quality.txt
+    #   elasticsearch
     #   requests
-    #   types-requests
 virtualenv==20.26.3
     # via
     #   -r requirements/ci.txt

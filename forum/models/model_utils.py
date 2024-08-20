@@ -1,6 +1,8 @@
 """Model util function for db operations."""
 
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from bson import ObjectId
 
 from forum.models import Comment, CommentThread, Contents, Users
 
@@ -203,7 +205,7 @@ def get_comments_count(thread_id: str) -> int:
     """
     Returns that comments count in a perticular thread
     """
-    comments = list(Comment().list(comment_thread_id=thread_id))
+    comments = list(Comment().list(comment_thread_id=ObjectId(thread_id)))
     return len(comments) if comments else 0
 
 
@@ -295,3 +297,401 @@ def handle_pin_unpin_thread_request(
     user, _ = validate_thread_and_user(user_id, thread_id)
     pin_unpin_thread(thread_id, action)
     return get_pinned_unpinned_thread_serialized_data(user, thread_id, serializer_class)
+
+
+def get_abuse_flagged_count(thread_ids: List[str]) -> Dict[str, int]:
+    """
+    Retrieves the count of abuse-flagged comments for each thread in the provided list of thread IDs.
+
+    Args:
+        thread_ids (List[str]): List of thread IDs to check for abuse flags.
+
+    Returns:
+        Dict[str, int]: A dictionary mapping thread IDs to their corresponding abuse-flagged comment count.
+    """
+    pipeline: List[dict[str, Any]] = [
+        {
+            "$match": {
+                "comment_thread_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
+                "abuse_flaggers": {"$ne": []},
+            }
+        },
+        {"$group": {"_id": "$comment_thread_id", "flagged_count": {"$sum": 1}}},
+    ]
+    flagged_threads = Contents().aggregate(pipeline)
+
+    return {str(item["_id"]): item["flagged_count"] for item in flagged_threads}
+
+
+def get_read_states(
+    threads: List[Dict[str, Any]], user_id: str, course_id: str
+) -> Dict[str, List[Any]]:
+    """
+    Retrieves the read state and unread comment count for each thread in the provided list.
+
+    Args:
+        threads (List[Dict[str, Any]]): List of threads to check read state for.
+        user_id (str): The ID of the user whose read states are being retrieved.
+        course_id (str): The course ID associated with the threads.
+
+    Returns:
+        Dict[str, List[Any]]: A dictionary mapping thread IDs to a list containing
+        whether the thread is read and the unread comment count.
+    """
+    read_states = {}
+    user = Users().find_one({"_id": user_id, "read_states.course_id": course_id})
+    read_state = user["read_states"][0] if user else {}
+
+    if read_state:
+        read_dates = read_state.get("last_read_times", {})
+        for thread in threads:
+            thread_key = str(thread["_id"])
+            if thread_key in read_dates:
+                is_read = read_dates[thread_key] >= thread["last_activity_at"]
+                unread_comment_count = Contents().count_documents(
+                    {
+                        "comment_thread_id": ObjectId(thread_key),
+                        "created_at": {"$gte": read_dates[thread_key]},
+                        "author_id": {"$ne": str(user_id)},
+                    }
+                )
+                read_states[thread_key] = [is_read, unread_comment_count]
+
+    return read_states
+
+
+def get_filtered_thread_ids(
+    thread_ids: List[str], context: str, group_ids: List[str]
+) -> set[str]:
+    """
+    Filters thread IDs based on context and group ID criteria.
+
+    Args:
+        thread_ids (List[str]): List of thread IDs to filter.
+        context (str): The context to filter by.
+        group_ids (List[str]): List of group IDs for group-based filtering.
+
+    Returns:
+        set: A set of filtered thread IDs based on the context and group ID criteria.
+    """
+    context_query = {
+        "_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
+        "context": context,
+    }
+    context_threads = CommentThread().find(context_query)
+    context_thread_ids = {str(thread["_id"]) for thread in context_threads}
+
+    if not group_ids:
+        return context_thread_ids
+
+    group_query = {
+        "_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
+        "$or": [
+            {"group_id": {"$in": group_ids}},
+            {"group_id": {"$exists": False}},
+        ],
+    }
+    group_threads = CommentThread().find(group_query)
+    group_thread_ids = {str(thread["_id"]) for thread in group_threads}
+
+    return context_thread_ids.union(group_thread_ids)
+
+
+def get_endorsed(thread_ids: List[str]) -> Dict[str, bool]:
+    """
+    Retrieves endorsed status for each thread in the provided list of thread IDs.
+
+    Args:
+        thread_ids (List[str]): List of thread IDs to check for endorsement.
+
+    Returns:
+        Dict[str, bool]: A dictionary mapping thread IDs to their endorsed status (True if endorsed, False otherwise).
+    """
+    endorsed_threads = Contents().find(
+        {
+            "comment_thread_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
+            "endorsed": True,
+        }
+    )
+
+    return {str(item["comment_thread_id"]): True for item in endorsed_threads}
+
+
+def get_user_read_state_by_course_id(
+    user: Dict[str, Any], course_id: str
+) -> Dict[str, Any]:
+    """
+    Retrieves the user's read state for a specific course.
+
+    Args:
+        user (Dict[str, Any]): The user object containing read states.
+        course_id (str): The course ID to filter the user's read state by.
+
+    Returns:
+        Dict[str, Any]: The user's read state for the specified course, or an empty dictionary if not found.
+    """
+    for read_state in user.get("read_states", []):
+        if read_state["course_id"] == course_id:
+            return read_state
+    return {}
+
+
+# TODO: Make this function modular
+# pylint: disable=too-many-nested-blocks,too-many-statements
+def handle_threads_query(
+    comment_thread_ids: List[str],
+    user_id: str,
+    course_id: str,
+    group_ids: List[int],
+    author_id: Optional[str],
+    thread_type: Optional[str],
+    filter_flagged: bool,
+    filter_unread: bool,
+    filter_unanswered: bool,
+    filter_unresponded: bool,
+    count_flagged: bool,
+    sort_key: str,
+    page: int,
+    per_page: int,
+    context: str,
+    raw_query: bool = False,
+) -> Dict[str, Any]:
+    """
+    Handles complex thread queries based on various filters and returns paginated results.
+
+    Args:
+        comment_thread_ids (List[str]): List of comment thread IDs to filter.
+        user_id (str): The ID of the user making the request.
+        course_id (str): The course ID associated with the threads.
+        group_ids (List[int]): List of group IDs for group-based filtering.
+        author_id (str): The ID of the author to filter threads by.
+        thread_type (str): The type of thread to filter by.
+        filter_flagged (bool): Whether to filter threads flagged for abuse.
+        filter_unread (bool): Whether to filter unread threads.
+        filter_unanswered (bool): Whether to filter unanswered questions.
+        filter_unresponded (bool): Whether to filter threads with no responses.
+        count_flagged (bool): Whether to include flagged content count.
+        sort_key (str): The key to sort the threads by.
+        page (int): The page number for pagination.
+        per_page (int): The number of threads per page.
+        context (str): The context to filter threads by.
+        raw_query (bool): Whether to return raw query results without further processing.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the paginated thread results and associated metadata.
+    """
+    # Convert thread_ids to ObjectId
+    comment_thread_obj_ids: List[ObjectId] = [
+        ObjectId(tid) for tid in comment_thread_ids
+    ]
+
+    # Base query
+    base_query: Dict[str, Any] = {
+        "_id": {"$in": comment_thread_obj_ids},
+        "context": context,
+    }
+
+    # Group filtering
+    if group_ids:
+        base_query["$or"] = [
+            {"group_id": {"$in": group_ids}},
+            {"group_id": {"$exists": False}},
+        ]
+
+    # Author filtering
+    if author_id:
+        base_query["author_id"] = author_id
+        if author_id != user_id:
+            base_query["anonymous"] = False
+            base_query["anonymous_to_peers"] = False
+
+    # Thread type filtering
+    if thread_type:
+        base_query["thread_type"] = thread_type
+
+    # Flagged content filtering
+    if filter_flagged:
+        flagged_query = {
+            "course_id": course_id,
+            "abuse_flaggers": {"$ne": [], "$exists": True},
+        }
+        flagged_comments = Comment().distinct("comment_thread_id", flagged_query)
+        flagged_threads = CommentThread().distinct("_id", flagged_query)
+        base_query["_id"]["$in"] = list(
+            set(comment_thread_obj_ids) & set(flagged_comments + flagged_threads)
+        )
+
+    # Unanswered questions filtering
+    if filter_unanswered:
+        endorsed_threads = Comment().distinct(
+            "comment_thread_id",
+            {"course_id": course_id, "parent_id": {"$exists": False}, "endorsed": True},
+        )
+        base_query["thread_type"] = "question"
+        base_query["_id"]["$nin"] = endorsed_threads
+
+    # Unresponded threads filtering
+    if filter_unresponded:
+        base_query["comment_count"] = 0
+
+    # Sorting
+    sort_options = {
+        "date": [("created_at", -1)],
+        "activity": [("last_activity_at", -1)],
+        "votes": [("votes.count", -1)],
+        "comments": [("comment_count", -1)],
+    }
+    sort_criteria = sort_options.get(sort_key, [("created_at", -1)])
+    comment_threads = CommentThread().find(base_query)
+    thread_count = CommentThread().count_documents(base_query)
+
+    if sort_criteria or raw_query:
+        request_user = Users().get(_id=user_id) if user_id else None
+
+        if not raw_query:
+            comment_threads = comment_threads.sort(sort_criteria)
+
+        if filter_unread and request_user:
+            read_state = get_user_read_state_by_course_id(request_user, course_id)
+            read_dates = read_state.get("last_read_times", {})
+
+            threads = []
+            skipped = 0
+            to_skip = (page - 1) * per_page
+            has_more = False
+            batch_size = 100
+
+            for thread in comment_threads.batch_size(batch_size):
+                thread_key = str(thread["_id"])
+                if (
+                    thread_key not in read_dates
+                    or read_dates[thread_key] < thread["last_activity_at"]
+                ):
+                    if raw_query:
+                        threads.append(thread)
+                    elif skipped >= to_skip:
+                        if len(threads) == per_page:
+                            has_more = True
+                            break
+                        threads.append(thread)
+                    else:
+                        skipped += 1
+            num_pages = page + 1 if has_more else page
+        else:
+            if raw_query:
+                threads = list(comment_threads)
+            else:
+                page = max(1, page)
+                paginated_collection = comment_threads.skip(
+                    (page - 1) * per_page
+                ).limit(per_page)
+                threads = list(paginated_collection)
+                num_pages = max(1, (thread_count // per_page))
+
+        if raw_query:
+            return {"result": threads}
+        if len(threads) == 0:
+            collection = []
+        else:
+            collection = threads_presentor(threads, user_id, course_id, count_flagged)
+
+        return {
+            "collection": collection,
+            "num_pages": num_pages,
+            "page": page,
+            "thread_count": thread_count,
+        }
+
+    return {}
+
+
+def prepare_thread(
+    thread: Dict[str, Any],
+    is_read: bool,
+    unread_count: int,
+    is_endorsed: bool,
+    abuse_flagged_count: int,
+) -> Dict[str, Any]:
+    """
+    Prepares thread data for presentation.
+
+    Args:
+        thread (Dict[str, Any]): The thread data.
+        is_read (bool): Whether the thread is read.
+        unread_count (int): The count of unread comments.
+        is_endorsed (bool): Whether the thread is endorsed.
+        abuse_flagged_count (int): The abuse flagged count.
+
+    Returns:
+        Dict[str, Any]: A dictionary representing the prepared thread data.
+    """
+    return {
+        "id": str(thread["_id"]),
+        **thread,
+        "type": "thread",
+        "read": is_read,
+        "unread_comments_count": unread_count,
+        "endorsed": is_endorsed,
+        "abuse_flagged_count": abuse_flagged_count,
+    }
+
+
+def threads_presentor(
+    threads: List[Dict[str, Any]],
+    user_id: str,
+    course_id: str,
+    count_flagged: bool = False,
+) -> List[Dict[str, Any]]:
+    """
+    Presents the threads by preparing them for display.
+
+    Args:
+        threads (List[Dict[str, Any]]): List of threads to present.
+        user_id (str): The ID of the user presenting the threads.
+        course_id (str): The course ID associated with the threads.
+        count_flagged (bool, optional): Whether to include flagged content count. Defaults to False.
+
+    Returns:
+        List[Dict[str, Any]]: A list of prepared thread data.
+    """
+    thread_ids = [str(thread["_id"]) for thread in threads]
+    read_states = get_read_states(threads, user_id, course_id)
+    threads_endorsed = get_endorsed(thread_ids)
+    threads_flagged = get_abuse_flagged_count(thread_ids) if count_flagged else {}
+
+    presenters = []
+    for thread in threads:
+        thread_key = str(thread["_id"])
+        is_read, unread_count = read_states.get(
+            thread_key, (False, thread["comment_count"])
+        )
+        is_endorsed = threads_endorsed.get(thread_key, False)
+        abuse_flagged_count = threads_flagged.get(thread_key, 0)
+        presenters.append(
+            prepare_thread(
+                thread,
+                is_read,
+                unread_count,
+                is_endorsed,
+                abuse_flagged_count,
+            )
+        )
+
+    return presenters
+
+
+def get_username_from_id(user_id: str) -> Optional[str]:
+    """
+    Retrieve the username associated with a given user ID.
+
+    Args:
+        _id (int): The unique identifier of the user.
+
+    Returns:
+        Optional[str]: The username of the user if found, or None if not.
+
+    """
+    user = Users().get(_id=user_id) or {}
+    if username := user.get("username"):
+        return username
+    return None
