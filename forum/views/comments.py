@@ -78,7 +78,6 @@ class CommentsAPIView(APIView):
             The details of the comment that is created.
         """
         data = request.data
-        # TODO validations
         new_comment_id = Comment().insert(
             body=data["body"],
             course_id=data["course_id"],
