@@ -14,7 +14,12 @@ class Comment(BaseContents):
     Comment class for cs_comments_service content model
     """
 
+    index_name = "comments"
     content_type = "Comment"
+
+    def override_query(self, query: Dict[str, Any]) -> Dict[str, Any]:
+        query = {**query, "_type": self.content_type}
+        return super().override_query(query)
 
     def insert(
         self,

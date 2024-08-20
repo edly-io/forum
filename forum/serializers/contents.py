@@ -4,6 +4,7 @@ from typing import Any
 
 from rest_framework import serializers
 
+from forum.serializers.custom_datetime import CustomDateTimeField
 from forum.serializers.votes import VotesSerializer, VoteSummarySerializer
 
 
@@ -21,7 +22,7 @@ class EditHistorySerializer(serializers.Serializer[dict[str, Any]]):
     original_body = serializers.CharField()
     reason_code = serializers.CharField(allow_null=True, default=None)
     editor_username = serializers.CharField()
-    created_at = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
+    created_at = CustomDateTimeField()
 
     def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
@@ -85,8 +86,8 @@ class ContentSerializer(serializers.Serializer[dict[str, Any]]):
     depth = serializers.IntegerField(allow_null=True)
     author_username = serializers.CharField(allow_null=True)
     sk = serializers.CharField(allow_null=True)
-    updated_at = serializers.DateTimeField(allow_null=True)
-    created_at = serializers.DateTimeField(allow_null=True)
+    updated_at = CustomDateTimeField(allow_null=True)
+    created_at = CustomDateTimeField(allow_null=True)
 
     def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
@@ -125,11 +126,11 @@ class UserContentSerializer(serializers.Serializer[dict[str, Any]]):
     course_id = serializers.CharField()
     anonymous = serializers.BooleanField(default=False)
     anonymous_to_peers = serializers.BooleanField(default=False)
-    created_at = serializers.DateTimeField()
-    updated_at = serializers.DateTimeField()
+    created_at = CustomDateTimeField()
+    updated_at = CustomDateTimeField()
     at_position_list = serializers.ListField(default=[])
-    user_id = serializers.CharField()
-    username = serializers.CharField()
+    user_id = serializers.CharField(source="author_id")
+    username = serializers.CharField(source="author_username")
     commentable_id = serializers.CharField(default="course")
     votes = VoteSummarySerializer()
     abuse_flaggers = serializers.ListField(default=[])

@@ -1,7 +1,7 @@
 """Content Class for mongo backend."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from bson import ObjectId
 
@@ -16,16 +16,6 @@ class BaseContents(MongoBaseModel):
 
     content_type: str = ""
     COLLECTION_NAME: str = "contents"
-
-    def get(self, _id: str) -> Optional[Dict[str, Any]]:
-        """
-        Retrieves a contents document from the database based on the provided _id.
-        Args:
-            _id: The ObjectId of the contents document to retrieve.
-        Returns:
-            The contents document if found, otherwise None.
-        """
-        return self._collection.find_one({"_id": ObjectId(_id)})
 
     def list(self, **kwargs: Any) -> Any:
         """
