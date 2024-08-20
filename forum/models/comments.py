@@ -25,6 +25,9 @@ class Comment(BaseContents):
         anonymous: bool = False,
         anonymous_to_peers: bool = False,
         depth: int = 0,
+        abuse_flaggers: Optional[List[str]] = None,
+        historical_abuse_flaggers: Optional[List[str]] = None,
+        visible: bool = True,
     ) -> str:
         """
         Inserts a new comment document into the database.
@@ -38,16 +41,24 @@ class Comment(BaseContents):
             anonymous (bool, optional): Whether the comment is posted anonymously. Defaults to False.
             anonymous_to_peers (bool, optional): Whether the comment is anonymous to peers. Defaults to False.
             depth (int, optional): The depth of the comment in the thread hierarchy. Defaults to 0.
+            abuse_flaggers (Optional[List[str]], optional): Users who flagged the comment. Defaults to None.
+            historical_abuse_flaggers (Optional[List[str]], optional): Users historically flagged the comment.
+            visible (bool, optional): Whether the comment is visible. Defaults to True.
 
         Returns:
             str: The ID of the inserted document.
         """
+        if abuse_flaggers is None:
+            abuse_flaggers = []
+        if historical_abuse_flaggers is None:
+            historical_abuse_flaggers = []
+
         date = datetime.now()
         comment_data = {
             "votes": self.get_votes_dict(up=[], down=[]),
-            "visible": True,
-            "abuse_flaggers": [],
-            "historical_abuse_flaggers": [],
+            "visible": visible,
+            "abuse_flaggers": abuse_flaggers,
+            "historical_abuse_flaggers": historical_abuse_flaggers,
             "parent_ids": [],
             "at_position_list": [],
             "body": body,
@@ -81,6 +92,7 @@ class Comment(BaseContents):
         author_username: Optional[str] = None,
         votes: Optional[Dict[str, int]] = None,
         abuse_flaggers: Optional[List[str]] = None,
+        historical_abuse_flaggers: Optional[List[str]] = None,
         endorsed: Optional[bool] = None,
         child_count: Optional[int] = None,
         depth: Optional[int] = None,
@@ -101,6 +113,7 @@ class Comment(BaseContents):
             author_username (Optional[str], optional): The username of the author.
             votes (Optional[Dict[str, int]], optional): The votes for the comment.
             abuse_flaggers (Optional[List[str]], optional): A list of users who flagged the comment for abuse.
+            historical_abuse_flaggers (Optional[List[str]], optional): Users who historically flagged the comment.
             endorsed (Optional[bool], optional): Whether the comment is endorsed.
             child_count (Optional[int], optional): The number of child comments.
             depth (Optional[int], optional): The depth of the comment in the thread hierarchy.
@@ -120,6 +133,7 @@ class Comment(BaseContents):
             ("author_username", author_username),
             ("votes", votes),
             ("abuse_flaggers", abuse_flaggers),
+            ("historical_abuse_flaggers", historical_abuse_flaggers),
             ("endorsed", endorsed),
             ("child_count", child_count),
             ("depth", depth),
