@@ -55,19 +55,17 @@ class Comment(BaseContents):
         Returns:
             str: The ID of the inserted document.
         """
-        date = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         parent_comment = parent_id and self.get(parent_id)
-        parent_child_count = parent_comment and parent_comment.get("child_count")
+        parent_child_count = parent_comment and parent_comment.get("child_count") or 0
         if parent_comment and not comment_thread_id:
             comment_thread_id = parent_comment.get("comment_thread_id")
 
+        date = datetime.now()
         comment_data = {
             "votes": self.get_votes_dict(up=[], down=[]),
             "visible": visible,
-            "abuse_flaggers": [] if abuse_flaggers is None else abuse_flaggers,
-            "historical_abuse_flaggers": (
-                [] if historical_abuse_flaggers is None else historical_abuse_flaggers
-            ),
+            "abuse_flaggers": abuse_flaggers or [],
+            "historical_abuse_flaggers": historical_abuse_flaggers or [],
             "parent_ids": [ObjectId(parent_id)] if parent_id else [],
             "at_position_list": [],
             "body": body,
@@ -86,7 +84,7 @@ class Comment(BaseContents):
             "updated_at": date,
         }
         result = self._collection.insert_one(comment_data)
-        if parent_id and parent_child_count:
+        if parent_id:
             self.update(parent_id, child_count=parent_child_count + 1)
         return str(result.inserted_id)
 
@@ -163,7 +161,7 @@ class Comment(BaseContents):
         if endorsed and endorsement_user_id:
             update_data["endorsement"] = {
                 "user_id": endorsement_user_id,
-                "time": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "time": datetime.now(),
             }
 
         if editing_user_id:
@@ -173,12 +171,12 @@ class Comment(BaseContents):
                     "original_body": original_body,
                     "reason_code": edit_reason_code,
                     "editor_username": self.get_author_username(editing_user_id),
-                    "created_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "created_at": datetime.now(),
                 }
             )
             update_data["edit_history"] = edit_history
 
-        update_data["updated_at"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        update_data["updated_at"] = datetime.now()
         result = self._collection.update_one(
             {"_id": ObjectId(comment_id)},
             {"$set": update_data},
@@ -199,7 +197,7 @@ class Comment(BaseContents):
         parent_comment_id = comment and comment.get("parent_id")
         parent_comment = parent_comment_id and self.get(parent_comment_id)
         parent_comment_child_count = parent_comment and parent_comment.get(
-            "child_count"
+            "child_count",
         )
         result = self._collection.delete_one({"_id": ObjectId(_id)})
         if parent_comment_id and parent_comment_child_count:

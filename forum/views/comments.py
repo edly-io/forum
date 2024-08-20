@@ -11,7 +11,7 @@ from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
 from forum.models import Comment
-from forum.serializers.comments_api import CommentsAPISerializer
+from forum.serializers.comment import UserCommentSerializer
 from forum.utils import str_to_bool
 
 
@@ -54,9 +54,13 @@ class CommentsAPIView(APIView):
             comment = self._validate_comment(comment_id)
         except ObjectDoesNotExist:
             return Response(
-                {"error": "Comment does not exist"}, status=status.HTTP_404_NOT_FOUND
+                {"error": "Comment does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
             )
-        data = self._prepare_response(comment, exclude_fields=["sk"])
+        data = self._prepare_response(
+            comment,
+            exclude_fields=["sk"],
+        )
         return Response(data, status=status.HTTP_200_OK)
 
     def post(self, request: Request, comment_id: str) -> Response:
@@ -78,6 +82,14 @@ class CommentsAPIView(APIView):
             The details of the comment that is created.
         """
         data = request.data
+        fields_to_validate = ["body", "course_id", "user_id"]
+        for field in fields_to_validate:
+            if field not in data:
+                return Response(
+                    f"{field} is missing.",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         new_comment_id = Comment().insert(
             body=data["body"],
             course_id=data["course_id"],
@@ -91,10 +103,14 @@ class CommentsAPIView(APIView):
         try:
             if comment:
                 data = self._prepare_response(
-                    comment, exclude_fields=["endorsement", "sk"]
+                    comment,
+                    exclude_fields=["endorsement", "sk"],
                 )
-        except ValidationError as e:
-            return Response(e, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as error:
+            return Response(
+                error,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(data, status=status.HTTP_200_OK)
 
@@ -114,28 +130,12 @@ class CommentsAPIView(APIView):
             comment = self._validate_comment(comment_id)
         except ObjectDoesNotExist:
             return Response(
-                {"error": "Comment does not exist"}, status=status.HTTP_404_NOT_FOUND
+                {"error": "Comment does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         data = request.POST.dict()
-        fields = [
-            ("body", data.get("body")),
-            ("course_id", data.get("course_id")),
-            ("anonymous", str_to_bool(data.get("anonymous", "False"))),
-            (
-                "anonymous_to_peers",
-                str_to_bool(data.get("anonymous_to_peers", "False")),
-            ),
-            ("closed", str_to_bool(data.get("closed", "False"))),
-            ("endorsed", str_to_bool(data.get("endorsed", "False"))),
-            ("author_id", data.get("user_id")),
-            ("editing_user_id", data.get("editing_user_id")),
-            ("edit_reason_code", data.get("edit_reason_code")),
-            ("endorsement_user_id", data.get("endorsement_user_id")),
-        ]
-        update_comment_data: dict[str, Any] = {
-            field: value for field, value in fields if value is not None
-        }
+        update_comment_data: dict[str, Any] = self._get_update_comment_data(data)
         update_comment_data["edit_history"] = comment.get("edit_history", [])
         update_comment_data["original_body"] = comment.get("body")
 
@@ -151,8 +151,11 @@ class CommentsAPIView(APIView):
                         else ["sk"]
                     ),
                 )
-        except ValidationError as e:
-            return Response(e, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as error:
+            return Response(
+                error,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(data, status=status.HTTP_200_OK)
 
     def delete(self, request: Request, comment_id: str) -> Response:
@@ -171,9 +174,13 @@ class CommentsAPIView(APIView):
             comment = self._validate_comment(comment_id)
         except ObjectDoesNotExist:
             return Response(
-                {"error": "Comment does not exist"}, status=status.HTTP_404_NOT_FOUND
+                {"error": "Comment does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
             )
-        data = self._prepare_response(comment, exclude_fields=["endorsement", "sk"])
+        data = self._prepare_response(
+            comment,
+            exclude_fields=["endorsement", "sk"],
+        )
         Comment().delete(comment_id)
 
         return Response(data, status=status.HTTP_200_OK)
@@ -200,10 +207,31 @@ class CommentsAPIView(APIView):
             "parent_id": str(comment.get("parent_id")),
             "type": str(comment.get("_type", "")).lower(),
         }
-        serializer = CommentsAPISerializer(
-            data=comment_data, exclude_fields=exclude_fields
+        serializer = UserCommentSerializer(
+            data=comment_data,
+            exclude_fields=exclude_fields,
         )
         if not serializer.is_valid():
             raise ValidationError(serializer.errors)
 
-        return serializer.validated_data
+        return serializer.data
+
+    def _get_update_comment_data(self, data: dict[str, Any]) -> dict[str, Any]:
+        """convert request data to a dict excluding empty data"""
+
+        fields = [
+            ("body", data.get("body")),
+            ("course_id", data.get("course_id")),
+            ("anonymous", str_to_bool(data.get("anonymous", "False"))),
+            (
+                "anonymous_to_peers",
+                str_to_bool(data.get("anonymous_to_peers", "False")),
+            ),
+            ("closed", str_to_bool(data.get("closed", "False"))),
+            ("endorsed", str_to_bool(data.get("endorsed", "False"))),
+            ("author_id", data.get("user_id")),
+            ("editing_user_id", data.get("editing_user_id")),
+            ("edit_reason_code", data.get("edit_reason_code")),
+            ("endorsement_user_id", data.get("endorsement_user_id")),
+        ]
+        return {field: value for field, value in fields if value is not None}
