@@ -11,8 +11,8 @@ def plugin_settings(settings: Any) -> None:
     Set these variables in the Tutor Config or lms.yml for local testing
     """
     settings.FORUM_PORT = "4567"
-    settings.MONGO_HOST = "mongodb"
-    settings.MONGO_PORT = 27017
+    settings.FORUM_MONGO_HOST = "mongodb"
+    settings.FORUM_MONGO_PORT = 27017
 
     settings.FORUM_ELASTICSEARCH_INDEX_NAMES = ["comment_threads", "comments"]
     settings.FORUM_MAX_DEEP_SEARCH_COMMENT_COUNT = 1000
