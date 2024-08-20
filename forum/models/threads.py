@@ -28,6 +28,9 @@ class CommentThread(BaseContents):
         thread_type: str = "discussion",
         context: str = "course",
         pinned: bool = False,
+        visible: bool = True,
+        abuse_flaggers: Optional[List[str]] = None,
+        historical_abuse_flaggers: Optional[List[str]] = None,
     ) -> str:
         """
         Inserts a new thread document into the database.
@@ -44,6 +47,9 @@ class CommentThread(BaseContents):
             thread_type (str, optional): The type of the thread, either 'question' or 'discussion'.
             context (str, optional): The context of the thread, either 'course' or 'standalone'.
             pinned (bool): Whether the thread is pinned. Defaults to False.
+            visible (bool): Whether the thread is visible. Defaults to True.
+            abuse_flaggers: A list of users who flagged the thread for abuse.
+            historical_abuse_flaggers: A list of users who historically flagged the thread for abuse.
 
         Raises:
             ValueError: If `thread_type` is not 'question' or 'discussion'.
@@ -54,15 +60,16 @@ class CommentThread(BaseContents):
         """
         if thread_type not in ["question", "discussion"]:
             raise ValueError("Invalid thread_type")
-
         if context not in ["course", "standalone"]:
             raise ValueError("Invalid context")
+        if abuse_flaggers is None:
+            abuse_flaggers = []
+        if historical_abuse_flaggers is None:
+            historical_abuse_flaggers = []
 
         date = datetime.now()
         thread_data = {
             "votes": self.get_votes_dict(up=[], down=[]),
-            "abuse_flaggers": [],
-            "historical_abuse_flaggers": [],
             "thread_type": thread_type,
             "context": context,
             "comment_count": 0,
@@ -81,6 +88,9 @@ class CommentThread(BaseContents):
             "updated_at": date,
             "last_activity_at": date,
             "pinned": pinned,
+            "visible": visible,
+            "abuse_flaggers": abuse_flaggers,
+            "historical_abuse_flaggers": historical_abuse_flaggers,
         }
         result = self._collection.insert_one(thread_data)
         return str(result.inserted_id)
@@ -102,6 +112,7 @@ class CommentThread(BaseContents):
         author_username: Optional[str] = None,
         votes: Optional[Dict[str, int]] = None,
         abuse_flaggers: Optional[List[str]] = None,
+        historical_abuse_flaggers: Optional[List[str]] = None,
         closed_by: Optional[str] = None,
         pinned: Optional[bool] = None,
         comments_count: Optional[int] = None,
@@ -126,6 +137,7 @@ class CommentThread(BaseContents):
             author_username: The username of the author.
             votes: The votes for the thread.
             abuse_flaggers: A list of users who flagged the thread for abuse.
+            historical_abuse_flaggers: A list of users who historically flagged the thread for abuse.
             closed_by: The ID of the user who closed the thread.
             pinned: Whether the thread is pinned.
             comments_count: The number of comments on the thread.
@@ -149,6 +161,7 @@ class CommentThread(BaseContents):
             ("author_username", author_username),
             ("votes", votes),
             ("abuse_flaggers", abuse_flaggers),
+            ("historical_abuse_flaggers", historical_abuse_flaggers),
             ("closed_by", closed_by),
             ("pinned", pinned),
             ("comments_count", comments_count),
