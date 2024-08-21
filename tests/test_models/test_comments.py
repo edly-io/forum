@@ -43,13 +43,25 @@ def test_list() -> None:
     author_username = "edly"
 
     Comment().insert(
-        "<p>Comment 1</p>", course_id, thread_id, author_id, author_username
+        "<p>Comment 1</p>",
+        course_id,
+        author_id,
+        comment_thread_id=thread_id,
+        author_username=author_username,
     )
     Comment().insert(
-        "<p>Comment 2</p>", course_id, thread_id, author_id, author_username
+        "<p>Comment 2</p>",
+        course_id,
+        author_id,
+        comment_thread_id=thread_id,
+        author_username=author_username,
     )
     Comment().insert(
-        "<p>Comment 3</p>", course_id, thread_id, author_id, author_username
+        "<p>Comment 3</p>",
+        course_id,
+        author_id,
+        comment_thread_id=thread_id,
+        author_username=author_username,
     )
 
     comments_list = Comment().list()
