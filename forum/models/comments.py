@@ -1,7 +1,7 @@
 """Comment Class for mongo backend."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from bson import ObjectId
 
@@ -17,7 +17,7 @@ class Comment(BaseContents):
     index_name = "comments"
     content_type = "Comment"
 
-    def override_query(self, query: Dict[str, Any]) -> Dict[str, Any]:
+    def override_query(self, query: dict[str, Any]) -> dict[str, Any]:
         query = {**query, "_type": self.content_type}
         return super().override_query(query)
 
@@ -32,8 +32,8 @@ class Comment(BaseContents):
         anonymous: bool = False,
         anonymous_to_peers: bool = False,
         depth: int = 0,
-        abuse_flaggers: Optional[List[str]] = None,
-        historical_abuse_flaggers: Optional[List[str]] = None,
+        abuse_flaggers: Optional[list[str]] = None,
+        historical_abuse_flaggers: Optional[list[str]] = None,
         visible: bool = True,
     ) -> str:
         """
@@ -48,8 +48,8 @@ class Comment(BaseContents):
             anonymous (bool, optional): Whether the comment is posted anonymously. Defaults to False.
             anonymous_to_peers (bool, optional): Whether the comment is anonymous to peers. Defaults to False.
             depth (int, optional): The depth of the comment in the thread hierarchy. Defaults to 0.
-            abuse_flaggers (Optional[List[str]], optional): Users who flagged the comment. Defaults to None.
-            historical_abuse_flaggers (Optional[List[str]], optional): Users historically flagged the comment.
+            abuse_flaggers (Optional[list[str]], optional): Users who flagged the comment. Defaults to None.
+            historical_abuse_flaggers (Optional[list[str]], optional): Users historically flagged the comment.
             visible (bool, optional): Whether the comment is visible. Defaults to True.
 
         Returns:
@@ -74,7 +74,7 @@ class Comment(BaseContents):
             "endorsed": False,
             "anonymous": anonymous,
             "anonymous_to_peers": anonymous_to_peers,
-            "parent_id": ObjectId(parent_id),
+            "parent_id": ObjectId(parent_id) if parent_id else None,
             "author_id": author_id,
             "comment_thread_id": ObjectId(comment_thread_id),
             "child_count": 0,
@@ -96,13 +96,13 @@ class Comment(BaseContents):
         anonymous: Optional[bool] = None,
         anonymous_to_peers: Optional[bool] = None,
         comment_thread_id: Optional[ObjectId] = None,
-        at_position_list: Optional[List[str]] = None,
+        at_position_list: Optional[list[str]] = None,
         visible: Optional[bool] = None,
         author_id: Optional[str] = None,
         author_username: Optional[str] = None,
-        votes: Optional[Dict[str, int]] = None,
-        abuse_flaggers: Optional[List[str]] = None,
-        historical_abuse_flaggers: Optional[List[str]] = None,
+        votes: Optional[dict[str, int]] = None,
+        abuse_flaggers: Optional[list[str]] = None,
+        historical_abuse_flaggers: Optional[list[str]] = None,
         endorsed: Optional[bool] = None,
         child_count: Optional[int] = None,
         depth: Optional[int] = None,
@@ -123,13 +123,13 @@ class Comment(BaseContents):
             anonymous (Optional[bool], optional): Whether the comment is posted anonymously.
             anonymous_to_peers (Optional[bool], optional): Whether the comment is anonymous to peers.
             comment_thread_id (Optional[ObjectId], optional): The ID of the parent comment thread.
-            at_position_list (Optional[List[str]], optional): A list of positions for @mentions.
+            at_position_list (Optional[list[str]], optional): A list of positions for @mentions.
             visible (Optional[bool], optional): Whether the comment is visible.
             author_id (Optional[str], optional): The ID of the author who created the comment.
             author_username (Optional[str], optional): The username of the author.
-            votes (Optional[Dict[str, int]], optional): The votes for the comment.
-            abuse_flaggers (Optional[List[str]], optional): A list of users who flagged the comment for abuse.
-            historical_abuse_flaggers (Optional[List[str]], optional): Users who historically flagged the comment.
+            votes (Optional[dict[str, int]], optional): The votes for the comment.
+            abuse_flaggers (Optional[list[str]], optional): A list of users who flagged the comment for abuse.
+            historical_abuse_flaggers (Optional[list[str]], optional): Users who historically flagged the comment.
             endorsed (Optional[bool], optional): Whether the comment is endorsed.
             child_count (Optional[int], optional): The number of child comments.
             depth (Optional[int], optional): The depth of the comment in the thread hierarchy.
@@ -155,7 +155,7 @@ class Comment(BaseContents):
             ("depth", depth),
             ("closed", closed),
         ]
-        update_data: Dict[str, Any] = {
+        update_data: dict[str, Any] = {
             field: value for field, value in fields if value is not None
         }
         if endorsed and endorsement_user_id:
@@ -163,6 +163,8 @@ class Comment(BaseContents):
                 "user_id": endorsement_user_id,
                 "time": datetime.now(),
             }
+        else:
+            update_data["endorsement"] = None
 
         if editing_user_id:
             edit_history = [] if edit_history is None else edit_history

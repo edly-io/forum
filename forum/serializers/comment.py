@@ -2,7 +2,7 @@
 Serializer for the comment data.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from rest_framework import serializers
 
@@ -62,6 +62,12 @@ class UserCommentSerializer(UserContentSerializer):
             for field in exclude_fields:
                 self.fields.pop(field, None)
 
+    def to_representation(self, instance: Any) -> dict[str, Any]:
+        comment = super().to_representation(instance)
+        if comment["parent_id"] == "None":
+            comment["parent_id"] = None
+        return comment
+
     def get_sk(self, obj: dict[str, Any]) -> str:
         """Return sk field"""
         is_child = obj.get("parent_id")
@@ -72,10 +78,10 @@ class UserCommentSerializer(UserContentSerializer):
         else:
             return "{id}".format(id=obj.get("_id"))
 
-    def create(self, validated_data: Dict[str, Any]) -> Any:
+    def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
 
-    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError

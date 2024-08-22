@@ -55,7 +55,7 @@ class CommentsAPIView(APIView):
         except ObjectDoesNotExist:
             return Response(
                 {"error": "Comment does not exist"},
-                status=status.HTTP_404_NOT_FOUND,
+                status=status.HTTP_400_BAD_REQUEST,
             )
         data = self._prepare_response(
             comment,
@@ -84,7 +84,7 @@ class CommentsAPIView(APIView):
         data = request.data
         fields_to_validate = ["body", "course_id", "user_id"]
         for field in fields_to_validate:
-            if field not in data:
+            if field not in data or not data[field]:
                 return Response(
                     f"{field} is missing.",
                     status=status.HTTP_400_BAD_REQUEST,
@@ -108,7 +108,7 @@ class CommentsAPIView(APIView):
                 )
         except ValidationError as error:
             return Response(
-                error,
+                error.detail,
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -131,10 +131,10 @@ class CommentsAPIView(APIView):
         except ObjectDoesNotExist:
             return Response(
                 {"error": "Comment does not exist"},
-                status=status.HTTP_404_NOT_FOUND,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        data = request.POST.dict()
+        data = request.data
         update_comment_data: dict[str, Any] = self._get_update_comment_data(data)
         update_comment_data["edit_history"] = comment.get("edit_history", [])
         update_comment_data["original_body"] = comment.get("body")
@@ -153,7 +153,7 @@ class CommentsAPIView(APIView):
                 )
         except ValidationError as error:
             return Response(
-                error,
+                error.detail,
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response(data, status=status.HTTP_200_OK)
@@ -175,7 +175,7 @@ class CommentsAPIView(APIView):
         except ObjectDoesNotExist:
             return Response(
                 {"error": "Comment does not exist"},
-                status=status.HTTP_404_NOT_FOUND,
+                status=status.HTTP_400_BAD_REQUEST,
             )
         data = self._prepare_response(
             comment,
