@@ -16,6 +16,62 @@ class CommentThread(BaseContents):
     index_name = "comment_threads"
     content_type = "CommentThread"
 
+    @classmethod
+    def mapping(cls) -> Dict[str, Any]:
+        """
+        Mapping function for the Thread class
+        """
+        return {
+            "dynamic": "false",
+            "properties": {
+                "title": {
+                    "type": "text",
+                    "boost": 5.0,
+                    "store": True,
+                    "term_vector": "with_positions_offsets",
+                },
+                "body": {
+                    "type": "text",
+                    "store": True,
+                    "term_vector": "with_positions_offsets",
+                },
+                "created_at": {"type": "date"},
+                "updated_at": {"type": "date"},
+                "last_activity_at": {"type": "date"},
+                "comment_count": {"type": "integer"},
+                "votes_point": {"type": "integer"},
+                "context": {"type": "keyword"},
+                "course_id": {"type": "keyword"},
+                "commentable_id": {"type": "keyword"},
+                "author_id": {"type": "keyword"},
+                "group_id": {"type": "integer"},
+                "id": {"type": "keyword"},
+                "thread_id": {"type": "keyword"},
+            },
+        }
+
+    @classmethod
+    def doc_to_hash(cls, doc: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Converts thread document to the dict
+        """
+        return {
+            "id": str(doc.get("_id")),
+            "title": doc.get("title"),
+            "body": doc.get("body"),
+            "created_at": doc.get("created_at"),
+            "updated_at": doc.get("updated_at"),
+            "last_activity_at": doc.get("last_activity_at"),
+            "comment_count": doc.get("comment_count"),
+            "votes_point": doc.get("votes", {}).get("point"),
+            "context": doc.get("context"),
+            "course_id": doc.get("course_id"),
+            "commentable_id": doc.get("commentable_id"),
+            "author_id": doc.get("author_id"),
+            "group_id": doc.get("group_id"),
+            "thread_id": str(doc.get("_id")),
+        }
+
     def insert(
         self,
         title: str,

@@ -20,6 +20,7 @@ class MongoBaseModel(ABC):
 
     MONGODB_DATABASE: Optional[Database] = None
     COLLECTION_NAME: str = "default"
+    index_name: str = "default"
 
     @property
     def _collection(self) -> Collection:

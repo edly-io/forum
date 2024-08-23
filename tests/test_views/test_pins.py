@@ -1,7 +1,6 @@
 """Test pin/unpin thread api endpoints."""
 
 from forum.models import Comment, CommentThread, Users
-
 from test_utils.client import APIClient
 
 

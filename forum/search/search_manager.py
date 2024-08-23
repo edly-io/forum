@@ -46,7 +46,6 @@ class ElasticsearchManager:
                 "bool": {"must": must_clause or [], "should": filter_clause or []}
             },
         }
-
         return self.client.search(index=self.index_names, body=body)
 
     def get_suggested_text(

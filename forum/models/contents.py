@@ -17,6 +17,27 @@ class BaseContents(MongoBaseModel):
     content_type: str = ""
     COLLECTION_NAME: str = "contents"
 
+    @classmethod
+    def mapping(cls) -> Dict[str, Any]:
+        """
+        Implement this method in the child class
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def doc_to_hash(cls, doc: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Implement this method in the child class
+        """
+        raise NotImplementedError
+
+    def override_query(self, query: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Override the query with the _type field.
+        """
+        query = {**query, "_type": self.content_type}
+        return super().override_query(query)
+
     def list(self, **kwargs: Any) -> Any:
         """
         Retrieves a list of all content documents in the database based on provided filters.
