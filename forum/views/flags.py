@@ -12,8 +12,8 @@ from forum.models.model_utils import (
     un_flag_all_as_abuse,
     un_flag_as_abuse,
 )
-from forum.serializers.comment import UserCommentSerializer
-from forum.serializers.thread import UserThreadSerializer
+from forum.serializers.comment import CommentSerializer
+from forum.serializers.thread import ThreadSerializer
 
 
 class CommentFlagAPIView(APIView):
@@ -71,7 +71,7 @@ class CommentFlagAPIView(APIView):
             "type": "comment",
             "thread_id": str(updated_comment.get("comment_thread_id", None)),
         }
-        serializer = UserCommentSerializer(context)
+        serializer = CommentSerializer(context)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -131,5 +131,5 @@ class ThreadFlagAPIView(APIView):
             "type": "thread",
             "thread_id": str(updated_thread.get("comment_thread_id", None)),
         }
-        serializer = UserThreadSerializer(context)
+        serializer = ThreadSerializer(context)
         return Response(serializer.data, status=status.HTTP_200_OK)

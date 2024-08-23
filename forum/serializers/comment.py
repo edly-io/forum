@@ -6,7 +6,7 @@ from typing import Any
 
 from rest_framework import serializers
 
-from forum.serializers.contents import UserContentSerializer
+from forum.serializers.contents import ContentSerializer
 from forum.serializers.custom_datetime import CustomDateTimeField
 
 
@@ -31,11 +31,11 @@ class EndorsementSerializer(serializers.Serializer[dict[str, Any]]):
         raise NotImplementedError
 
 
-class UserCommentSerializer(UserContentSerializer):
+class CommentSerializer(ContentSerializer):
     """
     Serializer for handling user comments on threads.
 
-    Inherits from UserContentSerializer.
+    Inherits from ContentSerializer.
 
     Attributes:
         endorsed (bool): Whether the comment is endorsed by an authority.

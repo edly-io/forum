@@ -11,8 +11,8 @@ from rest_framework.views import APIView
 
 from forum.models import Comment, CommentThread, Users
 from forum.models.model_utils import downvote_content, remove_vote, upvote_content
-from forum.serializers.comment import UserCommentSerializer
-from forum.serializers.thread import UserThreadSerializer
+from forum.serializers.comment import CommentSerializer
+from forum.serializers.thread import ThreadSerializer
 from forum.serializers.votes import VotesInputSerializer
 
 
@@ -90,7 +90,7 @@ class ThreadVoteView(APIView):
             "username": user["username"],
             "type": "thread",
         }
-        serializer = UserThreadSerializer(data=context)
+        serializer = ThreadSerializer(data=context)
         if not serializer.is_valid():
             raise ValueError(serializer.errors)
         return serializer.data
@@ -225,7 +225,7 @@ class CommentVoteView(APIView):
             "type": "comment",
             "thread_id": str(comment.get("comment_thread_id", None)),
         }
-        serializer = UserCommentSerializer(data=context)
+        serializer = CommentSerializer(data=context)
         if not serializer.is_valid():
             raise ValueError(serializer.errors)
         return serializer.data

@@ -2,7 +2,7 @@
 Search API Views
 """
 
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 from rest_framework import status
 from rest_framework.request import Request
@@ -40,7 +40,7 @@ class SearchThreadsView(APIView):
 
     def _get_thread_ids_from_indexes(
         self, context: str, group_ids: list[int], params: dict[str, Any], text: str
-    ) -> Tuple[list[str], Optional[str]]:
+    ) -> tuple[list[str], Optional[str]]:
         """
         Retrieve thread IDs based on the search text and suggested corrections if necessary.
 
@@ -51,7 +51,7 @@ class SearchThreadsView(APIView):
             text (str): The search text used to find threads.
 
         Returns:
-            Tuple[Optional[list[str]], Optional[str]]:
+            tuple[Optional[list[str]], Optional[str]]:
                 - A list of thread IDs that match the search criteria.
                 - A suggested correction for the search text, or None if no correction is found.
         """

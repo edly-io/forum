@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 
 from forum.models import Comment, CommentThread
 from forum.models.model_utils import validate_object
-from forum.serializers.comment import UserCommentSerializer
+from forum.serializers.comment import CommentSerializer
 from forum.utils import str_to_bool
 
 
@@ -74,11 +74,11 @@ def prepare_comment_api_response(
         "parent_id": str(comment.get("parent_id")),
         "type": str(comment.get("_type", "")).lower(),
     }
-    serializer = UserCommentSerializer(
+    serializer = CommentSerializer(
         data=comment_data,
         exclude_fields=exclude_fields,
     )
-    if not serializer.is_valid():
+    if not serializer.is_valid(raise_exception=True):
         raise ValidationError(serializer.errors)
 
     return serializer.data

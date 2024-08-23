@@ -13,15 +13,15 @@ from forum.models.model_utils import (
     get_read_states,
     get_username_from_id,
 )
-from forum.serializers.contents import UserContentSerializer
+from forum.serializers.contents import ContentSerializer
 from forum.serializers.custom_datetime import CustomDateTimeField
 
 
-class UserThreadSerializer(UserContentSerializer):
+class ThreadSerializer(ContentSerializer):
     """
     Serializer for handling user-created threads.
 
-    Inherits from UserContentSerializer.
+    Inherits from ContentSerializer.
 
     Attributes:
         thread_type (str): The type of thread (e.g., "discussion", "question").
@@ -33,6 +33,20 @@ class UserThreadSerializer(UserContentSerializer):
         group_id (str or None): The ID of the group associated with the thread, if any.
         pinned (bool): Whether the thread is pinned at the top of the list.
         comments_count (int): The number of comments on the thread.
+
+    This serializer extends the `ThreadSerializer` and customizes fields based on various context
+    parameters. It manages fields related to read state, comment counts, endorsements, abuse flags,
+    and response information.
+
+    Custom Attributes:
+        read (serializers.SerializerMethodField): A method field to determine if the thread is read.
+        unread_comments_count (serializers.SerializerMethodField): A method field to count unread comments.
+        endorsed (serializers.SerializerMethodField): A method field to check if the thread is endorsed.
+        abuse_flagged_count (serializers.SerializerMethodField, optional): A method field to count flagged abuse.
+        children (serializers.SerializerMethodField, optional): A method field for responses to the thread.
+        resp_total (serializers.SerializerMethodField, optional): A method field for total responses.
+        resp_skip (serializers.IntegerField, optional): An integer field for pagination (responses to skip).
+        resp_limit (serializers.IntegerField, optional): An integer field for pagination (responses limit).
     """
 
     thread_type = serializers.CharField()
@@ -46,52 +60,6 @@ class UserThreadSerializer(UserContentSerializer):
     group_id = serializers.CharField(allow_null=True, default=None)
     pinned = serializers.BooleanField(default=False)
     comments_count = serializers.SerializerMethodField()
-
-    def create(self, validated_data: dict[str, Any]) -> Any:
-        """Raise NotImplementedError"""
-        raise NotImplementedError
-
-    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
-        """Raise NotImplementedError"""
-        raise NotImplementedError
-
-    def get_comments_count(self, obj: dict[str, Any]) -> int:
-        """Retrieve the count of comments for the given thread."""
-        count = get_comments_count(obj["_id"])
-        return count
-
-    def get_closed_by(self, obj: dict[str, Any]) -> Optional[str]:
-        """Retrieve the username of the person who closed the object."""
-        if closed_by_id := obj.get("closed_by_id"):
-            return get_username_from_id(closed_by_id)
-        return None
-
-    def to_representation(self, instance: dict[str, Any]) -> dict[str, Any]:
-        """Convert the instance dictionary to its representation format by removing specific fields."""
-        data = super().to_representation(instance)
-        data.pop("closed_by_id")
-        return data
-
-
-class ThreadSerializer(UserThreadSerializer):
-    """
-    Serializer for user threads, which includes additional external fields based on context.
-
-    This serializer extends the `UserThreadSerializer` and customizes fields based on various context
-    parameters. It manages fields related to read state, comment counts, endorsements, abuse flags,
-    and response information.
-
-    Attributes:
-        read (serializers.SerializerMethodField): A method field to determine if the thread is read.
-        unread_comments_count (serializers.SerializerMethodField): A method field to count unread comments.
-        endorsed (serializers.SerializerMethodField): A method field to check if the thread is endorsed.
-        abuse_flagged_count (serializers.SerializerMethodField, optional): A method field to count flagged abuse.
-        children (serializers.SerializerMethodField, optional): A method field for responses to the thread.
-        resp_total (serializers.SerializerMethodField, optional): A method field for total responses.
-        resp_skip (serializers.IntegerField, optional): An integer field for pagination (responses to skip).
-        resp_limit (serializers.IntegerField, optional): An integer field for pagination (responses limit).
-    """
-
     read = serializers.SerializerMethodField()
     unread_comments_count = serializers.SerializerMethodField()
     endorsed = serializers.SerializerMethodField()
@@ -260,6 +228,7 @@ class ThreadSerializer(UserThreadSerializer):
             dict[str, Any]: The dictionary representation of the instance with certain fields removed.
         """
         data = super().to_representation(instance)
+        data.pop("closed_by_id")
         if not data.get("abuse_flagged_count", None):
             data.pop("abuse_flagged_count", None)
         if not data.get("closed_by", None):
@@ -273,3 +242,14 @@ class ThreadSerializer(UserThreadSerializer):
     def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
+
+    def get_comments_count(self, obj: dict[str, Any]) -> int:
+        """Retrieve the count of comments for the given thread."""
+        count = get_comments_count(obj["_id"])
+        return count
+
+    def get_closed_by(self, obj: dict[str, Any]) -> Optional[str]:
+        """Retrieve the username of the person who closed the object."""
+        if closed_by_id := obj.get("closed_by_id"):
+            return get_username_from_id(closed_by_id)
+        return None
