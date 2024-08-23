@@ -2,10 +2,14 @@
 Serializer for the thread data.
 """
 
+import logging
 from typing import Any, Optional
 
+from bson import ObjectId
 from rest_framework import serializers
+from rest_framework.serializers import ValidationError
 
+from forum.models import Comment
 from forum.models.model_utils import (
     get_abuse_flagged_count,
     get_comments_count,
@@ -13,8 +17,11 @@ from forum.models.model_utils import (
     get_read_states,
     get_username_from_id,
 )
+from forum.serializers.comment import CommentSerializer
 from forum.serializers.contents import ContentSerializer
 from forum.serializers.custom_datetime import CustomDateTimeField
+
+log = logging.getLogger(__name__)
 
 
 class ThreadSerializer(ContentSerializer):
@@ -51,7 +58,7 @@ class ThreadSerializer(ContentSerializer):
 
     thread_type = serializers.CharField()
     title = serializers.CharField()
-    context = serializers.CharField()  # type: ignore
+    context = serializers.CharField()
     last_activity_at = CustomDateTimeField()
     closed_by_id = serializers.CharField(allow_null=True, default=None)
     closed_by = serializers.SerializerMethodField()
@@ -89,6 +96,7 @@ class ThreadSerializer(ContentSerializer):
         self.count_flagged = context.pop("count_flagged", False)
         self.include_endorsed = context.pop("include_endorsed", False)
         self.include_read_state = context.pop("include_read_state", False)
+        self.recursive = context.pop("recursive", False)
 
         # Customize fields based on context
         if not self.with_responses:
@@ -122,11 +130,11 @@ class ThreadSerializer(ContentSerializer):
         if self.include_read_state:
             if isinstance(obj, dict) and obj.get("read") is not None:
                 return obj.get("read", True)
-            user_id = obj["user_id"]
+            user_id = obj["author_id"]
             course_id = obj["course_id"]
-            thread_key = obj["id"]
+            thread_key = obj["_id"]
             is_read, _ = get_read_states([obj], user_id, course_id).get(
-                thread_key, (False, obj["comments_count"])
+                thread_key, (False, self.get_comments_count(obj))
             )
             return is_read
         return None
@@ -144,11 +152,11 @@ class ThreadSerializer(ContentSerializer):
         if self.include_read_state:
             if isinstance(obj, dict) and obj.get("unread_comments_count") is not None:
                 return obj.get("unread_comments_count", 0)
-            user_id = obj["user_id"]
+            user_id = obj["author_id"]
             course_id = obj["course_id"]
-            thread_key = obj["id"]
+            thread_key = obj["_id"]
             _, unread_count = get_read_states([obj], user_id, course_id).get(
-                thread_key, (False, obj["comments_count"])
+                thread_key, (False, self.get_comments_count(obj))
             )
             return unread_count
         return None
@@ -166,7 +174,7 @@ class ThreadSerializer(ContentSerializer):
         if self.include_endorsed:
             if isinstance(obj, dict) and obj.get("endorsed") is not None:
                 return obj.get("endorsed", True)
-            thread_key = obj["id"]
+            thread_key = obj["_id"]
             return get_endorsed([thread_key]).get(thread_key, False)
         return None
 
@@ -183,7 +191,7 @@ class ThreadSerializer(ContentSerializer):
         if self.count_flagged:
             if isinstance(obj, dict) and obj.get("abuse_flagged_count") is not None:
                 return obj.get("abuse_flagged_count", 0)
-            thread_key = obj["id"]
+            thread_key = obj["_id"]
             return get_abuse_flagged_count([thread_key]).get(thread_key, 0)
         return 0
 
@@ -198,8 +206,41 @@ class ThreadSerializer(ContentSerializer):
             Optional[Any]: The responses or children related to the thread, or None if not included.
         """
         if self.with_responses:
-            # Implement when needed
-            print(obj)
+            children = list(
+                Comment().list(
+                    comment_thread_id=ObjectId(obj["_id"]),
+                    depth=0,
+                    parent_id=None,
+                )
+            )
+            children_data = []
+            for child in children:
+                children_data.append(
+                    {
+                        **child,
+                        "id": str(child.get("_id")),
+                        "user_id": child.get("author_id"),
+                        "thread_id": str(child.get("comment_thread_id")),
+                        "username": child.get("author_username"),
+                        "parent_id": str(child.get("parent_id")),
+                        "type": str(child.get("_type", "")).lower(),
+                    }
+                )
+            serializer = CommentSerializer(
+                data=children_data,
+                many=True,
+                context={
+                    "recursive": self.recursive,
+                },
+                exclude_fields={"sk"},
+            )
+            if not serializer.is_valid(raise_exception=True):
+                log.error(
+                    f"\n\n ValidationError(serializer.errors):: {serializer.errors}"
+                )
+                raise ValidationError(serializer.errors)
+
+            return serializer.data
         return []
 
     def get_resp_total(self, obj: dict[str, Any]) -> int:

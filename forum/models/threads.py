@@ -14,7 +14,7 @@ class CommentThread(BaseContents):
     """
 
     index_name = "comment_threads"
-    content_type = "CommentThread"
+    content_type = "thread"
 
     @classmethod
     def mapping(cls) -> dict[str, Any]:

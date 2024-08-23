@@ -14,6 +14,7 @@ from forum.views.subscriptions import (
     ThreadSubscriptionAPIView,
     UserSubscriptionAPIView,
 )
+from forum.views.threads import ThreadsAPIView
 from forum.views.votes import CommentVoteView, ThreadVoteView
 
 api_patterns = [
@@ -52,16 +53,16 @@ api_patterns = [
         CommentsAPIView.as_view(),
         name="comments-api",
     ),
+    path(
+        "threads/<str:thread_id>/comments",
+        CreateThreadCommentAPIView.as_view(),
+        name="create-parent-comment-api",
+    ),
     # search threads API
     path(
         "search/threads",
         SearchThreadsView.as_view(),
         name="search-thread-api",
-    ),
-    path(
-        "threads/<str:thread_id>/comments",
-        CreateThreadCommentAPIView.as_view(),
-        name="create-parent-comment-api",
     ),
     # subscription APIs
     path(
@@ -78,6 +79,12 @@ api_patterns = [
         "threads/<str:thread_id>/subscriptions",
         ThreadSubscriptionAPIView.as_view(),
         name="thread-subscriptions",
+    ),
+    # threads API
+    path(
+        "threads/<str:thread_id>",
+        ThreadsAPIView.as_view(),
+        name="threads-api",
     ),
     # Proxy view for various API endpoints
     path(
