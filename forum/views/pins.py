@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from forum.models.model_utils import handle_pin_unpin_thread_request
-from forum.serializers.thread import UserThreadSerializer
+from forum.serializers.thread import ThreadSerializer
 
 
 class PinThreadAPIView(APIView):
@@ -33,7 +33,7 @@ class PinThreadAPIView(APIView):
         """
         try:
             thread_data: dict[str, Any] = handle_pin_unpin_thread_request(
-                request.data.get("user_id", ""), thread_id, "pin", UserThreadSerializer
+                request.data.get("user_id", ""), thread_id, "pin", ThreadSerializer
             )
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -65,7 +65,7 @@ class UnpinThreadAPIView(APIView):
                 request.data.get("user_id", ""),
                 thread_id,
                 "unpin",
-                UserThreadSerializer,
+                ThreadSerializer,
             )
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

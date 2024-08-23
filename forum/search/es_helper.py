@@ -175,7 +175,7 @@ class ElasticsearchHelper:
         Process the response from a batch import operation.
 
         Args:
-            response (tuple[int, list[dict]]): Tuple containing the count of successful imports and a list of errors.
+            response (tuple[int, list[dict]]): tuple containing the count of successful imports and a list of errors.
             batch_number (int): The current batch number being processed.
         """
         success_count, errors = response
@@ -385,7 +385,7 @@ class ElasticsearchHelper:
             query (dict, optional): MongoDB query to filter documents. Defaults to None.
 
         Yields:
-            tuple[int, list[dict]]: Tuple containing the count of successful imports and a list of errors.
+            tuple[int, list[dict]]: tuple containing the count of successful imports and a list of errors.
         """
         cursor = model.find(query or {}).batch_size(batch_size)
         actions = []

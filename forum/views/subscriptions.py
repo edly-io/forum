@@ -18,7 +18,7 @@ from forum.models.model_utils import (
 )
 from forum.pagination import ForumPagination
 from forum.serializers.subscriptions import SubscriptionSerializer
-from forum.serializers.thread import UserThreadSerializer
+from forum.serializers.thread import ThreadSerializer
 
 
 class SubscriptionAPIView(APIView):
@@ -153,7 +153,7 @@ class UserSubscriptionAPIView(APIView):
             int(params.get("page", 1)),
             int(params.get("per_page", 100)),
         )
-        serializer = UserThreadSerializer(threads.pop("collection"), many=True)
+        serializer = ThreadSerializer(threads.pop("collection"), many=True)
         threads["collection"] = serializer.data
         return Response(data=threads, status=status.HTTP_200_OK)
 
