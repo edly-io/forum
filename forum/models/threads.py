@@ -1,7 +1,7 @@
 """Content Class for mongo backend."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from bson import ObjectId
 
@@ -17,7 +17,7 @@ class CommentThread(BaseContents):
     content_type = "CommentThread"
 
     @classmethod
-    def mapping(cls) -> Dict[str, Any]:
+    def mapping(cls) -> dict[str, Any]:
         """
         Mapping function for the Thread class
         """
@@ -51,7 +51,7 @@ class CommentThread(BaseContents):
         }
 
     @classmethod
-    def doc_to_hash(cls, doc: Dict[str, Any]) -> Dict[str, Any]:
+    def doc_to_hash(cls, doc: dict[str, Any]) -> dict[str, Any]:
         """
         Converts thread document to the dict
         """
@@ -86,8 +86,8 @@ class CommentThread(BaseContents):
         context: str = "course",
         pinned: bool = False,
         visible: bool = True,
-        abuse_flaggers: Optional[List[str]] = None,
-        historical_abuse_flaggers: Optional[List[str]] = None,
+        abuse_flaggers: Optional[list[str]] = None,
+        historical_abuse_flaggers: Optional[list[str]] = None,
     ) -> str:
         """
         Inserts a new thread document into the database.
@@ -162,14 +162,14 @@ class CommentThread(BaseContents):
         anonymous: Optional[bool] = None,
         anonymous_to_peers: Optional[bool] = None,
         commentable_id: Optional[str] = None,
-        at_position_list: Optional[List[str]] = None,
+        at_position_list: Optional[list[str]] = None,
         closed: Optional[bool] = None,
         context: Optional[str] = None,
         author_id: Optional[str] = None,
         author_username: Optional[str] = None,
-        votes: Optional[Dict[str, int]] = None,
-        abuse_flaggers: Optional[List[str]] = None,
-        historical_abuse_flaggers: Optional[List[str]] = None,
+        votes: Optional[dict[str, int]] = None,
+        abuse_flaggers: Optional[list[str]] = None,
+        historical_abuse_flaggers: Optional[list[str]] = None,
         closed_by: Optional[str] = None,
         pinned: Optional[bool] = None,
         comments_count: Optional[int] = None,

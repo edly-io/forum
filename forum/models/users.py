@@ -1,6 +1,6 @@
 """Users Class for mongo backend."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from forum.models.base_model import MongoBaseModel
 
@@ -12,7 +12,7 @@ class Users(MongoBaseModel):
 
     COLLECTION_NAME: str = "users"
 
-    def get(self, _id: str) -> Optional[Dict[str, Any]]:
+    def get(self, _id: str) -> Optional[dict[str, Any]]:
         """
         Get the user based on the id
         """
@@ -24,8 +24,8 @@ class Users(MongoBaseModel):
         username: str,
         email: str,
         default_sort_key: str = "date",
-        read_states: Optional[List[Dict[str, Any]]] = None,
-        course_stats: Optional[List[Dict[str, Any]]] = None,
+        read_states: Optional[list[dict[str, Any]]] = None,
+        course_stats: Optional[list[dict[str, Any]]] = None,
     ) -> str:
         """
         Inserts a new user document into the database.
@@ -42,7 +42,7 @@ class Users(MongoBaseModel):
             The ID of the inserted document.
 
         """
-        user_data: Dict[str, Any] = {
+        user_data: dict[str, Any] = {
             "_id": external_id,
             "external_id": external_id,
             "username": username,
@@ -74,8 +74,8 @@ class Users(MongoBaseModel):
         username: Optional[str] = None,
         email: Optional[str] = None,
         default_sort_key: Optional[str] = None,
-        read_states: Optional[List[Dict[str, Any]]] = None,
-        course_stats: Optional[List[Dict[str, Any]]] = None,
+        read_states: Optional[list[dict[str, Any]]] = None,
+        course_stats: Optional[list[dict[str, Any]]] = None,
         active_flags: Optional[int] = None,
     ) -> int:
         """

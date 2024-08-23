@@ -1,25 +1,25 @@
 """Model util function for db operations."""
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 from bson import ObjectId
 from django.core.exceptions import ObjectDoesNotExist
 
-from forum.models import Comment, CommentThread, Contents, Users
+from forum.models import Comment, CommentThread, Contents, Subscriptions, Users
 
 
 def flag_as_abuse(
-    user: Dict[str, Any], entity: Dict[str, Any]
-) -> Union[Dict[str, Any], None]:
+    user: dict[str, Any], entity: dict[str, Any]
+) -> Union[dict[str, Any], None]:
     """
     Flag an entity as abuse.
 
     Args:
-        user (Dict[str, Any]): The user who is flagging the entity as abuse.
-        entity (Dict[str, Any]): The entity being flagged as abuse.
+        user (dict[str, Any]): The user who is flagging the entity as abuse.
+        entity (dict[str, Any]): The entity being flagged as abuse.
 
     Returns:
-        Dict[str, Any]: The updated entity with the abuse flag.
+        dict[str, Any]: The updated entity with the abuse flag.
 
     Raises:
         ValueError: If user ID or entity is not provided.
@@ -49,17 +49,17 @@ def flag_as_abuse(
 
 
 def un_flag_as_abuse(
-    user: Dict[str, Any], entity: Dict[str, Any]
-) -> Union[Dict[str, Any], None]:
+    user: dict[str, Any], entity: dict[str, Any]
+) -> Union[dict[str, Any], None]:
     """
     Unflag an entity as abuse.
 
     Args:
-        user (Dict[str, Any]): The user who is unflagging the entity as abuse.
-        entity (Dict[str, Any]): The entity being unflagged as abuse.
+        user (dict[str, Any]): The user who is unflagging the entity as abuse.
+        entity (dict[str, Any]): The entity being unflagged as abuse.
 
     Returns:
-        Dict[str, Any]: The updated entity with the abuse flag removed.
+        dict[str, Any]: The updated entity with the abuse flag removed.
 
     Raises:
         ValueError: If user ID or entity is not provided.
@@ -74,15 +74,15 @@ def un_flag_as_abuse(
     return Contents().get(entity["_id"])
 
 
-def un_flag_all_as_abuse(entity: Dict[str, Any]) -> Union[Dict[str, Any], None]:
+def un_flag_all_as_abuse(entity: dict[str, Any]) -> Union[dict[str, Any], None]:
     """
     Unflag an entity as abuse for all users.
 
     Args:
-        entity (Dict[str, Any]): The entity being unflagged as abuse.
+        entity (dict[str, Any]): The entity being unflagged as abuse.
 
     Returns:
-        Dict[str, Any]: The updated entity with all abuse flags removed.
+        dict[str, Any]: The updated entity with all abuse flags removed.
 
     Raises:
         ValueError: If entity is not provided.
@@ -93,8 +93,8 @@ def un_flag_all_as_abuse(entity: Dict[str, Any]) -> Union[Dict[str, Any], None]:
 
 
 def update_vote(
-    content: Dict[str, Any],
-    user: Dict[str, Any],
+    content: dict[str, Any],
+    user: dict[str, Any],
     vote_type: str = "",
     is_deleted: bool = False,
 ) -> bool:
@@ -109,7 +109,7 @@ def update_vote(
     """
     user_id: str = user["_id"]
     content_id: str = str(content["_id"])
-    votes: Dict[str, Any] = content["votes"]
+    votes: dict[str, Any] = content["votes"]
 
     update_needed: bool = False
 
@@ -160,7 +160,7 @@ def update_vote(
     return False
 
 
-def upvote_content(thread: Dict[str, Any], user: Dict[str, Any]) -> bool:
+def upvote_content(thread: dict[str, Any], user: dict[str, Any]) -> bool:
     """
     Upvotes the specified thread or comment by the given user.
 
@@ -174,7 +174,7 @@ def upvote_content(thread: Dict[str, Any], user: Dict[str, Any]) -> bool:
     return update_vote(thread, user, vote_type="up")
 
 
-def downvote_content(thread: Dict[str, Any], user: Dict[str, Any]) -> bool:
+def downvote_content(thread: dict[str, Any], user: dict[str, Any]) -> bool:
     """
     Downvotes the specified thread or comment by the given user.
 
@@ -188,7 +188,7 @@ def downvote_content(thread: Dict[str, Any], user: Dict[str, Any]) -> bool:
     return update_vote(thread, user, vote_type="down")
 
 
-def remove_vote(thread: Dict[str, Any], user: Dict[str, Any]) -> bool:
+def remove_vote(thread: dict[str, Any], user: dict[str, Any]) -> bool:
     """
     Remove the vote (upvote or downvote) from the specified thread or comment for the given user.
 
@@ -212,7 +212,7 @@ def get_comments_count(thread_id: str) -> int:
 
 def validate_thread_and_user(
     user_id: str, thread_id: str
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     Validate thread and user.
 
@@ -221,7 +221,7 @@ def validate_thread_and_user(
         thread_id (str): The ID of the thread.
 
     Returns:
-        Tuple[Dict[str, Any], Dict[str, Any]]: A tuple containing the user and thread data.
+        tuple[dict[str, Any], dict[str, Any]]: A tuple containing the user and thread data.
 
     Raises:
         ValueError: If the thread or user is not found.
@@ -246,17 +246,17 @@ def pin_unpin_thread(thread_id: str, action: str) -> None:
 
 
 def get_pinned_unpinned_thread_serialized_data(
-    user: Dict[str, Any], thread_id: str, serializer_class: Any
-) -> Dict[str, Any]:
+    user: dict[str, Any], thread_id: str, serializer_class: Any
+) -> dict[str, Any]:
     """
     Return serialized data of pinned or unpinned thread.
 
     Arguments:
-        user (Dict[str, Any]): The user who requested the action.
+        user (dict[str, Any]): The user who requested the action.
         thread_id (str): The ID of the thread to pin/unpin.
 
     Returns:
-        Dict[str, Any]: The serialized data of the pinned/unpinned thread.
+        dict[str, Any]: The serialized data of the pinned/unpinned thread.
 
     Raises:
         ValueError: If the serialization is not valid.
@@ -279,7 +279,7 @@ def get_pinned_unpinned_thread_serialized_data(
 
 def handle_pin_unpin_thread_request(
     user_id: str, thread_id: str, action: str, serializer_class: Any
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Catches pin/unpin thread request.
 
@@ -293,24 +293,24 @@ def handle_pin_unpin_thread_request(
         action (str): The action to perform ("pin" or "unpin").
 
     Returns:
-        Dict[str, Any]: The serialized data of the pinned/unpinned thread.
+        dict[str, Any]: The serialized data of the pinned/unpinned thread.
     """
     user, _ = validate_thread_and_user(user_id, thread_id)
     pin_unpin_thread(thread_id, action)
     return get_pinned_unpinned_thread_serialized_data(user, thread_id, serializer_class)
 
 
-def get_abuse_flagged_count(thread_ids: List[str]) -> Dict[str, int]:
+def get_abuse_flagged_count(thread_ids: list[str]) -> dict[str, int]:
     """
     Retrieves the count of abuse-flagged comments for each thread in the provided list of thread IDs.
 
     Args:
-        thread_ids (List[str]): List of thread IDs to check for abuse flags.
+        thread_ids (list[str]): List of thread IDs to check for abuse flags.
 
     Returns:
-        Dict[str, int]: A dictionary mapping thread IDs to their corresponding abuse-flagged comment count.
+        dict[str, int]: A dictionary mapping thread IDs to their corresponding abuse-flagged comment count.
     """
-    pipeline: List[dict[str, Any]] = [
+    pipeline: list[dict[str, Any]] = [
         {
             "$match": {
                 "comment_thread_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
@@ -325,18 +325,18 @@ def get_abuse_flagged_count(thread_ids: List[str]) -> Dict[str, int]:
 
 
 def get_read_states(
-    threads: List[Dict[str, Any]], user_id: str, course_id: str
-) -> Dict[str, List[Any]]:
+    threads: list[dict[str, Any]], user_id: str, course_id: str
+) -> dict[str, list[Any]]:
     """
     Retrieves the read state and unread comment count for each thread in the provided list.
 
     Args:
-        threads (List[Dict[str, Any]]): List of threads to check read state for.
+        threads (list[dict[str, Any]]): list of threads to check read state for.
         user_id (str): The ID of the user whose read states are being retrieved.
         course_id (str): The course ID associated with the threads.
 
     Returns:
-        Dict[str, List[Any]]: A dictionary mapping thread IDs to a list containing
+        dict[str, list[Any]]: A dictionary mapping thread IDs to a list containing
         whether the thread is read and the unread comment count.
     """
     read_states = {}
@@ -362,15 +362,15 @@ def get_read_states(
 
 
 def get_filtered_thread_ids(
-    thread_ids: List[str], context: str, group_ids: List[str]
+    thread_ids: list[str], context: str, group_ids: list[str]
 ) -> set[str]:
     """
     Filters thread IDs based on context and group ID criteria.
 
     Args:
-        thread_ids (List[str]): List of thread IDs to filter.
+        thread_ids (list[str]): List of thread IDs to filter.
         context (str): The context to filter by.
-        group_ids (List[str]): List of group IDs for group-based filtering.
+        group_ids (list[str]): List of group IDs for group-based filtering.
 
     Returns:
         set: A set of filtered thread IDs based on the context and group ID criteria.
@@ -398,15 +398,15 @@ def get_filtered_thread_ids(
     return context_thread_ids.union(group_thread_ids)
 
 
-def get_endorsed(thread_ids: List[str]) -> Dict[str, bool]:
+def get_endorsed(thread_ids: list[str]) -> dict[str, bool]:
     """
     Retrieves endorsed status for each thread in the provided list of thread IDs.
 
     Args:
-        thread_ids (List[str]): List of thread IDs to check for endorsement.
+        thread_ids (list[str]): List of thread IDs to check for endorsement.
 
     Returns:
-        Dict[str, bool]: A dictionary mapping thread IDs to their endorsed status (True if endorsed, False otherwise).
+        dict[str, bool]: A dictionary mapping thread IDs to their endorsed status (True if endorsed, False otherwise).
     """
     endorsed_threads = Contents().find(
         {
@@ -419,17 +419,17 @@ def get_endorsed(thread_ids: List[str]) -> Dict[str, bool]:
 
 
 def get_user_read_state_by_course_id(
-    user: Dict[str, Any], course_id: str
-) -> Dict[str, Any]:
+    user: dict[str, Any], course_id: str
+) -> dict[str, Any]:
     """
     Retrieves the user's read state for a specific course.
 
     Args:
-        user (Dict[str, Any]): The user object containing read states.
+        user (dict[str, Any]): The user object containing read states.
         course_id (str): The course ID to filter the user's read state by.
 
     Returns:
-        Dict[str, Any]: The user's read state for the specified course, or an empty dictionary if not found.
+        dict[str, Any]: The user's read state for the specified course, or an empty dictionary if not found.
     """
     for read_state in user.get("read_states", []):
         if read_state["course_id"] == course_id:
@@ -440,10 +440,10 @@ def get_user_read_state_by_course_id(
 # TODO: Make this function modular
 # pylint: disable=too-many-nested-blocks,too-many-statements
 def handle_threads_query(
-    comment_thread_ids: List[str],
+    comment_thread_ids: list[str],
     user_id: str,
     course_id: str,
-    group_ids: List[int],
+    group_ids: list[int],
     author_id: Optional[str],
     thread_type: Optional[str],
     filter_flagged: bool,
@@ -454,17 +454,17 @@ def handle_threads_query(
     sort_key: str,
     page: int,
     per_page: int,
-    context: str,
+    context: str = "course",
     raw_query: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Handles complex thread queries based on various filters and returns paginated results.
 
     Args:
-        comment_thread_ids (List[str]): List of comment thread IDs to filter.
+        comment_thread_ids (list[str]): List of comment thread IDs to filter.
         user_id (str): The ID of the user making the request.
         course_id (str): The course ID associated with the threads.
-        group_ids (List[int]): List of group IDs for group-based filtering.
+        group_ids (list[int]): List of group IDs for group-based filtering.
         author_id (str): The ID of the author to filter threads by.
         thread_type (str): The type of thread to filter by.
         filter_flagged (bool): Whether to filter threads flagged for abuse.
@@ -479,15 +479,15 @@ def handle_threads_query(
         raw_query (bool): Whether to return raw query results without further processing.
 
     Returns:
-        Dict[str, Any]: A dictionary containing the paginated thread results and associated metadata.
+        dict[str, Any]: A dictionary containing the paginated thread results and associated metadata.
     """
     # Convert thread_ids to ObjectId
-    comment_thread_obj_ids: List[ObjectId] = [
+    comment_thread_obj_ids: list[ObjectId] = [
         ObjectId(tid) for tid in comment_thread_ids
     ]
 
     # Base query
-    base_query: Dict[str, Any] = {
+    base_query: dict[str, Any] = {
         "_id": {"$in": comment_thread_obj_ids},
         "context": context,
     }
@@ -607,24 +607,24 @@ def handle_threads_query(
 
 
 def prepare_thread(
-    thread: Dict[str, Any],
+    thread: dict[str, Any],
     is_read: bool,
     unread_count: int,
     is_endorsed: bool,
     abuse_flagged_count: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Prepares thread data for presentation.
 
     Args:
-        thread (Dict[str, Any]): The thread data.
+        thread (dict[str, Any]): The thread data.
         is_read (bool): Whether the thread is read.
         unread_count (int): The count of unread comments.
         is_endorsed (bool): Whether the thread is endorsed.
         abuse_flagged_count (int): The abuse flagged count.
 
     Returns:
-        Dict[str, Any]: A dictionary representing the prepared thread data.
+        dict[str, Any]: A dictionary representing the prepared thread data.
     """
     return {
         "id": str(thread["_id"]),
@@ -638,22 +638,22 @@ def prepare_thread(
 
 
 def threads_presentor(
-    threads: List[Dict[str, Any]],
+    threads: list[dict[str, Any]],
     user_id: str,
     course_id: str,
     count_flagged: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Presents the threads by preparing them for display.
 
     Args:
-        threads (List[Dict[str, Any]]): List of threads to present.
+        threads (list[dict[str, Any]]): List of threads to present.
         user_id (str): The ID of the user presenting the threads.
         course_id (str): The course ID associated with the threads.
         count_flagged (bool, optional): Whether to include flagged content count. Defaults to False.
 
     Returns:
-        List[Dict[str, Any]]: A list of prepared thread data.
+        list[dict[str, Any]]: A list of prepared thread data.
     """
     thread_ids = [str(thread["_id"]) for thread in threads]
     read_states = get_read_states(threads, user_id, course_id)
@@ -713,3 +713,74 @@ def validate_object(model: Any, obj_id: str) -> Any:
     if not instance:
         raise ObjectDoesNotExist
     return instance
+
+
+def find_subscribed_threads(user_id: str, course_id: str) -> list[str]:
+    """
+    Find threads that a user is subscribed to in a specific course.
+
+    Args:
+        user_id (str): The ID of the user.
+        course_id (str): The ID of the course.
+
+    Returns:
+        list: A list of thread ids that the user is subscribed to in the course.
+    """
+    subscriptions = Subscriptions()
+    threads = CommentThread()
+
+    subscription_filter = {"subscriber_id": user_id}
+    subscriptions_cursor = subscriptions.find(subscription_filter)
+
+    thread_ids = []
+    for subscription in subscriptions_cursor:
+        thread_ids.append(ObjectId(subscription["source_id"]))
+
+    thread_filter = {"_id": {"$in": thread_ids}, "course_id": course_id}
+    threads_cursor = threads.find(thread_filter)
+
+    subscribed_ids = []
+    for thread in threads_cursor:
+        subscribed_ids.append(thread["_id"])
+
+    return subscribed_ids
+
+
+def get_group_ids_from_params(params: dict[str, Any]) -> list[int]:
+    """
+    Extract group IDs from the provided parameters.
+
+    Args:
+        params (dict): A dictionary containing the parameters.
+
+    Returns:
+        list: A list of group IDs.
+
+    Raises:
+        ValueError: If both `group_id` and `group_ids` are specified in the parameters.
+    """
+
+    if "group_id" in params and "group_ids" in params:
+        raise ValueError("Cannot specify both group_id and group_ids")
+    group_ids = []
+    if "group_id" in params:
+        group_ids.append(int(params["group_id"]))
+    elif "group_ids" in params:
+        group_ids.extend([int(x) for x in params["group_ids"].split(",")])
+    return group_ids
+
+
+def subscribe_user(
+    user_id: str, source_id: str, source_type: str
+) -> dict[str, Any] | None:
+    """Subscribe a user to a source."""
+    subscription = Subscriptions().get_subscription(user_id, source_id)
+    if not subscription:
+        Subscriptions().insert(user_id, source_id, source_type)
+        subscription = Subscriptions().get_subscription(user_id, source_id)
+    return subscription
+
+
+def unsubscribe_user(user_id: str, source_id: str) -> None:
+    """Unsubscribe a user from a source."""
+    Subscriptions().delete_subscription(user_id, source_id)

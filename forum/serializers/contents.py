@@ -121,7 +121,7 @@ class UserContentSerializer(serializers.Serializer[dict[str, Any]]):
         type (str): The type of content (e.g., "post", "comment").
     """
 
-    id = serializers.CharField()
+    id = serializers.CharField(source="_id")
     body = serializers.CharField()
     course_id = serializers.CharField()
     anonymous = serializers.BooleanField(default=False)
