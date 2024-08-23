@@ -63,5 +63,5 @@ TEMPLATES = [
 ]
 
 FORUM_PORT = "4567"
-MONGO_HOST = "mongo-test-url"
-MONGO_PORT = 27017
+FORUM_MONGO_HOST = "mongo-test-url"
+FORUM_MONGO_PORT = 27017

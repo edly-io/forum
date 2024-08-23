@@ -13,8 +13,8 @@ Database = PymongoDatabase[dict[str, Any]]
 
 
 def get_database(
-    host: str = settings.MONGO_HOST,
-    port: int = settings.MONGO_PORT,
+    host: str = settings.FORUM_MONGO_HOST,
+    port: int = settings.FORUM_MONGO_PORT,
     user: str = "",
     password: str = "",
     database: str = "cs_comments_service",
