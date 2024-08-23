@@ -4,7 +4,7 @@ URLs for forum.
 
 from django.urls import include, path
 
-from forum.views.comments import CommentsAPIView
+from forum.views.comments import CommentsAPIView, CreateThreadCommentAPIView
 from forum.views.flags import CommentFlagAPIView, ThreadFlagAPIView
 from forum.views.pins import PinThreadAPIView, UnpinThreadAPIView
 from forum.views.proxy import ForumProxyAPIView
@@ -52,6 +52,11 @@ api_patterns = [
         "search/threads",
         SearchThreadsView.as_view(),
         name="search-thread-api",
+    ),
+    path(
+        "threads/<str:thread_id>/comments",
+        CreateThreadCommentAPIView.as_view(),
+        name="create-parent-comment-api",
     ),
     # Proxy view for various API endpoints
     path(
