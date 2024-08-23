@@ -9,8 +9,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.index_manager import ThreadSearchManager
 from forum.models.model_utils import handle_threads_query
+from forum.search.search_manager import ThreadSearchManager
 from forum.serializers.thread import ThreadSerializer
 
 

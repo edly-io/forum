@@ -21,6 +21,47 @@ class Comment(BaseContents):
         query = {**query, "_type": self.content_type}
         return super().override_query(query)
 
+    @classmethod
+    def mapping(cls) -> dict[str, Any]:
+        """
+        Mapping function for the Thread class
+        """
+        return {
+            "dynamic": "false",
+            "properties": {
+                "body": {
+                    "type": "text",
+                    "store": True,
+                    "term_vector": "with_positions_offsets",
+                },
+                "course_id": {"type": "keyword"},
+                "comment_thread_id": {"type": "keyword"},
+                "commentable_id": {"type": "keyword"},
+                "group_id": {"type": "keyword"},
+                "context": {"type": "keyword"},
+                "created_at": {"type": "date"},
+                "updated_at": {"type": "date"},
+                "title": {"type": "keyword"},
+            },
+        }
+
+    @classmethod
+    def doc_to_hash(cls, doc: dict[str, Any]) -> dict[str, Any]:
+        """
+        Converts comment document to the dict
+        """
+        return {
+            "body": doc.get("body"),
+            "course_id": doc.get("course_id"),
+            "comment_thread_id": str(doc.get("comment_thread_id")),
+            "commentable_id": doc.get("commentable_id"),
+            "group_id": doc.get("group_id"),
+            "context": doc.get("context", "course"),
+            "created_at": doc.get("created_at"),
+            "updated_at": doc.get("updated_at"),
+            "title": doc.get("title"),
+        }
+
     def insert(
         self,
         body: str,

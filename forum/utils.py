@@ -1,6 +1,7 @@
 """Forum Utils."""
 
 import logging
+from typing import Any
 
 import requests
 from django.conf import settings
@@ -45,3 +46,14 @@ def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Res
 def str_to_bool(value: str) -> bool:
     """Convert str to bool."""
     return value.lower() in ("true", "1")
+
+
+def get_int_value_from_collection(
+    collection: dict[str, Any], key: str, default_value: int
+) -> int:
+    """
+    Get int value from the collection."""
+    try:
+        return int(collection[key])
+    except (TypeError, ValueError, KeyError):
+        return default_value
