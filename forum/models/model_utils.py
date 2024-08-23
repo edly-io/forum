@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from bson import ObjectId
+from django.core.exceptions import ObjectDoesNotExist
 
 from forum.models import Comment, CommentThread, Contents, Users
 
@@ -695,3 +696,20 @@ def get_username_from_id(user_id: str) -> Optional[str]:
     if username := user.get("username"):
         return username
     return None
+
+
+def validate_object(model: Any, obj_id: str) -> Any:
+    """
+    Validates the object if it exists or not.
+
+    Parameters:
+        model: The model for which to validate the id.
+        id: The ID of the object to validate in the model.
+    Response:
+        raise exception if object does not exists.
+        return object
+    """
+    instance = model().get(obj_id)
+    if not instance:
+        raise ObjectDoesNotExist
+    return instance

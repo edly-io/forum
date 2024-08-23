@@ -49,7 +49,6 @@ def test_comment_post_api(api_client: APIClient) -> None:
             "body": "<p>Child Comment 1</p>",
             "course_id": "course-xyz",
             "user_id": user_id,
-            "parent_id": parent_comment_id,
         },
     )
     assert response.status_code == 200
@@ -203,3 +202,29 @@ def test_update_endorsed_and_body_simultaneously(api_client: APIClient) -> None:
     assert updated_comment["body"] == new_body
     assert updated_comment["endorsement"] is None
     assert updated_comment["endorsed"] is True
+
+
+def test_thread_comment_post_api(api_client: APIClient) -> None:
+    """
+    Test creating a new parent comment.
+    """
+
+    user_id, thread_id, _ = setup_models()
+
+    response = api_client.post_json(
+        f"/api/v2/threads/{thread_id}/comments",
+        data={
+            "body": "<p>Child Comment 1</p>",
+            "course_id": "course-xyz",
+            "user_id": user_id,
+        },
+    )
+    assert response.status_code == 200
+    comment = response.json()
+    assert comment["body"] == "<p>Child Comment 1</p>"
+    assert comment["user_id"] == user_id
+    assert comment["thread_id"] == thread_id
+    assert comment["parent_id"] is None
+    parent_comment = Comment().get(comment["id"])
+    assert parent_comment is not None
+    assert parent_comment["child_count"] == 0
