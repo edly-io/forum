@@ -41,8 +41,8 @@ def create_comment(
     new_comment_id = Comment().insert(
         body=data["body"],
         course_id=data["course_id"],
-        anonymous=data.get("anonymous", False),
-        anonymous_to_peers=data.get("anonymous_to_peers", False),
+        anonymous=str_to_bool(data.get("anonymous", "False")),
+        anonymous_to_peers=str_to_bool(data.get("anonymous_to_peers", "False")),
         author_id=data["user_id"],
         comment_thread_id=thread_id,
         parent_id=parent_id,
@@ -114,7 +114,7 @@ class CommentsAPIView(APIView):
             )
         data = prepare_comment_api_response(
             comment,
-            exclude_fields=["sk"],
+            exclude_fields=["sk", "endorsement"],
         )
         return Response(data, status=status.HTTP_200_OK)
 

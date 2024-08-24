@@ -202,14 +202,6 @@ def remove_vote(thread: dict[str, Any], user: dict[str, Any]) -> bool:
     return update_vote(thread, user, is_deleted=True)
 
 
-def get_comments_count(thread_id: str) -> int:
-    """
-    Returns that comments count in a perticular thread
-    """
-    comments = list(Comment().list(comment_thread_id=ObjectId(thread_id)))
-    return len(comments) if comments else 0
-
-
 def validate_thread_and_user(
     user_id: str, thread_id: str
 ) -> tuple[dict[str, Any], dict[str, Any]]:
