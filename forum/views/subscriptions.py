@@ -180,6 +180,7 @@ class UserSubscriptionAPIView(APIView):
             "sort_key",
             "page",
             "per_page",
+            "request_id'",
         ]
 
         for key in params:

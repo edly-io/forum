@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from bson import ObjectId
 
+from forum.models.threads import CommentThread
 from forum.models.contents import BaseContents
 from forum.models.users import Users
 
@@ -96,10 +97,10 @@ class Comment(BaseContents):
         Returns:
             str: The ID of the inserted document.
         """
-        parent_comment = parent_id and self.get(parent_id)
-        parent_child_count = parent_comment and parent_comment.get("child_count") or 0
-        if parent_comment and not comment_thread_id:
-            comment_thread_id = parent_comment.get("comment_thread_id")
+        if parent_id and not comment_thread_id:
+            parent_comment = self.get(parent_id)
+            if parent_comment:
+                comment_thread_id = parent_comment.get("comment_thread_id")
 
         date = datetime.now()
         comment_data = {
@@ -115,7 +116,6 @@ class Comment(BaseContents):
             "endorsed": False,
             "anonymous": anonymous,
             "anonymous_to_peers": anonymous_to_peers,
-            "parent_id": ObjectId(parent_id) if parent_id else None,
             "author_id": author_id,
             "comment_thread_id": ObjectId(comment_thread_id),
             "child_count": 0,
@@ -124,9 +124,14 @@ class Comment(BaseContents):
             "created_at": date,
             "updated_at": date,
         }
+        if parent_id:
+            comment_data["parent_id"] = ObjectId(parent_id)
+
         result = self._collection.insert_one(comment_data)
         if parent_id:
-            self.update(parent_id, child_count=parent_child_count + 1)
+            self.update_child_count_in_parent_comment(parent_id, 1)
+        if comment_thread_id:
+            self.update_comment_count_in_comment_thread(comment_thread_id, 1)
         return str(result.inserted_id)
 
     def update(
@@ -238,16 +243,77 @@ class Comment(BaseContents):
         """
         comment = self.get(_id)
         parent_comment_id = comment and comment.get("parent_id")
-        parent_comment = parent_comment_id and self.get(parent_comment_id)
-        parent_comment_child_count = parent_comment and parent_comment.get(
-            "child_count",
-        )
+        child_comments_deleted_count = 0
+        if not parent_comment_id:
+            child_comments_deleted_count = self.delete_child_comments(_id)
+
         result = self._collection.delete_one({"_id": ObjectId(_id)})
-        if parent_comment_id and parent_comment_child_count:
-            self.update(parent_comment_id, child_count=parent_comment_child_count - 1)
-        return result.deleted_count
+        if parent_comment_id:
+            self.update_child_count_in_parent_comment(parent_comment_id, -1)
+
+        no_of_comments_delete = result.deleted_count + child_comments_deleted_count
+        comment_thread_id = comment and comment.get("comment_thread_id")
+        if comment_thread_id:
+            self.update_comment_count_in_comment_thread(
+                comment_thread_id, -(int(no_of_comments_delete))
+            )
+        return no_of_comments_delete
 
     def get_author_username(self, author_id: str) -> str | None:
         """Return username for the respective author_id(user_id)"""
         user = Users().get(author_id)
         return user.get("username") if user else None
+
+    def delete_child_comments(self, _id: str) -> int:
+        """
+        Delete child comments from the database based on the id.
+
+        Args:
+            _id: The ID of the parent comment whose child comments will be deleted.
+
+        Returns:
+            The number of child comments deleted.
+        """
+        child_comments_to_delete = self.find({"parent_id": ObjectId(_id)})
+        child_comment_ids_to_delete = [
+            child_comment.get("_id") for child_comment in child_comments_to_delete
+        ]
+        child_comments_deleted = self._collection.delete_many(
+            {"_id": {"$in": child_comment_ids_to_delete}}
+        )
+        return child_comments_deleted.deleted_count
+
+    def update_child_count_in_parent_comment(self, parent_id: str, count: int) -> None:
+        """
+        Update(increment/decrement) child_count in parent comment.
+
+        Args:
+            parent_id: The ID of the parent comment whose child_count will be updated.
+            count: It can be any number.
+                   If positive, this function will increase child_count by the count.
+                   If negative, this function will decrease child_count by the count.
+
+        Returns:
+            None.
+        """
+        update_child_count_query = {"$inc": {"child_count": count}}
+        self.update_count(parent_id, update_child_count_query)
+
+    def update_comment_count_in_comment_thread(
+        self, comment_thread_id: str, count: int
+    ) -> None:
+        """
+        Update(increment/decrement) comment_count in comment thread.
+
+        Args:
+            comment_thread_id: The ID of the comment thread
+                                whose comment_count will be updated.
+            count: It can be any number.
+                    If positive, this function will increase comment_count by the count.
+                    If negative, this function will decrease comment_count by the count.
+
+        Returns:
+            None.
+        """
+        update_comment_count_query = {"$inc": {"comment_count": count}}
+        CommentThread().update_count(comment_thread_id, update_comment_count_query)

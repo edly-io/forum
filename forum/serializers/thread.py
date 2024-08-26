@@ -8,7 +8,6 @@ from rest_framework import serializers
 
 from forum.models.model_utils import (
     get_abuse_flagged_count,
-    get_comments_count,
     get_endorsed,
     get_read_states,
     get_username_from_id,
@@ -32,7 +31,7 @@ class ThreadSerializer(ContentSerializer):
         tags (list): A list of tags associated with the thread.
         group_id (str or None): The ID of the group associated with the thread, if any.
         pinned (bool): Whether the thread is pinned at the top of the list.
-        comments_count (int): The number of comments on the thread.
+        comment_count (int): The number of comments on the thread.
 
     This serializer extends the `ThreadSerializer` and customizes fields based on various context
     parameters. It manages fields related to read state, comment counts, endorsements, abuse flags,
@@ -59,7 +58,7 @@ class ThreadSerializer(ContentSerializer):
     tags = serializers.ListField(default=[])
     group_id = serializers.CharField(allow_null=True, default=None)
     pinned = serializers.BooleanField(default=False)
-    comments_count = serializers.SerializerMethodField()
+    comment_count = serializers.IntegerField(default=0)
     read = serializers.SerializerMethodField()
     unread_comments_count = serializers.SerializerMethodField()
     endorsed = serializers.SerializerMethodField()
@@ -126,7 +125,7 @@ class ThreadSerializer(ContentSerializer):
             course_id = obj["course_id"]
             thread_key = obj["id"]
             is_read, _ = get_read_states([obj], user_id, course_id).get(
-                thread_key, (False, obj["comments_count"])
+                thread_key, (False, obj["comment_count"])
             )
             return is_read
         return None
@@ -148,7 +147,7 @@ class ThreadSerializer(ContentSerializer):
             course_id = obj["course_id"]
             thread_key = obj["id"]
             _, unread_count = get_read_states([obj], user_id, course_id).get(
-                thread_key, (False, obj["comments_count"])
+                thread_key, (False, obj["comment_count"])
             )
             return unread_count
         return None
@@ -242,11 +241,6 @@ class ThreadSerializer(ContentSerializer):
     def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""
         raise NotImplementedError
-
-    def get_comments_count(self, obj: dict[str, Any]) -> int:
-        """Retrieve the count of comments for the given thread."""
-        count = get_comments_count(obj["_id"])
-        return count
 
     def get_closed_by(self, obj: dict[str, Any]) -> Optional[str]:
         """Retrieve the username of the person who closed the object."""

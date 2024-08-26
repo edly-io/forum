@@ -97,6 +97,20 @@ class BaseContents(MongoBaseModel):
         )
         return result.modified_count
 
+    def update_count(self, content_id: str, query: dict[str, Any]) -> int:
+        """
+        Updates count of a field in the content document based on query.
+
+        Args:
+            content_id (str): The id of the content(Commentthread id or Comment id) model.
+            query (dict[str, Any]): Query to update the count in a specific field.
+        """
+        result = self._collection.update_one(
+            {"_id": ObjectId(content_id)},
+            query,
+        )
+        return result.modified_count
+
 
 class Contents(BaseContents):
     """
