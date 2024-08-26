@@ -400,14 +400,14 @@ def get_endorsed(thread_ids: list[str]) -> dict[str, bool]:
     Returns:
         dict[str, bool]: A dictionary mapping thread IDs to their endorsed status (True if endorsed, False otherwise).
     """
-    endorsed_threads = Contents().find(
+    endorsed_comments = Comment().find(
         {
             "comment_thread_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
             "endorsed": True,
         }
     )
 
-    return {str(item["comment_thread_id"]): True for item in endorsed_threads}
+    return {str(item["comment_thread_id"]): True for item in endorsed_comments}
 
 
 def get_user_read_state_by_course_id(

@@ -52,8 +52,20 @@ def get_int_value_from_collection(
     collection: dict[str, Any], key: str, default_value: int
 ) -> int:
     """
-    Get int value from the collection."""
+    Get int value from the collection.
+    """
     try:
         return int(collection[key])
     except (TypeError, ValueError, KeyError):
         return default_value
+
+
+def get_str_value_from_collection(collection: dict[str, Any], key: str) -> str:
+    """
+    Get str value from the collection.
+    """
+    try:
+        value = str(collection[key])
+    except (TypeError, ValueError, KeyError) as exception:
+        raise ValueError("Invalud Value") from exception
+    return value

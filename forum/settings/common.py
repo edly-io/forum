@@ -24,3 +24,4 @@ def plugin_settings(settings: Any) -> None:
             "port": 9200,
         }
     ]
+    settings.FORUM_ENABLE_ELASTIC_SEARCH = True
