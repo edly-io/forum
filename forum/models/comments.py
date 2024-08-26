@@ -5,8 +5,8 @@ from typing import Any, Optional
 
 from bson import ObjectId
 
-from forum.models.threads import CommentThread
 from forum.models.contents import BaseContents
+from forum.models.threads import CommentThread
 from forum.models.users import Users
 
 

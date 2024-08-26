@@ -5,8 +5,8 @@ Handlers for the forum app.
 import logging
 from typing import Any, Dict
 
-from forum.utils import get_str_value_from_collection
 from forum.search.es_helper import ElasticsearchHelper
+from forum.utils import get_str_value_from_collection
 
 log = logging.getLogger(__name__)
 

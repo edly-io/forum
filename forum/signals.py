@@ -2,8 +2,8 @@
 Signals for the forum App.
 """
 
-from django.dispatch import Signal
 from django.conf import settings
+from django.dispatch import Signal
 
 from forum.handlers import (
     handle_comment_deletion,
