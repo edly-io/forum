@@ -5,7 +5,7 @@ Helper for managing elastic search queries.
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Any, Iterator, Optional, Union
+from typing import Any, Iterator
 
 from django.conf import settings
 from elasticsearch import Elasticsearch, exceptions, helpers
@@ -20,6 +20,7 @@ class ElasticsearchHelper:
     """
     Helper class for managing Forum indices.
     """
+    INDEX_REGEX = r"_\d{14}$"
 
     def __init__(self) -> None:
         """
@@ -388,7 +389,7 @@ class ElasticsearchHelper:
         Returns:
             str: The base name of the index.
         """
-        return re.sub(r"_\d{14}$", "", index_name)
+        return re.sub(self.INDEX_REGEX, "", index_name)
 
     def update_document(
         self, index_name: str, doc_id: str, update_data: dict[str, Any]

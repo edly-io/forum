@@ -58,8 +58,7 @@ class ThreadSerializer(ContentSerializer):
     tags = serializers.ListField(default=[])
     group_id = serializers.CharField(allow_null=True, default=None)
     pinned = serializers.BooleanField(default=False)
-    comment_count = serializers.IntegerField()
-    comments_count = serializers.SerializerMethodField()
+    comments_count = serializers.IntegerField(required=False, source="comment_count")
     read = serializers.SerializerMethodField()
     unread_comments_count = serializers.SerializerMethodField()
     endorsed = serializers.SerializerMethodField()
@@ -108,12 +107,6 @@ class ThreadSerializer(ContentSerializer):
             self.fields.pop("unread_comments_count", None)
 
         super().__init__(*args, **kwargs)
-
-    def get_comments_count(self, obj: dict[str, Any]) -> int:
-        """
-        Map comments_count to the comment_count.
-        """
-        return obj["comment_count"]
 
     def get_read(self, obj: dict[str, Any]) -> Optional[bool]:
         """
@@ -235,7 +228,6 @@ class ThreadSerializer(ContentSerializer):
         """
         data = super().to_representation(instance)
         data.pop("closed_by_id")
-        data.pop("comment_count")
         if not data.get("abuse_flagged_count", None):
             data.pop("abuse_flagged_count", None)
         if not data.get("closed_by", None):

@@ -6,6 +6,7 @@ from typing import Any, Optional
 from bson import ObjectId
 
 from forum.models.contents import BaseContents
+from forum.utils import get_handler_by_name
 
 
 class CommentThread(BaseContents):
@@ -20,11 +21,9 @@ class CommentThread(BaseContents):
         """Delete CommentThread"""
         result = super().delete(_id)
         if result:
-            # To avoid circular imports
-            # pylint: disable=import-outside-toplevel
-            from forum.signals import comment_thread_deleted
-
-            comment_thread_deleted.send(sender=self.__class__, comment_thread_id=_id)
+            get_handler_by_name("comment_thread_deleted").send(
+                sender=self.__class__, comment_thread_id=_id
+            )
         return result
 
     @classmethod
@@ -162,11 +161,7 @@ class CommentThread(BaseContents):
         }
         result = self._collection.insert_one(thread_data)
         if result:
-            # To avoid circular imports
-            # pylint: disable=import-outside-toplevel
-            from forum.signals import comment_thread_inserted
-
-            comment_thread_inserted.send(
+            get_handler_by_name("comment_thread_inserted").send(
                 sender=self.__class__, comment_thread_id=str(result.inserted_id)
             )
         return str(result.inserted_id)
@@ -255,11 +250,7 @@ class CommentThread(BaseContents):
             {"$set": update_data},
         )
         if result:
-            # To avoid circular imports
-            # pylint: disable=import-outside-toplevel
-            from forum.signals import comment_thread_updated
-
-            comment_thread_updated.send(
+            get_handler_by_name("comment_thread_updated").send(
                 sender=self.__class__, comment_thread_id=thread_id
             )
         return result.modified_count

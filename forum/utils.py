@@ -5,6 +5,7 @@ from typing import Any
 
 import requests
 from django.conf import settings
+from django.dispatch import Signal
 from django.http import HttpRequest
 from requests.models import Response
 
@@ -69,3 +70,33 @@ def get_str_value_from_collection(collection: dict[str, Any], key: str) -> str:
     except (TypeError, ValueError, KeyError) as exception:
         raise ValueError("Invalud Value") from exception
     return value
+
+
+def get_handler_by_name(name: str) -> Signal:
+    """
+    Returns the signal handler by name.
+
+    Args:
+        name (str): The name of the signal.
+
+    Returns:
+        Signal: The corresponding signal object.
+    """
+    # TODO: Remove this function when we shift to MySQL as we can receive the signals
+    # directly from the model updates using pose_save and other methods.
+    from forum import signals  # pylint: disable=cyclic-import import-outside-toplevel
+
+    if name == "comment_deleted":
+        return signals.comment_deleted
+    elif name == "comment_thread_deleted":
+        return signals.comment_thread_deleted
+    elif name == "comment_inserted":
+        return signals.comment_inserted
+    elif name == "comment_thread_inserted":
+        return signals.comment_thread_inserted
+    elif name == "comment_updated":
+        return signals.comment_updated
+    elif name == "comment_thread_updated":
+        return signals.comment_thread_updated
+    else:
+        raise ValueError(f"No signal found for name: {name}")

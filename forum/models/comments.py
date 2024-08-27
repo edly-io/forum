@@ -8,6 +8,7 @@ from bson import ObjectId
 from forum.models.contents import BaseContents
 from forum.models.threads import CommentThread
 from forum.models.users import Users
+from forum.utils import get_handler_by_name
 
 
 class Comment(BaseContents):
@@ -133,11 +134,7 @@ class Comment(BaseContents):
         if comment_thread_id:
             self.update_comment_count_in_comment_thread(comment_thread_id, 1)
         if result:
-            # To avoid circular imports
-            # pylint: disable=import-outside-toplevel
-            from forum.signals import comment_inserted
-
-            comment_inserted.send(
+            get_handler_by_name("comment_inserted").send(
                 sender=self.__class__, comment_id=str(result.inserted_id)
             )
         return str(result.inserted_id)
@@ -238,11 +235,9 @@ class Comment(BaseContents):
             {"$set": update_data},
         )
         if result:
-            # To avoid circular imports
-            # pylint: disable=import-outside-toplevel
-            from forum.signals import comment_updated
-
-            comment_updated.send(sender=self.__class__, comment_id=comment_id)
+            get_handler_by_name("comment_updated").send(
+                sender=self.__class__, comment_id=comment_id
+            )
 
         return result.modified_count
 
@@ -273,11 +268,9 @@ class Comment(BaseContents):
                 comment_thread_id, -(int(no_of_comments_delete))
             )
         if result:
-            # To avoid circular imports
-            # pylint: disable=import-outside-toplevel
-            from forum.signals import comment_deleted
-
-            comment_deleted.send(sender=self.__class__, comment_id=_id)
+            get_handler_by_name("comment_deleted").send(
+                sender=self.__class__, comment_id=_id
+            )
 
         return no_of_comments_delete
 
