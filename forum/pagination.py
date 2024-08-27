@@ -1,7 +1,6 @@
 """Pagination class for forum api."""
 
 from typing import Any
-
 from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.request import Request

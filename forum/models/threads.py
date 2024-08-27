@@ -6,7 +6,6 @@ from typing import Any, Optional
 from bson import ObjectId
 
 from forum.models.contents import BaseContents
-from forum.utils import get_handler_by_name
 
 
 class CommentThread(BaseContents):
@@ -16,15 +15,6 @@ class CommentThread(BaseContents):
 
     index_name = "comment_threads"
     content_type = "CommentThread"
-
-    def delete(self, _id: str) -> int:
-        """Delete CommentThread"""
-        result = super().delete(_id)
-        if result:
-            get_handler_by_name("comment_thread_deleted").send(
-                sender=self.__class__, comment_thread_id=_id
-            )
-        return result
 
     @classmethod
     def mapping(cls) -> dict[str, Any]:
@@ -160,10 +150,6 @@ class CommentThread(BaseContents):
             "historical_abuse_flaggers": historical_abuse_flaggers,
         }
         result = self._collection.insert_one(thread_data)
-        if result:
-            get_handler_by_name("comment_thread_inserted").send(
-                sender=self.__class__, comment_thread_id=str(result.inserted_id)
-            )
         return str(result.inserted_id)
 
     def update(
@@ -249,8 +235,4 @@ class CommentThread(BaseContents):
             {"_id": ObjectId(thread_id)},
             {"$set": update_data},
         )
-        if result:
-            get_handler_by_name("comment_thread_updated").send(
-                sender=self.__class__, comment_thread_id=thread_id
-            )
         return result.modified_count

@@ -58,7 +58,7 @@ class ThreadSerializer(ContentSerializer):
     tags = serializers.ListField(default=[])
     group_id = serializers.CharField(allow_null=True, default=None)
     pinned = serializers.BooleanField(default=False)
-    comments_count = serializers.IntegerField(required=False, source="comment_count")
+    comment_count = serializers.IntegerField(default=0)
     read = serializers.SerializerMethodField()
     unread_comments_count = serializers.SerializerMethodField()
     endorsed = serializers.SerializerMethodField()
@@ -121,9 +121,9 @@ class ThreadSerializer(ContentSerializer):
         if self.include_read_state:
             if isinstance(obj, dict) and obj.get("read") is not None:
                 return obj.get("read", True)
-            user_id = obj["author_id"]
+            user_id = obj["user_id"]
             course_id = obj["course_id"]
-            thread_key = obj["_id"]
+            thread_key = obj["id"]
             is_read, _ = get_read_states([obj], user_id, course_id).get(
                 thread_key, (False, obj["comment_count"])
             )
@@ -143,9 +143,9 @@ class ThreadSerializer(ContentSerializer):
         if self.include_read_state:
             if isinstance(obj, dict) and obj.get("unread_comments_count") is not None:
                 return obj.get("unread_comments_count", 0)
-            user_id = obj["author_id"]
+            user_id = obj["user_id"]
             course_id = obj["course_id"]
-            thread_key = obj["_id"]
+            thread_key = obj["id"]
             _, unread_count = get_read_states([obj], user_id, course_id).get(
                 thread_key, (False, obj["comment_count"])
             )
@@ -165,7 +165,7 @@ class ThreadSerializer(ContentSerializer):
         if self.include_endorsed:
             if isinstance(obj, dict) and obj.get("endorsed") is not None:
                 return obj.get("endorsed", True)
-            thread_key = obj["_id"]
+            thread_key = obj["id"]
             return get_endorsed([thread_key]).get(thread_key, False)
         return None
 
@@ -182,7 +182,7 @@ class ThreadSerializer(ContentSerializer):
         if self.count_flagged:
             if isinstance(obj, dict) and obj.get("abuse_flagged_count") is not None:
                 return obj.get("abuse_flagged_count", 0)
-            thread_key = obj["_id"]
+            thread_key = obj["id"]
             return get_abuse_flagged_count([thread_key]).get(thread_key, 0)
         return 0
 
