@@ -97,5 +97,5 @@ def get_handler_by_name(name: str) -> Signal:
 
     try:
         return map_signals[name]
-    except KeyError:
-        raise ValueError(f"No signal found for name: {name}")
+    except KeyError as exc:
+        raise KeyError(f"No signal found for the name: {name}") from exc
