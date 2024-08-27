@@ -19,3 +19,6 @@ def plugin_settings(settings: Any) -> None:
     settings.ELASTIC_SEARCH_CONFIG = settings.ENV_TOKENS.get(
         "ELASTIC_SEARCH_CONFIG", settings.ELASTIC_SEARCH_CONFIG
     )
+    settings.FORUM_ENABLE_ELASTIC_SEARCH = settings.ENV_TOKENS.get(
+        "FORUM_ENABLE_ELASTIC_SEARCH", settings.FORUM_ENABLE_ELASTIC_SEARCH
+    )
