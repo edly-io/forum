@@ -5,7 +5,7 @@ Helper for managing elastic search queries.
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Any, Iterator, Optional, Union
+from typing import Any, Iterator
 
 from django.conf import settings
 from elasticsearch import Elasticsearch, exceptions, helpers
@@ -21,32 +21,23 @@ class ElasticsearchHelper:
     Helper class for managing Forum indices.
     """
 
-    temporary_index_names: list[str] = []
+    INDEX_REGEX = r"_\d{14}$"
 
     def __init__(self) -> None:
         """
         Initialize the Elasticsearch client and sets up the models to be indexed.
         """
-        self.client: Elasticsearch = Elasticsearch(settings.ELASTIC_SEARCH_CONFIG)
         self.models = [CommentThread, Comment]
+        self.client: Elasticsearch = Elasticsearch(settings.ELASTIC_SEARCH_CONFIG)
 
     def index_names(self) -> list[str]:
         """
-        Retrieve the index names for the configured models.
+        Retrieve the base index names for the configured models.
 
         Returns:
-            list[str]: List of index names.
+            list[str]: List of base index names.
         """
         return [model.index_name for model in self.models]
-
-    def add_temporary_index_names(self, index_names: list[str]) -> None:
-        """
-        Add the provided index names to the temporary index list.
-
-        Args:
-            index_names (list[str]): List of index names to add.
-        """
-        self.temporary_index_names = index_names
 
     def rebuild_indices(
         self, batch_size: int = 500, extra_catchup_minutes: int = 5
@@ -60,6 +51,7 @@ class ElasticsearchHelper:
         """
         initial_start_time = datetime.now()
 
+        # Create new indices and switch aliases
         index_names = self.create_indices()
         for index_name in index_names:
             current_batch = 1
@@ -68,25 +60,16 @@ class ElasticsearchHelper:
                 self.batch_import_post_process(response, current_batch)
                 current_batch += 1
 
-        first_catchup_start_time = datetime.now()
         adjusted_start_time = initial_start_time - timedelta(
             minutes=extra_catchup_minutes
         )
         self.catchup_indices(index_names, adjusted_start_time, batch_size)
 
-        alias_names = []
+        # Update aliases to point to new indices
         for index_name in index_names:
-            current_batch = 1
             model = self.get_index_model_rel(index_name)
-            alias_names.append(model.index_name)
             self.move_alias(model.index_name, index_name, force_delete=True)
 
-        adjusted_start_time = first_catchup_start_time - timedelta(
-            minutes=extra_catchup_minutes
-        )
-        self.catchup_indices(alias_names, adjusted_start_time, batch_size)
-
-        self.add_temporary_index_names(index_names)
         log.info("Rebuild indices complete.")
 
     def get_index_model_rel(self, index_name: str) -> BaseContents:
@@ -108,7 +91,7 @@ class ElasticsearchHelper:
         self, index_names: list[str], start_time: datetime, batch_size: int = 100
     ) -> None:
         """
-        Catche up the indices by importing documents updated after the specified start time.
+        Catch up the indices by importing documents updated after the specified start time.
 
         Args:
             index_names (list[str]): List of index names to catch up.
@@ -132,7 +115,7 @@ class ElasticsearchHelper:
             list[str]: List of newly created index names.
         """
         index_names = []
-        time_now = datetime.now().strftime("%Y%m%d%H%M%S%f")
+        time_now = datetime.now().strftime("%Y%m%d%H%M%S")
 
         for model in self.models:
             index_name = f"{model.index_name}_{time_now}"
@@ -153,20 +136,45 @@ class ElasticsearchHelper:
         self.client.indices.delete(index=name)
         log.info(f"Deleted index: {name}.")
 
-    def delete_indices(self) -> None:
+    def delete_unused_indices(self) -> int:
         """
-        Delete all temporary indices.
+        Delete all Elasticsearch indices that are not the latest for each model type.
+
+        This method fetches all indices matching the patterns from the models, determines the latest index
+        for each model type, and deletes all other indices.
+
+        Returns:
+            int: The number of indices deleted.
         """
-        if self.temporary_index_names:
-            try:
-                self.client.indices.delete(index=self.temporary_index_names)
-                log.info(f"Indices {self.temporary_index_names} are deleted.")
-            except exceptions.NotFoundError as error:
-                log.error(
-                    f"Enable to delete indices {self.temporary_index_names}: {error}"
-                )
-        else:
-            log.info("No Indices to delete.")
+        # Fetch all indices related to models
+        all_indices = [
+            index
+            for pattern in self.index_names()
+            for index in self.client.indices.get(f"{pattern}*")
+        ]
+
+        # Determine the latest indices
+        latest_indices: dict[str, Any] = {}
+        for index_name in all_indices:
+            base_name = self.get_base_index_name(index_name)
+            match = re.search(r"\d{14}", index_name)
+            if match:
+                timestamp = datetime.strptime(match.group(), "%Y%m%d%H%M%S")
+                if (
+                    base_name not in latest_indices
+                    or timestamp > latest_indices[base_name][1]
+                ):
+                    latest_indices[base_name] = (index_name, timestamp)
+
+        # Delete all indices except the latest ones
+        indices_to_delete = set(all_indices) - {
+            name for name, _ in latest_indices.values()
+        }
+        if indices_to_delete:
+            self.client.indices.delete(index=",".join(indices_to_delete))
+            log.info(f"Deleted unused indices: {indices_to_delete}")
+
+        return len(indices_to_delete)
 
     def batch_import_post_process(
         self, response: tuple[int, Any], batch_number: int
@@ -185,64 +193,6 @@ class ElasticsearchHelper:
         log.info(
             f"Imported {success_count} documents to the batch {batch_number} into the index"
         )
-
-    def get_index_shard_count(self, name: str) -> int:
-        """
-        Retrieve the shard count for the specified index.
-
-        Args:
-            name (str): The name of the index.
-
-        Returns:
-            int: Number of shards for the index.
-        """
-        es_settings = self.client.indices.get_settings(index=name)
-        return int(es_settings[name]["settings"]["index"]["number_of_shards"])
-
-    def exists_alias(self, alias_name: str) -> bool:
-        """
-        Check if an alias exists.
-
-        Args:
-            alias_name (str): The alias name to check.
-
-        Returns:
-            bool: True if the alias exists, False otherwise.
-        """
-        return self.client.indices.exists_alias(name=alias_name)
-
-    def exists_indices(self) -> bool:
-        """
-        Check if any of the temporary indices exist.
-
-        Returns:
-            bool: True if any temporary index exists, False otherwise.
-        """
-        return self.client.indices.exists(index=self.temporary_index_names)
-
-    def exists_aliases(self, aliases: list[str]) -> bool:
-        """
-        Check if the specified aliases exist.
-
-        Args:
-            aliases (list[str]): List of alias names to check.
-
-        Returns:
-            bool: True if all aliases exist, False otherwise.
-        """
-        return self.client.indices.exists_alias(name=aliases)
-
-    def exists_index(self, index_name: str) -> bool:
-        """
-        Check if a specific index exists.
-
-        Args:
-            index_name (str): The name of the index to check.
-
-        Returns:
-            bool: True if the index exists, False otherwise.
-        """
-        return self.client.indices.exists(index=index_name)
 
     def move_alias(
         self, alias_name: str, index_name: str, force_delete: bool = False
@@ -297,13 +247,14 @@ class ElasticsearchHelper:
 
     def refresh_indices(self) -> None:
         """
-        Refresh the indices associated with the temporary index names.
+        Refresh the indices associated with the current active aliases.
 
         Raises:
             ValueError: If no indices are available to refresh.
         """
-        if self.temporary_index_names:
-            self.client.indices.refresh(index=self.index_names())
+        active_index_names = self.get_active_index_names()
+        if active_index_names:
+            self.client.indices.refresh(index=active_index_names)
         else:
             raise ValueError("No indices to refresh")
 
@@ -319,7 +270,6 @@ class ElasticsearchHelper:
             for index_name in index_names:
                 model = self.get_index_model_rel(index_name)
                 self.move_alias(model.index_name, index_name, force_delete=True)
-            self.add_temporary_index_names(index_names)
         else:
             log.info("Skipping initialization. Indices already exist.")
 
@@ -340,52 +290,65 @@ class ElasticsearchHelper:
             expected_mapping = model.mapping()
             actual_mapping = actual_mappings[index_name]["mappings"]
 
-            if set(actual_mapping.keys()) != set(expected_mapping.keys()):
-                raise ValueError(
-                    f"Actual mapping [{list(actual_mapping.keys())}] "
-                    f"does not match expected mapping [{list(expected_mapping.keys())}]."
-                )
+            if not expected_mapping.items() <= actual_mapping.items():
+                raise ValueError(f"Mapping mismatch for index {index_name}!")
 
-            actual_props = actual_mapping["properties"]
-            expected_props = expected_mapping["properties"]
-            missing_fields = [
-                prop for prop in expected_props if prop not in actual_props
-            ]
-            invalid_types = [
-                f"'{prop}' type '{actual_type['type']}' should be '{expected_type['type']}'"
-                for prop, expected_type in expected_props.items()
-                if (actual_type := actual_props.get(prop))
-                and actual_type["type"] != expected_type["type"]
-            ]
+        log.info("Index validation complete.")
 
-            if missing_fields or invalid_types:
-                raise ValueError(
-                    f"Index '{model.index_name}' has missing or invalid field mappings.  "
-                    f"Missing fields: {missing_fields}. Invalid types: {invalid_types}."
-                )
+    def exists_index(self, name: str) -> bool:
+        """
+        Check if an index exists.
 
-            log.info(
-                f"Passed: Index '{model.index_name}' exists with up-to-date mappings."
-            )
+        Args:
+            name (str): The name of the index to check.
+
+        Returns:
+            bool: True if the index exists, False otherwise.
+        """
+        return self.client.indices.exists(index=name)
+
+    def exists_alias(self, name: str) -> bool:
+        """
+        Check if an alias exists.
+
+        Args:
+            name (str): The name of the alias to check.
+
+        Returns:
+            bool: True if the alias exists, False otherwise.
+        """
+        return self.client.indices.exists_alias(name=name)
+
+    def exists_aliases(self, names: list[str]) -> bool:
+        """
+        Check if all aliases in the provided list exist.
+
+        Args:
+            names (list[str]): List of alias names to check.
+
+        Returns:
+            bool: True if all aliases exist, False otherwise.
+        """
+        return all(self.exists_alias(name) for name in names)
 
     def _import_to_es(
         self,
         model: BaseContents,
         index_name: str,
-        batch_size: int,
-        query: Optional[dict[str, Any]] = None,
-    ) -> Iterator[tuple[int, Union[int, list[Any]]]]:
+        batch_size: int = 500,
+        query: dict[str, Any] | None = None,
+    ) -> Iterator[tuple[int, Any]]:
         """
-        Import data from the given model into Elasticsearch in batches.
+        Import documents from the database into Elasticsearch.
 
         Args:
-            model: The model to import data from.
-            index_name (str): The name of the Elasticsearch index.
-            batch_size (int): Number of documents to process in each batch.
-            query (dict, optional): MongoDB query to filter documents. Defaults to None.
+            model (BaseContents): The model representing the documents.
+            index_name (str): The name of the index to import into.
+            batch_size (int): Number of documents to import in each batch.
+            query (dict[str, Any], optional): Query to filter documents for import.
 
         Yields:
-            tuple[int, list[dict]]: tuple containing the count of successful imports and a list of errors.
+            Iterator[tuple[int, Any]]: Number of successful imports and any errors.
         """
         cursor = model.find(query or {}).batch_size(batch_size)
         actions = []
@@ -402,56 +365,81 @@ class ElasticsearchHelper:
         if actions:
             yield helpers.bulk(self.client, actions)
 
-    def delete_unused_indices(self) -> int:
+    def get_active_index_names(self) -> str:
         """
-        Delete all Elasticsearch indices that are not the latest for each model type.
+        Retrieve the names of the indices currently associated with the aliases.
 
-        This method fetches all indices matching the patterns from the models, determines the latest index
-        for each model type, and deletes all other indices.
-
-        Raises:
-            Exception: If there's an error during the deletion process.
+        Returns:
+            str: Comma-separated list of active index names.
         """
-        # Get index patterns from model index names
-        index_patterns = [f"{pattern}*" for pattern in self.index_names()]
+        return ",".join(
+            [
+                list(self.client.indices.get_alias(name=index_name).keys())[0]
+                for index_name in self.index_names()
+                if self.exists_alias(index_name)
+            ]
+        )
 
-        # Get all indices that match the patterns
-        all_indices = []
-        for pattern in index_patterns:
-            indices = self.client.indices.get(pattern)
-            all_indices.extend(indices.keys())
+    def get_base_index_name(self, index_name: str) -> str:
+        """
+        Extract the base name of an index by removing the timestamp.
 
-        # Determine the latest index for each model type
-        latest_indices: dict[str, Any] = {}
-        for index_name in all_indices:
-            for base_name in self.index_names():
-                if index_name.startswith(base_name):
-                    match = re.search(r"\d{14}", index_name)
-                    if match:
-                        index_timestamp_str = match.group()
-                        index_timestamp = datetime.strptime(
-                            index_timestamp_str, "%Y%m%d%H%M%S"
-                        )
+        Args:
+            index_name (str): The full index name.
 
-                        if (
-                            base_name not in latest_indices
-                            or index_timestamp > latest_indices[base_name][1]
-                        ):
-                            latest_indices[base_name] = (
-                                index_name,
-                                index_timestamp,
-                            )
+        Returns:
+            str: The base name of the index.
+        """
+        return re.sub(self.INDEX_REGEX, "", index_name)
 
-        # List of all indices to delete (all indices except the latest ones)
-        indices_to_keep = {info[0] for info in latest_indices.values()}
-        indices_to_delete = set(all_indices) - indices_to_keep
+    def update_document(
+        self, index_name: str, doc_id: str, update_data: dict[str, Any]
+    ) -> None:
+        """
+        Update a single document in the specified index.
 
-        if not indices_to_delete:
-            log.info("No old indices to delete.")
-            return 0
+        Args:
+            index_name (str): The name of the index containing the document.
+            doc_id (str): The ID of the document to update.
+            update_data (dict): The data to update in the document.
+        """
+        try:
+            self.client.update(index=index_name, id=doc_id, body={"doc": update_data})
+            log.info(f"Document {doc_id} in index {index_name} updated successfully.")
+        except exceptions.NotFoundError:
+            log.error(f"Document {doc_id} not found in index {index_name}.")
+        except exceptions.RequestError as e:
+            log.error(f"Error updating document {doc_id} in index {index_name}: {e}")
 
-        # Delete old indices
-        self.client.indices.delete(index=",".join(indices_to_delete))
-        log.info(f"Deleted unused indices: {indices_to_delete}")
+    def delete_document(self, index_name: str, doc_id: str) -> None:
+        """
+        Delete a single document from the specified index.
 
-        return len(indices_to_delete)
+        Args:
+            index_name (str): The name of the index containing the document.
+            doc_id (str): The ID of the document to delete.
+        """
+        try:
+            self.client.delete(index=index_name, id=doc_id)
+            log.info(f"Document {doc_id} in index {index_name} deleted successfully.")
+        except exceptions.NotFoundError:
+            log.error(f"Document {doc_id} not found in index {index_name}.")
+        except exceptions.RequestError as e:
+            log.error(f"Error deleting document {doc_id} from index {index_name}: {e}")
+
+    def index_document(
+        self, index_name: str, doc_id: str, document: dict[str, Any]
+    ) -> None:
+        """
+        Index a single document in the specified Elasticsearch index.
+
+        Args:
+            index_name (str): The name of the index to add the document to.
+            doc_id (str): The ID of the document.
+            document (dict): The document to be indexed.
+        """
+        try:
+            self.client.index(index=index_name, id=doc_id, body=document)
+            log.info(f"Document {doc_id} indexed in {index_name}")
+        except exceptions.RequestError as e:
+            log.error(f"Error indexing document {doc_id} in {index_name}: {e}")
