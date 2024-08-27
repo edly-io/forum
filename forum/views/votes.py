@@ -241,18 +241,16 @@ class CommentVoteView(APIView):
         Returns:
             Response: The HTTP response with the result of the vote operation.
         """
+        vote_serializer = VotesInputSerializer(data=request.data)
+        if not vote_serializer.is_valid():
+            return Response(vote_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            vote_serializer = VotesInputSerializer(data=request.data)
-            if not vote_serializer.is_valid():
-                return Response(
-                    vote_serializer.errors, status=status.HTTP_400_BAD_REQUEST
-                )
+            comment, user = self._get_comment_and_user(
+                comment_id, request.data.get("user_id", "")
+            )
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        comment, user = self._get_comment_and_user(
-            comment_id, request.data.get("user_id", "")
-        )
 
         if vote_serializer.data["value"] == "up":
             is_updated = upvote_content(comment, user)
