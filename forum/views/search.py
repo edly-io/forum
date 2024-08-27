@@ -5,6 +5,7 @@ Search API Views
 from typing import Any, Optional
 
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -27,12 +28,17 @@ class SearchThreadsView(APIView):
         get_group_ids_from_params(params): Extracts group IDs from the query parameters.
     """
 
+    permission_classes = (AllowAny,)
+
     def _validate_request(self, request: Request) -> None:
         """
         Validate query params in the request.
         """
+        course_id = request.GET.get("course_id")
         text = request.GET.get("text")
         sort_key = request.GET.get("sort_key")
+        if not course_id:
+            raise ValueError("course_id is required")
         if not text:
             raise ValueError("text is required")
         if sort_key and sort_key not in ["activity", "comments", "date", "votes"]:
@@ -84,7 +90,7 @@ class SearchThreadsView(APIView):
         try:
             self._validate_request(request=request)
         except ValueError as error:
-            Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
 
         text: str = request.GET.get("text", "")
         context: str = request.GET.get("context", "course")

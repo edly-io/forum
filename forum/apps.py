@@ -27,3 +27,9 @@ class ForumConfig(AppConfig):
             }
         },
     }
+
+    def ready(self) -> None:
+        """
+        Import Signals.
+        """
+        import forum.signals  # pylint: disable=import-outside-toplevel, unused-import

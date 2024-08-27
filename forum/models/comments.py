@@ -5,9 +5,10 @@ from typing import Any, Optional
 
 from bson import ObjectId
 
-from forum.models.threads import CommentThread
 from forum.models.contents import BaseContents
+from forum.models.threads import CommentThread
 from forum.models.users import Users
+from forum.utils import get_handler_by_name
 
 
 class Comment(BaseContents):
@@ -132,6 +133,10 @@ class Comment(BaseContents):
             self.update_child_count_in_parent_comment(parent_id, 1)
         if comment_thread_id:
             self.update_comment_count_in_comment_thread(comment_thread_id, 1)
+        if result:
+            get_handler_by_name("comment_inserted").send(
+                sender=self.__class__, comment_id=str(result.inserted_id)
+            )
         return str(result.inserted_id)
 
     def update(
@@ -229,6 +234,11 @@ class Comment(BaseContents):
             {"_id": ObjectId(comment_id)},
             {"$set": update_data},
         )
+        if result:
+            get_handler_by_name("comment_updated").send(
+                sender=self.__class__, comment_id=comment_id
+            )
+
         return result.modified_count
 
     def delete(self, _id: str) -> int:
@@ -257,6 +267,11 @@ class Comment(BaseContents):
             self.update_comment_count_in_comment_thread(
                 comment_thread_id, -(int(no_of_comments_delete))
             )
+        if result:
+            get_handler_by_name("comment_deleted").send(
+                sender=self.__class__, comment_id=_id
+            )
+
         return no_of_comments_delete
 
     def get_author_username(self, author_id: str) -> str | None:
