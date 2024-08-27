@@ -74,7 +74,7 @@ def get_str_value_from_collection(collection: dict[str, Any], key: str) -> str:
 
 def get_handler_by_name(name: str) -> Signal:
     """
-    Returns the signal handler by name.
+    Return the signal handler by name.
 
     Args:
         name (str): The name of the signal.
