@@ -1,5 +1,6 @@
 """Model util function for db operations."""
 
+from datetime import datetime, timezone
 from typing import Any, Optional, Union
 
 from bson import ObjectId
@@ -7,6 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
 from rest_framework.response import Response
 
+from forum.constants import RETIRED_BODY, RETIRED_TITLE
 from forum.models import Comment, CommentThread, Contents, Subscriptions, Users
 
 
@@ -709,7 +711,7 @@ def validate_object(model: Any, obj_id: str) -> Any:
     return instance
 
 
-def find_subscribed_threads(user_id: str, course_id: str) -> list[str]:
+def find_subscribed_threads(user_id: str, course_id: Optional[str] = None) -> list[str]:
     """
     Find threads that a user is subscribed to in a specific course.
 
@@ -730,7 +732,9 @@ def find_subscribed_threads(user_id: str, course_id: str) -> list[str]:
     for subscription in subscriptions_cursor:
         thread_ids.append(ObjectId(subscription["source_id"]))
 
-    thread_filter = {"_id": {"$in": thread_ids}, "course_id": course_id}
+    thread_filter: dict[str, Any] = {"_id": {"$in": thread_ids}}
+    if course_id:
+        thread_filter["course_id"] = course_id
     threads_cursor = threads.find(thread_filter)
 
     subscribed_ids = []
@@ -782,7 +786,7 @@ def unsubscribe_user(user_id: str, source_id: str) -> None:
 
 def delete_comments_of_a_thread(thread_id: str) -> None:
     """Delete comments of a thread."""
-    for comment in Comment().list(
+    for comment in Comment().get_list(
         comment_thread_id=ObjectId(thread_id),
         depth=0,
         parent_id=None,
@@ -911,3 +915,346 @@ def get_commentables_counts_based_on_type(course_id: str) -> dict[str, Any]:
         )
 
     return commentable_counts
+
+
+def get_user_voted_ids(user_id: str, vote: str) -> list[str]:
+    """Get the IDs of the posts voted by a user."""
+    if vote not in ["up", "down"]:
+        raise ValueError("Invalid vote type")
+
+    content_model = Contents()
+    contents = content_model.get_list()
+    voted_ids = []
+    for content in contents:
+        votes = content["votes"][vote]
+        if user_id in votes:
+            voted_ids.append(content["_id"])
+
+    return voted_ids
+
+
+def filter_standalone_threads(comments: list[dict[str, Any]]) -> list[str]:
+    """Filter out standalone threads from the list of threads."""
+    filtered_comments = []
+    for comment in comments:
+        if not comment["context"] == "standalone":
+            filtered_comments.append(comment)
+    return [str([comment["comment_thread_id"]]) for comment in filtered_comments]
+
+
+def user_to_hash(
+    user: dict[str, Any], params: Optional[dict[str, Any]] = None
+) -> dict[str, Any]:
+    """
+    Converts user data to a hash
+    """
+    if params is None:
+        params = {}
+
+    hash_data = {}
+    hash_data["username"] = user["username"]
+    hash_data["external_id"] = user["external_id"]
+
+    comment_model = Comment()
+    thread_model = CommentThread()
+
+    if params.get("complete"):
+        subscribed_thread_ids = find_subscribed_threads(user["external_id"])
+        upvoted_ids = get_user_voted_ids(user["external_id"], "up")
+        downvoted_ids = get_user_voted_ids(user["external_id"], "down")
+        hash_data.update(
+            {
+                "subscribed_thread_ids": subscribed_thread_ids,
+                "subscribed_commentable_ids": [],
+                "subscribed_user_ids": [],
+                "follower_ids": [],
+                "id": user["external_id"],
+                "upvoted_ids": upvoted_ids,
+                "downvoted_ids": downvoted_ids,
+                "default_sort_key": user["default_sort_key"],
+            }
+        )
+
+    if params.get("course_id"):
+        threads = thread_model.find(
+            {
+                "author_id": user["external_id"],
+                "course_id": params["course_id"],
+                "anonymous": False,
+                "anonymouse_to_peers": False,
+            }
+        )
+        comments = comment_model.find(
+            {
+                "author_id": user["external_id"],
+                "course_id": params["course_id"],
+                "anonymous": False,
+                "anonymouse_to_peers": False,
+            }
+        )
+        if params.get("group_ids"):
+            specified_groups_or_global = params["group_ids"] + [None]
+            group_query = {
+                "_id": {"$in": [thread["_id"] for thread in threads]},
+                "$and": [
+                    {"group_id": {"$in": specified_groups_or_global}},
+                    {"group_id": {"$exists": False}},
+                ],
+            }
+            group_threads = CommentThread().find(group_query)
+            group_thread_ids = [str(thread["_id"]) for thread in group_threads]
+            threads_count = len(group_thread_ids)
+            comment_thread_ids = filter_standalone_threads(list(comments))
+
+            group_query = {
+                "_id": {"$in": [ObjectId(tid) for tid in comment_thread_ids]},
+                "$and": [
+                    {"group_id": {"$in": specified_groups_or_global}},
+                    {"group_id": {"$exists": False}},
+                ],
+            }
+            group_comment_threads = thread_model.find(group_query)
+            group_comment_thread_ids = [
+                str(thread["_id"]) for thread in group_comment_threads
+            ]
+            comments_count = sum(
+                1
+                for comment_thread_id in comment_thread_ids
+                if comment_thread_id in group_comment_thread_ids
+            )
+        else:
+            thread_ids = [str(thread["_id"]) for thread in threads]
+            threads_count = len(thread_ids)
+            comment_thread_ids = filter_standalone_threads(list(comments))
+            comments_count = len(comment_thread_ids)
+
+        hash_data.update(
+            {
+                "threads_count": threads_count,
+                "comments_count": comments_count,
+            }
+        )
+
+    return hash_data
+
+
+def replace_username_in_all_content(user_id: str, username: str) -> None:
+    """Replace new username in all content documents."""
+    content_model = Contents()
+    contents = content_model.get_list(author_id=user_id)
+    for content in contents:
+        content_model.update(
+            content["_id"],
+            author_username=username,
+        )
+
+
+def unsubscribe_all(user_id: str) -> None:
+    """Unsubscribe user from all content."""
+    subscriptions = Subscriptions()
+    subscription_filter = {"subscriber_id": user_id}
+    subscriptions_cursor = subscriptions.find(subscription_filter)
+
+    for subscription in subscriptions_cursor:
+        subscriptions.delete(subscription["_id"])
+
+
+def retire_all_content(user_id: str, username: str) -> None:
+    """Retire all content from user."""
+    content_model = Contents()
+    contents = content_model.get_list(author_id=user_id)
+    for content in contents:
+        content_model.update(
+            content["_id"],
+            author_username=username,
+            body=RETIRED_BODY,
+        )
+        if content["_type"] == "CommentThread":
+            content_model.update(
+                content["_id"],
+                title=RETIRED_TITLE,
+            )
+
+
+def find_or_create_read_state(user_id: str, thread_id: str) -> dict[str, Any]:
+    """Find or create user read states."""
+    user = Users().get(user_id)
+    if not user:
+        raise ObjectDoesNotExist
+    thread = CommentThread().get(thread_id)
+    if not thread:
+        raise ObjectDoesNotExist
+
+    read_states = user.get("read_states", [])
+    for state in read_states:
+        if state["course_id"] == thread["course_id"]:
+            return state
+
+    read_state = {
+        "_id": ObjectId(),
+        "course_id": thread["course_id"],
+        "last_read_times": {},
+    }
+    read_states.append(read_state)
+    Users().update(user_id, read_states=read_states)
+    return read_state
+
+
+def mark_as_read(user: dict[str, Any], thread: dict[str, Any]) -> None:
+    """Mark thread as read."""
+    read_state = find_or_create_read_state(user["external_id"], thread["_id"])
+
+    read_state["last_read_times"].update(
+        {
+            str(thread["_id"]): datetime.now(timezone.utc),
+        }
+    )
+    update_user = Users().get(user["external_id"])
+    if not update_user:
+        raise ObjectDoesNotExist
+    new_read_states = update_user["read_states"]
+    updated_read_states = []
+    for state in new_read_states:
+        if read_state["course_id"] == thread["course_id"]:
+            state = read_state
+        updated_read_states.append(state)
+
+    Users().update(user["external_id"], read_states=updated_read_states)
+
+
+def find_or_create_user_stats(user_id: str, course_id: str) -> dict[str, Any]:
+    """Find or create user stats document."""
+    user = Users().get(user_id)
+    if not user:
+        raise ObjectDoesNotExist
+
+    course_stats = user.get("course_stats", [])
+    for stat in course_stats:
+        if stat["course_id"] == course_id:
+            return stat
+
+    course_stat = {
+        "_id": ObjectId(),
+        "active_flags": 0,
+        "inactive_flags": 0,
+        "threads": 0,
+        "responses": 0,
+        "replies": 0,
+        "course_id": course_id,
+        "last_activity_at": "",
+    }
+    course_stats.append(course_stat)
+    Users().update(user["external_id"], course_stats=course_stats)
+    return course_stat
+
+
+def update_user_stats_for_course(user_id: str, stat: dict[str, Any]) -> None:
+    """Update user stats for course."""
+    user = Users().get(user_id)
+    if not user:
+        raise ObjectDoesNotExist
+    updated_course_stats = []
+    course_stats = user["course_stats"]
+    for course_stat in course_stats:
+        if course_stat["course_id"] == stat["course_id"]:
+            course_stat.update(stat)
+        updated_course_stats.append(course_stat)
+    Users().update(user_id, course_stats=updated_course_stats)
+
+
+def build_course_stats(username: str, course_id: str) -> None:
+    """Build course stats."""
+    user = Users().find_one({"username": username})
+    if not user:
+        raise ObjectDoesNotExist
+    pipeline = [
+        {
+            "$match": {
+                "course_id": course_id,
+                "author_id": user["external_id"],
+                "anonymous_to_peers": False,
+                "anonymous": False,
+            }
+        },
+        {
+            "$addFields": {
+                "is_reply": {"$ne": [{"$ifNull": ["$parent_id", None]}, None]}
+            }
+        },
+        {
+            "$group": {
+                "_id": {"type": "$_type", "is_reply": "$is_reply"},
+                "count": {"$sum": 1},
+                "active_flags": {"$sum": {"$gt": [{"$size": "$abuse_flaggers"}, 0]}},
+                "inactive_flags": {
+                    "$sum": {"$gt": [{"$size": "$historical_abuse_flaggers"}, 0]}
+                },
+                "latest_update_at": {"$max": "$updated_at"},
+            }
+        },
+    ]
+
+    data = list(Contents().aggregate(pipeline))
+    active_flags = 0
+    inactive_flags = 0
+    threads = 0
+    responses = 0
+    replies = 0
+    updated_at = datetime.utcfromtimestamp(0)
+
+    for counts in data:
+        _type, is_reply = counts["_id"]["type"], counts["_id"]["is_reply"]
+        last_update_at = counts.get("latest_update_at", datetime(1970, 1, 1))
+        if _type == "Comment" and is_reply:
+            replies = counts["count"]
+        elif _type == "Comment" and not is_reply:
+            responses = counts["count"]
+        else:
+            threads = counts["count"]
+        updated_at = max(last_update_at, updated_at)
+        active_flags += counts["active_flags"]
+        inactive_flags += counts["inactive_flags"]
+
+    stats = find_or_create_user_stats(user["external_id"], course_id)
+    stats["replies"] = replies
+    stats["responses"] = responses
+    stats["threads"] = threads
+    stats["active_flags"] = active_flags
+    stats["inactive_flags"] = inactive_flags
+    stats["last_activity_at"] = updated_at
+    update_user_stats_for_course(user["external_id"], stats)
+
+
+def update_all_users_in_course(course_id: str) -> list[str]:
+    """Update all user stats in a course."""
+    course_contents = Contents().get_list(
+        anonymous=False,
+        anonymous_to_peers=False,
+        course_id=course_id,
+    )
+    author_usernames = []
+    for content in course_contents:
+        if content["author_username"] not in author_usernames:
+            author_usernames.append(content["author_username"])
+
+    for author_username in author_usernames:
+        build_course_stats(author_username, course_id)
+    return author_usernames
+
+
+def get_user_by_username(username: str | None) -> dict[str, Any] | None:
+    """Return user from username."""
+    cursor = Users().find({"username": username})
+    try:
+        return next(cursor)
+    except StopIteration:
+        return None
+
+
+def find_or_create_user(user_id: str) -> str:
+    """Find or create user."""
+    user = Users().get(user_id)
+    if user:
+        return user["external_id"]
+    user_id = Users().insert(user_id)
+    return user_id

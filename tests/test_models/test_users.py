@@ -66,7 +66,7 @@ def test_list() -> None:
         username="user3",
         email="user1",
     )
-    users_list = Users().list()
+    users_list = Users().get_list()
     assert len(list(users_list)) == 3
     assert all(user["username"] in ["user1", "user2", "user3"] for user in users_list)
 

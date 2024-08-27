@@ -3,7 +3,7 @@ Database models for forum.
 """
 
 from abc import ABC
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from bson import ObjectId
 from pymongo.collection import Collection as PymongoCollection
@@ -42,7 +42,7 @@ class MongoBaseModel(ABC):
         """Get a document by ID."""
         return self._collection.find_one({"_id": ObjectId(_id)})
 
-    def list(self, **kwargs: Any) -> Cursor[dict[str, Any]]:
+    def get_list(self, **kwargs: Any) -> Cursor[dict[str, Any]]:
         """Get a list of all documents filtered by kwargs."""
         return self._collection.find(kwargs)
 
@@ -86,7 +86,7 @@ class MongoBaseModel(ABC):
         return self._collection.find_one(query)
 
     def aggregate(
-        self, pipeline: List[dict[str, Any]]
+        self, pipeline: list[dict[str, Any]]
     ) -> CommandCursor[dict[str, Any]]:
         """
         Run a MongoDB aggregation pipeline.
@@ -112,7 +112,7 @@ class MongoBaseModel(ABC):
         query = self.override_query(query)
         return self._collection.count_documents(query)
 
-    def distinct(self, field: str, query: dict[str, Any]) -> List[Any]:
+    def distinct(self, field: str, query: dict[str, Any]) -> list[Any]:
         """
         Run a MongoDB distinct query.
 
