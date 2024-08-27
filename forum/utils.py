@@ -86,17 +86,16 @@ def get_handler_by_name(name: str) -> Signal:
     # directly from the model updates using pose_save and other methods.
     from forum import signals  # pylint: disable=cyclic-import import-outside-toplevel
 
-    if name == "comment_deleted":
-        return signals.comment_deleted
-    elif name == "comment_thread_deleted":
-        return signals.comment_thread_deleted
-    elif name == "comment_inserted":
-        return signals.comment_inserted
-    elif name == "comment_thread_inserted":
-        return signals.comment_thread_inserted
-    elif name == "comment_updated":
-        return signals.comment_updated
-    elif name == "comment_thread_updated":
-        return signals.comment_thread_updated
-    else:
+    map_signals = {
+        "comment_deleted": signals.comment_deleted,
+        "comment_thread_deleted": signals.comment_thread_deleted,
+        "comment_inserted": signals.comment_inserted,
+        "comment_thread_inserted": signals.comment_thread_inserted,
+        "comment_updated": signals.comment_updated,
+        "comment_thread_updated": signals.comment_thread_updated,
+    }
+
+    try:
+        return map_signals[name]
+    except KeyError:
         raise ValueError(f"No signal found for name: {name}")
