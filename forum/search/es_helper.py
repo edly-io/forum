@@ -20,6 +20,7 @@ class ElasticsearchHelper:
     """
     Helper class for managing Forum indices.
     """
+
     INDEX_REGEX = r"_\d{14}$"
 
     def __init__(self) -> None:
