@@ -74,6 +74,8 @@ def prepare_comment_api_response(
         "parent_id": str(comment.get("parent_id")),
         "type": str(comment.get("_type", "")).lower(),
     }
+    if not exclude_fields:
+        exclude_fields = []
     exclude_fields.append("children")
     serializer = CommentSerializer(
         data=comment_data,

@@ -6,8 +6,8 @@ from typing import Any, Optional
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
 from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
 from rest_framework.request import Request
+from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
@@ -20,17 +20,18 @@ from forum.models.model_utils import (
 )
 from forum.models.threads import CommentThread
 from forum.serializers.thread import ThreadSerializer
-from forum.utils import str_to_bool
+from forum.utils import get_int_value_from_collection, str_to_bool
 
 log = logging.getLogger(__name__)
 
 
 def get_thread_data(thread: dict[str, Any]) -> dict[str, Any]:
-    type = str(thread.get("_type", "")).lower()
+    """Prepare thread data for the api response."""
+    _type = str(thread.get("_type", "")).lower()
     thread_data = {
         **thread,
         "id": str(thread.get("_id")),
-        "type": "thread" if type == "commentthread" else type,
+        "type": "thread" if _type == "commentthread" else _type,
         "user_id": thread.get("author_id"),
         "username": str(thread.get("author_username")),
         "comments_count": thread["comment_count"],
@@ -41,9 +42,10 @@ def get_thread_data(thread: dict[str, Any]) -> dict[str, Any]:
 def prepare_thread_api_response(
     thread: dict[str, Any],
     include_context: Optional[bool] = False,
-    data_or_params: Optional[dict[str, Any]] = {},
+    data_or_params: Optional[dict[str, Any]] = None,
     include_data_from_params: Optional[bool] = False,
-):
+) -> dict[str, Any] | None:
+    """Serialize thread data for the api response."""
     thread_data = get_thread_data(thread)
 
     context = {}
@@ -52,33 +54,32 @@ def prepare_thread_api_response(
             "include_endorsed": True,
             "include_read_state": True,
         }
-        if include_data_from_params:
-            thread_data["resp_skip"] = (
-                "resp_skip" in data_or_params and int(data_or_params["resp_skip"]) or 0
-            )
-            thread_data["resp_limit"] = (
-                "resp_limit" in data_or_params
-                and int(data_or_params["resp_limit"])
-                or 100
-            )
-            context["recursive"] = (
-                str_to_bool(data_or_params.get("recursive", "False")),
-            )
-            context["with_responses"] = str_to_bool(
-                data_or_params.get("with_responses", "True")
-            )
-            context["mark_as_read"] = str_to_bool(
-                data_or_params.get("mark_as_read", "False")
-            )
-            context["reverse_order"] = str_to_bool(
-                data_or_params.get("reverse_order", "True")
-            )
-            context["merge_question_type_responses"] = str_to_bool(
-                data_or_params.get("merge_question_type_responses", "False")
-            )
+        if data_or_params:
+            if include_data_from_params:
+                thread_data["resp_skip"] = get_int_value_from_collection(
+                    data_or_params, "resp_skip", 0
+                )
+                thread_data["resp_limit"] = get_int_value_from_collection(
+                    data_or_params, "resp_limit", 100
+                )
+                context["recursive"] = str_to_bool(
+                    data_or_params.get("recursive", "False")
+                )
+                context["with_responses"] = str_to_bool(
+                    data_or_params.get("with_responses", "True")
+                )
+                context["mark_as_read"] = str_to_bool(
+                    data_or_params.get("mark_as_read", "False")
+                )
+                context["reverse_order"] = str_to_bool(
+                    data_or_params.get("reverse_order", "True")
+                )
+                context["merge_question_type_responses"] = str_to_bool(
+                    data_or_params.get("merge_question_type_responses", "False")
+                )
 
-        if user_id := data_or_params.get("user_id"):
-            context["user_id"] = str(user_id)
+            if user_id := data_or_params.get("user_id"):
+                context["user_id"] = user_id
 
     serializer = ThreadSerializer(
         data=thread_data,
@@ -193,14 +194,23 @@ class ThreadsAPIView(APIView):
         CommentThread().update(thread_id, **update_thread_data)
         updated_thread = CommentThread().get(thread_id)
         try:
-            serialized_data = prepare_thread_api_response(updated_thread, True, data)
+            if updated_thread:
+                serialized_data = prepare_thread_api_response(
+                    updated_thread,
+                    True,
+                    data,
+                )
+                return Response(serialized_data, status=status.HTTP_200_OK)
         except ValidationError as error:
             return Response(
                 error.detail,
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        return Response(serialized_data, status=status.HTTP_200_OK)
+        return Response(
+            {"error": "Thread is not updated"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     def _get_update_thread_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """convert request data to a dict excluding empty data"""
@@ -321,7 +331,7 @@ class UserThreadsAPIView(APIView):
         if validations:
             return validations
 
-        user_id = params.get("user_id")
+        user_id = params.get("user_id", "")
         course_id = params.get("course_id")
         thread_filter = {
             "_type": {"$in": [CommentThread.content_type]},

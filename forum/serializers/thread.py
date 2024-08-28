@@ -5,7 +5,7 @@ Serializer for the thread data.
 from typing import Any, Optional
 
 from bson import ObjectId
-from pymongo import DESCENDING, ASCENDING
+from pymongo import ASCENDING, DESCENDING
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
 
@@ -56,7 +56,7 @@ class ThreadSerializer(ContentSerializer):
 
     thread_type = serializers.CharField()
     title = serializers.CharField()
-    context = serializers.CharField()
+    context = serializers.CharField()  # type: ignore
     last_activity_at = CustomDateTimeField()
     closed_by_id = serializers.CharField(allow_null=True, default=None)
     closed_by = serializers.SerializerMethodField()
@@ -242,7 +242,8 @@ class ThreadSerializer(ContentSerializer):
             int: The total number of responses, defaulting to 0 if not included.
         """
         if self.with_responses:
-            return len(self.get_children(obj))
+            children = self.get_children(obj) or []
+            return len(children)
         return 0
 
     def to_representation(self, instance: dict[str, Any]) -> dict[str, Any]:

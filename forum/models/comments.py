@@ -342,13 +342,13 @@ class Comment(BaseContents):
         }
         CommentThread().update_count(comment_thread_id, update_comment_count_query)
 
-    def get_sk(self, id: str, parent_id: Optional[str]) -> str:
+    def get_sk(self, _id: str, parent_id: Optional[str]) -> str:
         """Returns sk field."""
         if parent_id is not None:
-            return f"{parent_id}-{id}"
-        return f"{id}"
+            return f"{parent_id}-{_id}"
+        return f"{_id}"
 
-    def update_sk(self, id: str, parent_id: Optional[str]) -> None:
+    def update_sk(self, _id: str, parent_id: Optional[str]) -> None:
         """Updates sk field."""
-        sk = self.get_sk(id, parent_id)
-        self.update(id, sk=sk)
+        sk = self.get_sk(_id, parent_id)
+        self.update(_id, sk=sk)

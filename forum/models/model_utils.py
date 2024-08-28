@@ -780,7 +780,7 @@ def unsubscribe_user(user_id: str, source_id: str) -> None:
     Subscriptions().delete_subscription(user_id, source_id)
 
 
-def delete_comments_of_a_thread(thread_id):
+def delete_comments_of_a_thread(thread_id: str) -> None:
     """Delete comments of a thread."""
     for comment in Comment().list(
         comment_thread_id=ObjectId(thread_id),
@@ -839,12 +839,13 @@ def validate_params(
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    user = Users().get(user_id)
-    if not user:
-        return Response(
-            {"error": "User doesn't exist"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    if user_id:
+        user = Users().get(user_id)
+        if not user:
+            return Response(
+                {"error": "User doesn't exist"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     return None
 
@@ -853,7 +854,7 @@ def get_threads(
     params: dict[str, Any],
     user_id: str,
     serializer: Any,
-    thread_ids: Optional[list[str]] = None,
+    thread_ids: list[str],
     include_context: Optional[bool] = False,
 ) -> dict[str, Any]:
     """get subscribed or all threads of a specific course for a specific user."""
@@ -873,7 +874,7 @@ def get_threads(
         int(params.get("page", 1)),
         int(params.get("per_page", 100)),
     )
-    context = {}
+    context: dict[str, Any] = {}
     if include_context:
         context = {
             "include_endorsed": True,

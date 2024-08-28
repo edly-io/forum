@@ -67,6 +67,7 @@ class CommentSerializer(ContentSerializer):
                 self.fields.pop(field, None)
 
     def get_children(self, obj: Any) -> list[dict[str, Any]]:
+        """Get comments of a thread."""
         if not self.context.get("recursive", False):
             return []
 
@@ -84,7 +85,7 @@ class CommentSerializer(ContentSerializer):
             context={"recursive": False},
             exclude_fields=["sk"],
         )
-        return serializer.data
+        return list(serializer.data)
 
     def to_representation(self, instance: Any) -> dict[str, Any]:
         comment = super().to_representation(instance)

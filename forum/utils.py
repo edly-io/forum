@@ -101,7 +101,10 @@ def get_handler_by_name(name: str) -> Signal:
         raise KeyError(f"No signal found for the name: {name}") from exc
 
 
-def prepare_comment_data_for_get_children(children):
+def prepare_comment_data_for_get_children(
+    children: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Prepare children data to be used in serializer."""
     children_data = []
     for child in children:
         children_data.append(
