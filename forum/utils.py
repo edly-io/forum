@@ -57,3 +57,20 @@ def get_int_value_from_collection(
         return int(collection[key])
     except (TypeError, ValueError, KeyError):
         return default_value
+
+
+def prepare_comment_data_for_get_children(children):
+    children_data = []
+    for child in children:
+        children_data.append(
+            {
+                **child,
+                "id": str(child.get("_id")),
+                "user_id": child.get("author_id"),
+                "thread_id": str(child.get("comment_thread_id")),
+                "username": child.get("author_username"),
+                "parent_id": str(child.get("parent_id")),
+                "type": str(child.get("_type", "")).lower(),
+            }
+        )
+    return children_data

@@ -11,10 +11,10 @@ from rest_framework.views import APIView
 from forum.models import CommentThread, Subscriptions, Users
 from forum.models.model_utils import (
     find_subscribed_threads,
-    get_group_ids_from_params,
-    handle_threads_query,
+    get_threads,
     subscribe_user,
     unsubscribe_user,
+    validate_params,
 )
 from forum.pagination import ForumPagination
 from forum.serializers.subscriptions import SubscriptionSerializer
@@ -125,78 +125,14 @@ class UserSubscriptionAPIView(APIView):
         Raises:
             HTTP_400_BAD_REQUEST: If the user does not exist.
         """
-        user = Users().get(user_id)
-        if not user:
-            return Response(
-                {"error": "User doesn't exist"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         params = request.GET.dict()
-        validations = self._validate_params(params)
+        validations = validate_params(params, user_id)
         if validations:
             return validations
 
-        threads = handle_threads_query(
-            find_subscribed_threads(user_id, params["course_id"]),
-            user_id,
-            params["course_id"],
-            get_group_ids_from_params(params),
-            params.get("author_id", ""),
-            params.get("thread_type"),
-            bool(params.get("flagged", False)),
-            bool(params.get("unread", False)),
-            bool(params.get("unanswered", False)),
-            bool(params.get("unresponded", False)),
-            bool(params.get("count_flagged", False)),
-            params.get("sort_key", ""),
-            int(params.get("page", 1)),
-            int(params.get("per_page", 100)),
-        )
-        serializer = ThreadSerializer(threads.pop("collection"), many=True)
-        threads["collection"] = serializer.data
+        thread_ids = find_subscribed_threads(user_id, params["course_id"])
+        threads = get_threads(params, user_id, ThreadSerializer, thread_ids)
         return Response(data=threads, status=status.HTTP_200_OK)
-
-    def _validate_params(self, params: dict[str, Any]) -> Response | None:
-        """
-        Validate the request parameters.
-
-        Args:
-            params (dict): The request parameters.
-
-        Returns:
-            Response: A Response object with an error message if doesn't exist.
-        """
-
-        valid_params = [
-            "course_id",
-            "author_id",
-            "thread_type",
-            "flagged",
-            "unread",
-            "unanswered",
-            "unresponded",
-            "count_flagged",
-            "sort_key",
-            "page",
-            "per_page",
-            "request_id'",
-        ]
-
-        for key in params:
-            if key not in valid_params:
-                return Response(
-                    {"error": f"Invalid parameter: {key}"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        if "course_id" not in params:
-            return Response(
-                {"error": "Missing required parameter: course_id"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return None
 
 
 class ThreadSubscriptionAPIView(APIView):

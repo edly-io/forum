@@ -50,7 +50,11 @@ class BaseContents(MongoBaseModel):
         """
         if self.content_type:
             kwargs["_type"] = self.content_type
-        return self._collection.find(kwargs)
+        result = self._collection.find(kwargs)
+        sort = kwargs.pop("sort", None)
+        if sort:
+            return result.sort("sk", sort)
+        return result
 
     @classmethod
     def get_votes_dict(cls, up: List[str], down: List[str]) -> dict[str, Any]:

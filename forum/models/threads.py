@@ -6,6 +6,7 @@ from typing import Any, Optional
 from bson import ObjectId
 
 from forum.models.contents import BaseContents
+from forum.models.users import Users
 
 
 class CommentThread(BaseContents):
@@ -79,7 +80,7 @@ class CommentThread(BaseContents):
         course_id: str,
         commentable_id: str,
         author_id: str,
-        author_username: str,
+        author_username: Optional[str] = None,
         anonymous: bool = False,
         anonymous_to_peers: bool = False,
         thread_type: str = "discussion",
@@ -140,7 +141,7 @@ class CommentThread(BaseContents):
             "anonymous_to_peers": anonymous_to_peers,
             "closed": False,
             "author_id": author_id,
-            "author_username": author_username,
+            "author_username": author_username or self.get_author_username(author_id),
             "created_at": date,
             "updated_at": date,
             "last_activity_at": date,
@@ -174,6 +175,10 @@ class CommentThread(BaseContents):
         pinned: Optional[bool] = None,
         comments_count: Optional[int] = None,
         endorsed: Optional[bool] = None,
+        edit_history: Optional[list[dict[str, Any]]] = None,
+        original_body: Optional[str] = None,
+        editing_user_id: Optional[str] = None,
+        edit_reason_code: Optional[str] = None,
     ) -> int:
         """
         Updates a thread document in the database.
@@ -227,6 +232,18 @@ class CommentThread(BaseContents):
         update_data: dict[str, Any] = {
             field: value for field, value in fields if value is not None
         }
+        if editing_user_id:
+            edit_history = [] if edit_history is None else edit_history
+            edit_history.append(
+                {
+                    "author_id": editing_user_id,
+                    "original_body": original_body,
+                    "reason_code": edit_reason_code,
+                    "editor_username": self.get_author_username(editing_user_id),
+                    "created_at": datetime.now(),
+                }
+            )
+            update_data["edit_history"] = edit_history
 
         date = datetime.now()
         update_data["updated_at"] = date
@@ -236,3 +253,8 @@ class CommentThread(BaseContents):
             {"$set": update_data},
         )
         return result.modified_count
+
+    def get_author_username(self, author_id: str) -> str | None:
+        """Return username for the respective author_id(user_id)"""
+        user = Users().get(author_id)
+        return user.get("username") if user else None

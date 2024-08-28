@@ -74,6 +74,7 @@ def prepare_comment_api_response(
         "parent_id": str(comment.get("parent_id")),
         "type": str(comment.get("_type", "")).lower(),
     }
+    exclude_fields.append("children")
     serializer = CommentSerializer(
         data=comment_data,
         exclude_fields=exclude_fields,
@@ -114,7 +115,7 @@ class CommentsAPIView(APIView):
             )
         data = prepare_comment_api_response(
             comment,
-            exclude_fields=["sk", "endorsement"],
+            exclude_fields=["sk"],
         )
         return Response(data, status=status.HTTP_200_OK)
 

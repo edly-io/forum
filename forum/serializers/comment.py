@@ -4,10 +4,13 @@ Serializer for the comment data.
 
 from typing import Any
 
+from bson import ObjectId
 from rest_framework import serializers
 
+from forum.models import Comment
 from forum.serializers.contents import ContentSerializer
 from forum.serializers.custom_datetime import CustomDateTimeField
+from forum.utils import prepare_comment_data_for_get_children
 
 
 class EndorsementSerializer(serializers.Serializer[dict[str, Any]]):
@@ -49,11 +52,12 @@ class CommentSerializer(ContentSerializer):
 
     endorsed = serializers.BooleanField(default=False)
     depth = serializers.IntegerField(default=0)
-    thread_id = serializers.CharField()
+    thread_id = serializers.CharField(source="comment_thread_id")
     parent_id = serializers.CharField(default=None, allow_null=True)
     child_count = serializers.IntegerField(default=0)
-    sk = serializers.SerializerMethodField()
+    sk = serializers.CharField(default=None, required=False, allow_null=True)
     endorsement = EndorsementSerializer(default=None, required=False, allow_null=True)
+    children = serializers.SerializerMethodField()
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         exclude_fields = kwargs.pop("exclude_fields", None)
@@ -62,21 +66,31 @@ class CommentSerializer(ContentSerializer):
             for field in exclude_fields:
                 self.fields.pop(field, None)
 
+    def get_children(self, obj: Any) -> list[dict[str, Any]]:
+        if not self.context.get("recursive", False):
+            return []
+
+        children = list(
+            Comment().list(
+                parent_id=ObjectId(obj["_id"]),
+                depth=1,
+                sort=self.context.get("sort", -1),
+            )
+        )
+        children_data = prepare_comment_data_for_get_children(children)
+        serializer = CommentSerializer(
+            children_data,
+            many=True,
+            context={"recursive": False},
+            exclude_fields=["sk"],
+        )
+        return serializer.data
+
     def to_representation(self, instance: Any) -> dict[str, Any]:
         comment = super().to_representation(instance)
         if comment["parent_id"] == "None":
             comment["parent_id"] = None
         return comment
-
-    def get_sk(self, obj: dict[str, Any]) -> str:
-        """Return sk field"""
-        is_child = obj.get("parent_id")
-        if is_child is not None:
-            return "{parent_id}-{id}".format(
-                parent_id=obj.get("parent_id"), id=obj.get("_id")
-            )
-        else:
-            return "{id}".format(id=obj.get("_id"))
 
     def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""

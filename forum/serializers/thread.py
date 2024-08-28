@@ -4,16 +4,22 @@ Serializer for the thread data.
 
 from typing import Any, Optional
 
+from bson import ObjectId
+from pymongo import DESCENDING, ASCENDING
 from rest_framework import serializers
+from rest_framework.serializers import ValidationError
 
+from forum.models import Comment
 from forum.models.model_utils import (
     get_abuse_flagged_count,
     get_endorsed,
     get_read_states,
     get_username_from_id,
 )
+from forum.serializers.comment import CommentSerializer
 from forum.serializers.contents import ContentSerializer
 from forum.serializers.custom_datetime import CustomDateTimeField
+from forum.utils import prepare_comment_data_for_get_children
 
 
 class ThreadSerializer(ContentSerializer):
@@ -50,7 +56,7 @@ class ThreadSerializer(ContentSerializer):
 
     thread_type = serializers.CharField()
     title = serializers.CharField()
-    context = serializers.CharField()  # type: ignore
+    context = serializers.CharField()
     last_activity_at = CustomDateTimeField()
     closed_by_id = serializers.CharField(allow_null=True, default=None)
     closed_by = serializers.SerializerMethodField()
@@ -58,7 +64,7 @@ class ThreadSerializer(ContentSerializer):
     tags = serializers.ListField(default=[])
     group_id = serializers.CharField(allow_null=True, default=None)
     pinned = serializers.BooleanField(default=False)
-    comment_count = serializers.IntegerField(default=0)
+    comments_count = serializers.IntegerField(required=False, source="comment_count")
     read = serializers.SerializerMethodField()
     unread_comments_count = serializers.SerializerMethodField()
     endorsed = serializers.SerializerMethodField()
@@ -83,11 +89,11 @@ class ThreadSerializer(ContentSerializer):
                 - 'include_endorsed' (bool): Whether to include endorsement status.
                 - 'include_read_state' (bool): Whether to include read state information.
         """
-        context = kwargs.pop("context", {})
-        self.with_responses = context.pop("with_responses", False)
-        self.count_flagged = context.pop("count_flagged", False)
-        self.include_endorsed = context.pop("include_endorsed", False)
-        self.include_read_state = context.pop("include_read_state", False)
+        self.context_data = kwargs.get("context", {})
+        self.with_responses = self.context_data.pop("with_responses", False)
+        self.count_flagged = self.context_data.pop("count_flagged", False)
+        self.include_endorsed = self.context_data.pop("include_endorsed", False)
+        self.include_read_state = self.context_data.pop("include_read_state", False)
 
         # Customize fields based on context
         if not self.with_responses:
@@ -119,11 +125,11 @@ class ThreadSerializer(ContentSerializer):
             Optional[bool]: True if the thread is read, otherwise False or None.
         """
         if self.include_read_state:
-            if isinstance(obj, dict) and obj.get("read") is not None:
+            if isinstance(obj, dict) and obj.get("read") is None:
                 return obj.get("read", True)
-            user_id = obj["user_id"]
+            user_id = self.context_data.get("user_id", None)
             course_id = obj["course_id"]
-            thread_key = obj["id"]
+            thread_key = obj["_id"]
             is_read, _ = get_read_states([obj], user_id, course_id).get(
                 thread_key, (False, obj["comment_count"])
             )
@@ -141,11 +147,11 @@ class ThreadSerializer(ContentSerializer):
             Optional[int]: The number of unread comments or None.
         """
         if self.include_read_state:
-            if isinstance(obj, dict) and obj.get("unread_comments_count") is not None:
+            if isinstance(obj, dict) and obj.get("unread_comments_count") is None:
                 return obj.get("unread_comments_count", 0)
-            user_id = obj["user_id"]
+            user_id = self.context_data.get("user_id", None)
             course_id = obj["course_id"]
-            thread_key = obj["id"]
+            thread_key = obj["_id"]
             _, unread_count = get_read_states([obj], user_id, course_id).get(
                 thread_key, (False, obj["comment_count"])
             )
@@ -165,7 +171,7 @@ class ThreadSerializer(ContentSerializer):
         if self.include_endorsed:
             if isinstance(obj, dict) and obj.get("endorsed") is not None:
                 return obj.get("endorsed", True)
-            thread_key = obj["id"]
+            thread_key = obj["_id"]
             return get_endorsed([thread_key]).get(thread_key, False)
         return None
 
@@ -182,7 +188,7 @@ class ThreadSerializer(ContentSerializer):
         if self.count_flagged:
             if isinstance(obj, dict) and obj.get("abuse_flagged_count") is not None:
                 return obj.get("abuse_flagged_count", 0)
-            thread_key = obj["id"]
+            thread_key = obj["_id"]
             return get_abuse_flagged_count([thread_key]).get(thread_key, 0)
         return 0
 
@@ -197,8 +203,32 @@ class ThreadSerializer(ContentSerializer):
             Optional[Any]: The responses or children related to the thread, or None if not included.
         """
         if self.with_responses:
-            # Implement when needed
-            print(obj)
+            sorting_order = (
+                DESCENDING
+                if self.context_data.get("reverse_order", True)
+                else ASCENDING
+            )
+            children = list(
+                Comment().list(
+                    comment_thread_id=ObjectId(obj["_id"]),
+                    depth=0,
+                    parent_id=None,
+                    sort=sorting_order,
+                )
+            )
+            children_data = prepare_comment_data_for_get_children(children)
+            serializer = CommentSerializer(
+                data=children_data,
+                many=True,
+                context={
+                    "recursive": self.context_data.get("recursive", False),
+                    "sort": sorting_order,
+                },
+                exclude_fields=["sk"],
+            )
+            if not serializer.is_valid(raise_exception=True):
+                raise ValidationError(serializer.errors)
+            return serializer.data
         return []
 
     def get_resp_total(self, obj: dict[str, Any]) -> int:
@@ -212,8 +242,7 @@ class ThreadSerializer(ContentSerializer):
             int: The total number of responses, defaulting to 0 if not included.
         """
         if self.with_responses:
-            # Implement when needed
-            print(obj)
+            return len(self.get_children(obj))
         return 0
 
     def to_representation(self, instance: dict[str, Any]) -> dict[str, Any]:
