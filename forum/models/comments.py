@@ -128,11 +128,14 @@ class Comment(BaseContents):
         if parent_id:
             comment_data["parent_id"] = ObjectId(parent_id)
 
+        comment_data["endorsement"] = None
+
         result = self._collection.insert_one(comment_data)
         if parent_id:
             self.update_child_count_in_parent_comment(parent_id, 1)
         if comment_thread_id:
             self.update_comment_count_in_comment_thread(comment_thread_id, 1)
+        self.update_sk(str(result.inserted_id), parent_id)
         if result:
             get_handler_by_name("comment_inserted").send(
                 sender=self.__class__, comment_id=str(result.inserted_id)
@@ -163,6 +166,7 @@ class Comment(BaseContents):
         editing_user_id: Optional[str] = None,
         edit_reason_code: Optional[str] = None,
         endorsement_user_id: Optional[str] = None,
+        sk: Optional[str] = None,
     ) -> int:
         """
         Updates a comment document in the database.
@@ -205,6 +209,7 @@ class Comment(BaseContents):
             ("child_count", child_count),
             ("depth", depth),
             ("closed", closed),
+            ("sk", sk),
         ]
         update_data: dict[str, Any] = {
             field: value for field, value in fields if value is not None
@@ -221,6 +226,7 @@ class Comment(BaseContents):
             edit_history = [] if edit_history is None else edit_history
             edit_history.append(
                 {
+                    "author_id": editing_user_id,
                     "original_body": original_body,
                     "reason_code": edit_reason_code,
                     "editor_username": self.get_author_username(editing_user_id),
@@ -330,5 +336,19 @@ class Comment(BaseContents):
         Returns:
             None.
         """
-        update_comment_count_query = {"$inc": {"comment_count": count}}
+        update_comment_count_query = {
+            "$inc": {"comment_count": count},
+            "$set": {"last_activity_at": datetime.now()},
+        }
         CommentThread().update_count(comment_thread_id, update_comment_count_query)
+
+    def get_sk(self, _id: str, parent_id: Optional[str]) -> str:
+        """Returns sk field."""
+        if parent_id is not None:
+            return f"{parent_id}-{_id}"
+        return f"{_id}"
+
+    def update_sk(self, _id: str, parent_id: Optional[str]) -> None:
+        """Updates sk field."""
+        sk = self.get_sk(_id, parent_id)
+        self.update(_id, sk=sk)

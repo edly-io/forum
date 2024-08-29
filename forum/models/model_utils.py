@@ -4,6 +4,8 @@ from typing import Any, Optional, Union
 
 from bson import ObjectId
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework import status
+from rest_framework.response import Response
 
 from forum.models import Comment, CommentThread, Contents, Subscriptions, Users
 
@@ -332,23 +334,23 @@ def get_read_states(
         whether the thread is read and the unread comment count.
     """
     read_states = {}
-    user = Users().find_one({"_id": user_id, "read_states.course_id": course_id})
-    read_state = user["read_states"][0] if user else {}
-
-    if read_state:
-        read_dates = read_state.get("last_read_times", {})
-        for thread in threads:
-            thread_key = str(thread["_id"])
-            if thread_key in read_dates:
-                is_read = read_dates[thread_key] >= thread["last_activity_at"]
-                unread_comment_count = Contents().count_documents(
-                    {
-                        "comment_thread_id": ObjectId(thread_key),
-                        "created_at": {"$gte": read_dates[thread_key]},
-                        "author_id": {"$ne": str(user_id)},
-                    }
-                )
-                read_states[thread_key] = [is_read, unread_comment_count]
+    if user_id:
+        user = Users().find_one({"_id": user_id, "read_states.course_id": course_id})
+        read_state = user["read_states"][0] if user else {}
+        if read_state:
+            read_dates = read_state.get("last_read_times", {})
+            for thread in threads:
+                thread_key = str(thread["_id"])
+                if thread_key in read_dates:
+                    is_read = read_dates[thread_key] >= thread["last_activity_at"]
+                    unread_comment_count = Contents().count_documents(
+                        {
+                            "comment_thread_id": ObjectId(thread_key),
+                            "created_at": {"$gte": read_dates[thread_key]},
+                            "author_id": {"$ne": str(user_id)},
+                        }
+                    )
+                    read_states[thread_key] = [is_read, unread_comment_count]
 
     return read_states
 
@@ -776,3 +778,110 @@ def subscribe_user(
 def unsubscribe_user(user_id: str, source_id: str) -> None:
     """Unsubscribe a user from a source."""
     Subscriptions().delete_subscription(user_id, source_id)
+
+
+def delete_comments_of_a_thread(thread_id: str) -> None:
+    """Delete comments of a thread."""
+    for comment in Comment().list(
+        comment_thread_id=ObjectId(thread_id),
+        depth=0,
+        parent_id=None,
+    ):
+        Comment().delete(comment["_id"])
+
+
+def validate_params(
+    params: dict[str, Any], user_id: Optional[str] = None
+) -> Response | None:
+    """
+    Validate the request parameters.
+
+    Args:
+        params (dict): The request parameters.
+        user_id (optional[str]): The Id of the user for validation.
+
+    Returns:
+        Response: A Response object with an error message if doesn't exist.
+    """
+    valid_params = [
+        "course_id",
+        "author_id",
+        "thread_type",
+        "flagged",
+        "unread",
+        "unanswered",
+        "unresponded",
+        "count_flagged",
+        "sort_key",
+        "page",
+        "per_page",
+        "request_id",
+    ]
+    if not user_id:
+        valid_params.append("user_id")
+        if "user_id" not in params:
+            return Response(
+                {"error": "Missing required parameter: user_id"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user_id = params.get("user_id")
+
+    for key in params:
+        if key not in valid_params:
+            return Response(
+                {"error": f"Invalid parameter: {key}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    if "course_id" not in params:
+        return Response(
+            {"error": "Missing required parameter: course_id"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if user_id:
+        user = Users().get(user_id)
+        if not user:
+            return Response(
+                {"error": "User doesn't exist"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    return None
+
+
+def get_threads(
+    params: dict[str, Any],
+    user_id: str,
+    serializer: Any,
+    thread_ids: list[str],
+    include_context: Optional[bool] = False,
+) -> dict[str, Any]:
+    """get subscribed or all threads of a specific course for a specific user."""
+    threads = handle_threads_query(
+        thread_ids,
+        user_id,
+        params["course_id"],
+        get_group_ids_from_params(params),
+        params.get("author_id", ""),
+        params.get("thread_type"),
+        bool(params.get("flagged", False)),
+        bool(params.get("unread", False)),
+        bool(params.get("unanswered", False)),
+        bool(params.get("unresponded", False)),
+        bool(params.get("count_flagged", False)),
+        params.get("sort_key", ""),
+        int(params.get("page", 1)),
+        int(params.get("per_page", 100)),
+    )
+    context: dict[str, Any] = {}
+    if include_context:
+        context = {
+            "include_endorsed": True,
+            "include_read_state": True,
+        }
+        if user_id:
+            context["user_id"] = user_id
+    serializer = serializer(threads.pop("collection"), many=True, context=context)
+    threads["collection"] = serializer.data
+    return threads

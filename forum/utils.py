@@ -99,3 +99,23 @@ def get_handler_by_name(name: str) -> Signal:
         return map_signals[name]
     except KeyError as exc:
         raise KeyError(f"No signal found for the name: {name}") from exc
+
+
+def prepare_comment_data_for_get_children(
+    children: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Prepare children data to be used in serializer."""
+    children_data = []
+    for child in children:
+        children_data.append(
+            {
+                **child,
+                "id": str(child.get("_id")),
+                "user_id": child.get("author_id"),
+                "thread_id": str(child.get("comment_thread_id")),
+                "username": child.get("author_username"),
+                "parent_id": str(child.get("parent_id")),
+                "type": str(child.get("_type", "")).lower(),
+            }
+        )
+    return children_data
