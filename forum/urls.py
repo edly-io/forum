@@ -4,6 +4,7 @@ URLs for forum.
 
 from django.urls import include, path
 
+from forum.views.commentables import CommentablesCountAPIView
 from forum.views.comments import CommentsAPIView, CreateThreadCommentAPIView
 from forum.views.flags import CommentFlagAPIView, ThreadFlagAPIView
 from forum.views.pins import PinThreadAPIView, UnpinThreadAPIView
@@ -95,6 +96,12 @@ api_patterns = [
         "threads/<str:thread_id>",
         ThreadsAPIView.as_view(),
         name="threads-api",
+    ),
+    # commentables API
+    path(
+        "commentables/<str:course_id>/counts",
+        CommentablesCountAPIView.as_view(),
+        name="commentables-count",
     ),
     # Proxy view for various API endpoints
     path(
