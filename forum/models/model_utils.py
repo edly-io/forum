@@ -12,6 +12,25 @@ from forum.constants import RETIRED_BODY, RETIRED_TITLE
 from forum.models import Comment, CommentThread, Contents, Subscriptions, Users
 
 
+def update_stats_for_course(user_id: str, course_id: str, **kwargs: Any) -> None:
+    """Update stats for a course."""
+    user = Users().get(user_id)
+    if not user:
+        raise ObjectDoesNotExist
+    course_stats = user.get("course_stats", [])
+    for course_stat in course_stats:
+        if course_stat["course_id"] == course_id:
+            course_stat.update(
+                {k: course_stat[k] + v for k, v in kwargs.items() if k in course_stat}
+            )
+            Users().update(
+                user_id,
+                course_stats=course_stats,
+            )
+            return
+    build_course_stats(user["_id"], course_id)
+
+
 def flag_as_abuse(
     user: dict[str, Any], entity: dict[str, Any]
 ) -> Union[dict[str, Any], None]:
@@ -30,26 +49,39 @@ def flag_as_abuse(
     """
 
     abuse_flaggers = entity["abuse_flaggers"]
+    first_flag_added = False
     if user["_id"] not in abuse_flaggers:
         abuse_flaggers.append(user["_id"])
+        first_flag_added = len(abuse_flaggers) == 1
         Contents().update(
             entity["_id"],
             abuse_flaggers=abuse_flaggers,
         )
-
-    # Check if this is the first abuse flag
-    first_flag_added = len(entity["abuse_flaggers"]) == 1
-
-    # If this is the first abuse flag, update author's stats
-    active_flags = user.get("active_flags", 0) + 1
     if first_flag_added:
-        Users().update(
+        update_stats_for_course(
             entity["author_id"],
-            active_flags=active_flags,
+            entity["course_id"],
+            active_flags=1,
         )
-
-    # Reload the object and return it as a JSON string
     return Contents().get(entity["_id"])
+
+
+def update_stats_after_unflag(
+    user_id: str, entity_id: str, has_no_historical_flags: bool
+) -> None:
+    """Update the stats for the course after unflagging an entity."""
+    entity = Contents().get(entity_id)
+    if not entity:
+        raise ObjectDoesNotExist
+
+    first_historical_flag = (
+        has_no_historical_flags and not entity["historical_abuse_flaggers"]
+    )
+    if first_historical_flag:
+        update_stats_for_course(user_id, entity["course_id"], inactive_flags=1)
+
+    if not entity["abuse_flaggers"]:
+        update_stats_for_course(user_id, entity["course_id"], active_flags=-1)
 
 
 def un_flag_as_abuse(
@@ -68,21 +100,28 @@ def un_flag_as_abuse(
     Raises:
         ValueError: If user ID or entity is not provided.
     """
+    has_no_historical_flags = len(entity["historical_abuse_flaggers"]) == 0
     if user["_id"] in entity["abuse_flaggers"]:
         entity["abuse_flaggers"].remove(user["_id"])
         Contents().update(
             entity["_id"],
             abuse_flaggers=entity["abuse_flaggers"],
         )
-    # TODO: Update course stats for abuse.
+        update_stats_after_unflag(
+            entity["author_id"], entity["_id"], has_no_historical_flags
+        )
+
     return Contents().get(entity["_id"])
 
 
-def un_flag_all_as_abuse(entity: dict[str, Any]) -> Union[dict[str, Any], None]:
+def un_flag_all_as_abuse(
+    user_id: str, entity: dict[str, Any]
+) -> Union[dict[str, Any], None]:
     """
     Unflag an entity as abuse for all users.
 
     Args:
+        user_id str: The user unflagging the entity.
         entity (dict[str, Any]): The entity being unflagged as abuse.
 
     Returns:
@@ -91,8 +130,20 @@ def un_flag_all_as_abuse(entity: dict[str, Any]) -> Union[dict[str, Any], None]:
     Raises:
         ValueError: If entity is not provided.
     """
-    Contents().update(entity["_id"], abuse_flaggers=[])
-    # TODO: Update course stats for abuse.
+    has_no_historical_flags = len(entity["historical_abuse_flaggers"]) == 0
+    historical_abuse_flaggers = list(
+        set(entity["historical_abuse_flaggers"]) | set(entity["abuse_flaggers"])
+    )
+    if user_id in entity["abuse_flaggers"]:
+        Contents().update(
+            entity["_id"],
+            abuse_flaggers=entity["abuse_flaggers"].remove(user_id),
+            historical_abuse_flaggers=historical_abuse_flaggers,
+        )
+        update_stats_after_unflag(
+            entity["author_id"], entity["_id"], has_no_historical_flags
+        )
+
     return Contents().get(entity["_id"])
 
 
