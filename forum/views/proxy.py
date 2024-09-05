@@ -27,7 +27,10 @@ class ForumProxyAPIView(APIView):
         Catches get requests and sends them to forum/cs_comments_service get URLs.
         """
         response = handle_proxy_requests(request, suffix, "get")
-        return Response(data=response.json(), status=response.status_code)
+        if response.content:
+            return Response(data=response.json(), status=response.status_code)
+        else:
+            return Response(data={}, status=response.status_code)
 
     def delete(self, request: HttpRequest, suffix: str) -> Response:
         """

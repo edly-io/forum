@@ -72,7 +72,7 @@ class CommentSerializer(ContentSerializer):
             return []
 
         children = list(
-            Comment().list(
+            Comment().get_list(
                 parent_id=ObjectId(obj["_id"]),
                 depth=1,
                 sort=self.context.get("sort", -1),

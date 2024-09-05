@@ -65,7 +65,7 @@ def test_list() -> None:
         "1",
         "user1",
     )
-    threads_list = CommentThread().list()
+    threads_list = CommentThread().get_list()
     assert len(list(threads_list)) == 3
     assert all(thread["title"].startswith("Thread") for thread in threads_list)
 

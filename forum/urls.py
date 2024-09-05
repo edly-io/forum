@@ -16,6 +16,15 @@ from forum.views.subscriptions import (
     UserSubscriptionAPIView,
 )
 from forum.views.threads import CreateThreadAPIView, ThreadsAPIView, UserThreadsAPIView
+from forum.views.users import (
+    UserActiveThreadsAPIView,
+    UserAPIView,
+    UserCourseStatsAPIView,
+    UserCreateAPIView,
+    UserEditAPIView,
+    UserReadAPIView,
+    UserRetireAPIView,
+)
 from forum.views.votes import CommentVoteView, ThreadVoteView
 
 api_patterns = [
@@ -102,6 +111,46 @@ api_patterns = [
         "commentables/<str:course_id>/counts",
         CommentablesCountAPIView.as_view(),
         name="commentables-count",
+    ),
+    path(
+        "users",
+        UserCreateAPIView.as_view(),
+        name="create-user",
+    ),
+    path(
+        "users/<str:user_id>",
+        UserAPIView.as_view(),
+        name="get-user-detail",
+    ),
+    path(
+        "users/<str:user_id>/replace_username",
+        UserEditAPIView.as_view(),
+        name="edit-user",
+    ),
+    path(
+        "users/<str:user_id>/read",
+        UserReadAPIView.as_view(),
+        name="user-read",
+    ),
+    path(
+        "users/<str:user_id>/active_threads",
+        UserActiveThreadsAPIView.as_view(),
+        name="user-active-threads",
+    ),
+    path(
+        "users/<str:course_id>/stats",
+        UserCourseStatsAPIView.as_view(),
+        name="user-course-stats",
+    ),
+    path(
+        "users/<str:course_id>/update_stats",
+        UserCourseStatsAPIView.as_view(),
+        name="user-course-stats-update",
+    ),
+    path(
+        "users/<str:user_id>/retire",
+        UserRetireAPIView.as_view(),
+        name="user-retire",
     ),
     # Proxy view for various API endpoints
     path(

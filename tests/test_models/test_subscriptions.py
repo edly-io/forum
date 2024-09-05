@@ -66,7 +66,7 @@ def test_list() -> None:
         source_id="source3",
         source_type="type3",
     )
-    subscriptions_list = Subscriptions().list()
+    subscriptions_list = Subscriptions().get_list()
     assert len(list(subscriptions_list)) == 3
     assert all(
         subscription["subscriber_id"] in ["user1", "user2", "user3"]

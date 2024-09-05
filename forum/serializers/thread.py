@@ -209,7 +209,7 @@ class ThreadSerializer(ContentSerializer):
                 else ASCENDING
             )
             children = list(
-                Comment().list(
+                Comment().get_list(
                     comment_thread_id=ObjectId(obj["_id"]),
                     depth=0,
                     parent_id=None,

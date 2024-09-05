@@ -64,7 +64,7 @@ def test_list() -> None:
         author_username=author_username,
     )
 
-    comments_list = Comment().list()
+    comments_list = Comment().get_list()
     assert len(list(comments_list)) == 3
     assert all(comment["body"].startswith("<p>Comment") for comment in comments_list)
 

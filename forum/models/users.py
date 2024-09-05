@@ -21,8 +21,8 @@ class Users(MongoBaseModel):
     def insert(
         self,
         external_id: str,
-        username: str,
-        email: str,
+        username: Optional[str] = None,
+        email: Optional[str] = None,
         default_sort_key: str = "date",
         read_states: Optional[list[dict[str, Any]]] = None,
         course_stats: Optional[list[dict[str, Any]]] = None,
@@ -51,7 +51,8 @@ class Users(MongoBaseModel):
             "read_states": read_states,
             "course_stats": course_stats,
         }
-        result = self._collection.insert_one(user_data)
+        insert_data = {k: v for k, v in user_data.items() if v is not None}
+        result = self._collection.insert_one(insert_data)
         return str(result.inserted_id)
 
     def delete(self, _id: Any) -> int:

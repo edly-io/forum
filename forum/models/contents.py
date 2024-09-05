@@ -1,7 +1,7 @@
 """Content Class for mongo backend."""
 
 from datetime import datetime
-from typing import Any, List
+from typing import Any, Optional
 
 from bson import ObjectId
 
@@ -38,7 +38,7 @@ class BaseContents(MongoBaseModel):
         query = {**query, "_type": self.content_type}
         return super().override_query(query)
 
-    def list(self, **kwargs: Any) -> Any:
+    def get_list(self, **kwargs: Any) -> Any:
         """
         Retrieves a list of all content documents in the database based on provided filters.
 
@@ -57,7 +57,7 @@ class BaseContents(MongoBaseModel):
         return result
 
     @classmethod
-    def get_votes_dict(cls, up: List[str], down: List[str]) -> dict[str, Any]:
+    def get_votes_dict(cls, up: list[str], down: list[str]) -> dict[str, Any]:
         """
         Calculates and returns the vote summary for a thread.
 
@@ -152,7 +152,15 @@ class Contents(BaseContents):
         result = self._collection.insert_one(content_data)
         return str(result.inserted_id)
 
-    def update(self, _id: str, **kwargs: Any) -> int:
+    def update(
+        self,
+        _id: str,
+        author_username: Optional[str] = None,
+        abuse_flaggers: Optional[list[str]] = None,
+        body: Optional[str] = None,
+        title: Optional[str] = None,
+        **kwargs: Any
+    ) -> int:
         """
         Updates a contents document in the database based on the provided _id.
 
@@ -163,8 +171,18 @@ class Contents(BaseContents):
         Returns:
             The number of documents modified.
         """
+        fields = [
+            ("author_username", author_username),
+            ("abuse_flaggers", abuse_flaggers),
+            ("body", body),
+            ("title", title),
+        ]
+        update_data: dict[str, Any] = {
+            field: value for field, value in fields if value is not None
+        }
+
         result = self._collection.update_one(
             {"_id": ObjectId(_id)},
-            {"$set": {"abuse_flaggers": kwargs.get("abuse_flaggers")}},
+            {"$set": update_data},
         )
         return result.modified_count
