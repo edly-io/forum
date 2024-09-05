@@ -816,6 +816,7 @@ def validate_params(
         "page",
         "per_page",
         "request_id",
+        "commentable_ids",
     ]
     if not user_id:
         valid_params.append("user_id")
@@ -885,3 +886,28 @@ def get_threads(
     serializer = serializer(threads.pop("collection"), many=True, context=context)
     threads["collection"] = serializer.data
     return threads
+
+
+def get_commentables_counts_based_on_type(course_id: str) -> dict[str, Any]:
+    """Return commentables counts in a course based on thread's type."""
+    pipeline: list[dict[str, Any]] = [
+        {"$match": {"course_id": course_id, "_type": "CommentThread"}},
+        {
+            "$group": {
+                "_id": {"topic_id": "$commentable_id", "type": "$thread_type"},
+                "count": {"$sum": 1},
+            }
+        },
+    ]
+
+    result = CommentThread().aggregate(pipeline)
+    commentable_counts = {}
+    for commentable in result:
+        topic_id = commentable["_id"]["topic_id"]
+        if topic_id not in commentable_counts:
+            commentable_counts[topic_id] = {"discussion": 0, "question": 0}
+        commentable_counts[topic_id].update(
+            {commentable["_id"]["type"]: commentable["count"]}
+        )
+
+    return commentable_counts
