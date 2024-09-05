@@ -22,10 +22,6 @@ class SearchThreadsView(APIView):
     This view provides a `GET` endpoint that allows searching for threads with various filtering,
     sorting, and pagination options. It also supports suggesting corrected search text if no results
     are found with the initial query.
-
-    Methods:
-        get(request): Handles GET requests for searching threads.
-        get_group_ids_from_params(params): Extracts group IDs from the query parameters.
     """
 
     permission_classes = (AllowAny,)
