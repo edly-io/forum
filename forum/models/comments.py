@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from bson import ObjectId
 
+from forum.constants import COMMENTS_INDEX
 from forum.models.contents import BaseContents
 from forum.models.threads import CommentThread
 from forum.models.users import Users
@@ -16,7 +17,7 @@ class Comment(BaseContents):
     Comment class for cs_comments_service content model
     """
 
-    index_name = "comments"
+    index_name = COMMENTS_INDEX
     content_type = "Comment"
 
     def override_query(self, query: dict[str, Any]) -> dict[str, Any]:
@@ -135,11 +136,11 @@ class Comment(BaseContents):
             self.update_child_count_in_parent_comment(parent_id, 1)
         if comment_thread_id:
             self.update_comment_count_in_comment_thread(comment_thread_id, 1)
-        self.update_sk(str(result.inserted_id), parent_id)
         if result:
             get_handler_by_name("comment_inserted").send(
                 sender=self.__class__, comment_id=str(result.inserted_id)
             )
+        self.update_sk(str(result.inserted_id), parent_id)
         return str(result.inserted_id)
 
     def update(

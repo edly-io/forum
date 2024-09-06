@@ -10,6 +10,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from forum.constants import FORUM_DEFAULT_PAGE, FORUM_DEFAULT_PER_PAGE
 from forum.models.model_utils import handle_threads_query
 from forum.search.search_manager import ThreadSearchManager
 from forum.serializers.thread import ThreadSerializer
@@ -26,19 +27,58 @@ class SearchThreadsView(APIView):
 
     permission_classes = (AllowAny,)
 
-    def _validate_request(self, request: Request) -> None:
+    def _validate_and_extract_params(self, request: Request) -> dict[str, Any]:
         """
-        Validate query params in the request.
+        Validate and extract query parameters from the request.
         """
-        course_id = request.GET.get("course_id")
+        params: dict[str, Any] = {}
+
+        # Required parameters
         text = request.GET.get("text")
-        sort_key = request.GET.get("sort_key")
-        if not course_id:
-            raise ValueError("course_id is required")
         if not text:
             raise ValueError("text is required")
-        if sort_key and sort_key not in ["activity", "comments", "date", "votes"]:
+        params["text"] = text
+
+        # Sort key validation
+        VALID_SORT_KEYS = ("activity", "comments", "date", "votes")
+        sort_key = request.GET.get("sort_key", "date")
+        if sort_key not in VALID_SORT_KEYS:
             raise ValueError("invalid sort_key")
+        params["sort_key"] = sort_key
+
+        # Pagination handling
+        page = request.GET.get("page", FORUM_DEFAULT_PAGE)
+        try:
+            params["page"] = int(page)
+        except ValueError as exc:
+            raise ValueError("Invalid page value.") from exc
+
+        per_page = request.GET.get("per_page", FORUM_DEFAULT_PER_PAGE)
+        try:
+            params["per_page"] = int(per_page)
+        except ValueError as exc:
+            raise ValueError("Invalid per_page value.") from exc
+
+        # Optional parameters with default values and type conversion
+        params["context"] = request.GET.get("context", "course")
+        params["user_id"] = request.GET.get("user_id", "")
+        params["course_id"] = request.GET.get("course_id", "")
+        params["author_id"] = request.GET.get("author_id")
+        params["thread_type"] = request.GET.get("thread_type")
+        params["flagged"] = request.GET.get("flagged", "false").lower() == "true"
+        params["unread"] = request.GET.get("unread", "false").lower() == "true"
+        params["unanswered"] = request.GET.get("unanswered", "false").lower() == "true"
+        params["unresponded"] = (
+            request.GET.get("unresponded", "false").lower() == "true"
+        )
+        params["count_flagged"] = (
+            request.GET.get("count_flagged", "false").lower() == "true"
+        )
+
+        # Group IDs extraction
+        params["group_ids"] = self.get_group_ids_from_params(request.GET)
+
+        return params
 
     def _get_thread_ids_from_indexes(
         self, context: str, group_ids: list[int], params: dict[str, Any], text: str
@@ -61,11 +101,10 @@ class SearchThreadsView(APIView):
         search_manager = ThreadSearchManager()
 
         thread_ids = search_manager.get_thread_ids(context, group_ids, params, text)
-
         if not thread_ids:
             corrected_text = search_manager.get_suggested_text(text, ["body", "title"])
             if corrected_text:
-                thread_ids = search_manager.get_thread_ids(
+                thread_ids = search_manager.get_thread_ids_with_corrected_text(
                     context, group_ids, params, corrected_text
                 )
             if not thread_ids:
@@ -84,50 +123,30 @@ class SearchThreadsView(APIView):
             Response: A JSON response containing the search results, corrected text (if any), and total results.
         """
         try:
-            self._validate_request(request=request)
+            params = self._validate_and_extract_params(request)
         except ValueError as error:
             return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
 
-        text: str = request.GET.get("text", "")
-        context: str = request.GET.get("context", "course")
-        user_id: str = request.GET.get("user_id", "")
-        course_id: str = request.GET.get("course_id", "")
-        author_id: Optional[str] = request.GET.get("author_id", None)
-        thread_type: Optional[str] = request.GET.get("thread_type", None)
-        flagged: bool = request.GET.get("flagged") == "true"
-        unread: bool = request.GET.get("unread") == "true"
-        unanswered: bool = request.GET.get("unanswered") == "true"
-        unresponded: bool = request.GET.get("unresponded") == "true"
-        count_flagged: bool = request.GET.get("count_flagged") == "true"
-        sort_key: Optional[str] = request.GET.get("sort_key")
-        page: int = int(request.GET.get("page", "1"))
-        per_page: int = int(request.GET.get("per_page", "10"))
-
-        if sort_key not in ["activity", "comments", "date", "votes"]:
-            sort_key = "date"
-
-        group_ids: list[int] = self.get_group_ids_from_params(request.GET)
-
         thread_ids, corrected_text = self._get_thread_ids_from_indexes(
-            context, group_ids, request.GET, text
+            params["context"], params["group_ids"], request.GET, params["text"]
         )
 
         data: dict[str, Any] = handle_threads_query(
             thread_ids,
-            user_id,
-            course_id,
-            group_ids,
-            author_id,
-            thread_type,
-            flagged,
-            unread,
-            unanswered,
-            unresponded,
-            count_flagged,
-            sort_key,
-            page,
-            per_page,
-            context,
+            params["user_id"],
+            params["course_id"],
+            params["group_ids"],
+            params["author_id"],
+            params["thread_type"],
+            params["flagged"],
+            params["unread"],
+            params["unanswered"],
+            params["unresponded"],
+            params["count_flagged"],
+            params["sort_key"],
+            params["page"],
+            params["per_page"],
+            params["context"],
         )
 
         if collections := data.get("collection"):
