@@ -17,6 +17,78 @@ class BaseContents(MongoBaseModel):
     content_type: str = ""
     COLLECTION_NAME: str = "contents"
 
+    def __init__(self) -> None:
+        """
+        Initialize the indexes.
+        """
+        super().__init__()
+        self.create_indexes()
+
+    def create_indexes(self) -> None:
+        """
+        The implementation creates the indexes in the mongodb for the contents collection.
+        """
+        self._collection.create_index(
+            [
+                ("_type", 1),
+                ("course_id", 1),
+                ("pinned", -1),
+                ("created_at", -1),
+            ],
+            background=True,
+        )
+        self._collection.create_index(
+            [
+                ("_type", 1),
+                ("course_id", 1),
+                ("pinned", -1),
+                ("comment_count", -1),
+                ("created_at", -1),
+            ],
+            background=True,
+        )
+        self._collection.create_index(
+            [
+                ("_type", 1),
+                ("course_id", 1),
+                ("pinned", -1),
+                ("votes.point", -1),
+                ("created_at", -1),
+            ],
+            background=True,
+        )
+        self._collection.create_index(
+            [
+                ("_type", 1),
+                ("course_id", 1),
+                ("pinned", -1),
+                ("last_activity_at", -1),
+                ("created_at", -1),
+            ],
+            background=True,
+        )
+        self._collection.create_index(
+            [
+                ("comment_thread_id", 1),
+                ("sk", 1),
+            ],
+            sparse=True,
+        )
+        self._collection.create_index(
+            [
+                ("comment_thread_id", 1),
+                ("endorsed", 1),
+            ],
+            sparse=True,
+        )
+        self._collection.create_index(
+            [
+                ("commentable_id", 1),
+            ],
+            sparse=True,
+            background=True,
+        )
+
     @classmethod
     def mapping(cls) -> dict[str, Any]:
         """

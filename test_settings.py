@@ -65,4 +65,15 @@ TEMPLATES = [
 FORUM_PORT = "4567"
 FORUM_MONGO_HOST = "mongo-test-url"
 FORUM_MONGO_PORT = 27017
+
 FORUM_ENABLE_ELASTIC_SEARCH = False
+if FORUM_ENABLE_ELASTIC_SEARCH:
+    ELASTIC_SEARCH_CONFIG = [
+        {
+            "host": "localhost",
+            "port": "5200",
+            "use_ssl": False,
+        }
+    ]
+else:
+    ELASTIC_SEARCH_CONFIG = [{}]
