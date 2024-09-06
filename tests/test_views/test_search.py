@@ -88,9 +88,11 @@ def get_search_response(
                     "get_thread_ids_with_corrected_text",
                     return_value=get_therad_ids_with_corrected_text_values,
                 ):
-                    return api_client.get_json(f"/api/v2/search/threads?{query_string}")
+                    return api_client.get_json(
+                        f"/api/v2/search/threads?{query_string}", {}
+                    )
 
-    return api_client.get_json(f"/api/v2/search/threads?{query_string}")
+    return api_client.get_json(f"/api/v2/search/threads?{query_string}", {})
 
 
 def refresh_elastic_search_indices() -> None:
