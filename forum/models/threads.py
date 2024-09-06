@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from bson import ObjectId
 
+from forum.constants import COMMENT_THREADS_INDEX
 from forum.models.contents import BaseContents
 from forum.models.users import Users
 from forum.utils import get_handler_by_name
@@ -15,7 +16,7 @@ class CommentThread(BaseContents):
     CommentThread class for cs_comments_service content model
     """
 
-    index_name = "comment_threads"
+    index_name = COMMENT_THREADS_INDEX
     content_type = "CommentThread"
 
     def delete(self, _id: str) -> int:
@@ -99,6 +100,7 @@ class CommentThread(BaseContents):
         visible: bool = True,
         abuse_flaggers: Optional[list[str]] = None,
         historical_abuse_flaggers: Optional[list[str]] = None,
+        group_id: Optional[int] = None,
     ) -> str:
         """
         Inserts a new thread document into the database.
@@ -128,8 +130,10 @@ class CommentThread(BaseContents):
         """
         if thread_type not in ["question", "discussion"]:
             raise ValueError("Invalid thread_type")
+
         if context not in ["course", "standalone"]:
             raise ValueError("Invalid context")
+
         if abuse_flaggers is None:
             abuse_flaggers = []
         if historical_abuse_flaggers is None:
@@ -160,6 +164,9 @@ class CommentThread(BaseContents):
             "abuse_flaggers": abuse_flaggers,
             "historical_abuse_flaggers": historical_abuse_flaggers,
         }
+        if group_id:
+            thread_data["group_id"] = group_id
+
         result = self._collection.insert_one(thread_data)
         thread_id = str(result.inserted_id)
         if result:
@@ -196,6 +203,7 @@ class CommentThread(BaseContents):
         edit_reason_code: Optional[str] = None,
         close_reason_code: Optional[str] = None,
         closed_by_id: Optional[str] = None,
+        group_id: Optional[int] = None,
     ) -> int:
         """
         Updates a thread document in the database.
@@ -243,10 +251,11 @@ class CommentThread(BaseContents):
             ("historical_abuse_flaggers", historical_abuse_flaggers),
             ("closed_by", closed_by),
             ("pinned", pinned),
-            ("comments_count", comments_count),
+            ("comment_count", comments_count),
             ("endorsed", endorsed),
             ("close_reason_code", close_reason_code),
             ("closed_by_id", closed_by_id),
+            ("group_id", group_id),
         ]
         update_data: dict[str, Any] = {
             field: value for field, value in fields if value is not None
@@ -270,7 +279,6 @@ class CommentThread(BaseContents):
 
         date = datetime.now()
         update_data["updated_at"] = date
-        update_data["last_activity_at"] = date
         result = self._collection.update_one(
             {"_id": ObjectId(thread_id)},
             {"$set": update_data},

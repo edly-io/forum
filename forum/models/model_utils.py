@@ -1,7 +1,8 @@
 """Model util function for db operations."""
 
+import math
 from datetime import datetime, timezone
-from typing import Any, Optional, Union
+from typing import Any, Optional, Sequence, Union
 
 from bson import ObjectId
 from django.core.exceptions import ObjectDoesNotExist
@@ -493,6 +494,36 @@ def get_user_read_state_by_course_id(
     return {}
 
 
+def get_sort_criteria(sort_key: str) -> Sequence[tuple[str, int]]:
+    """
+    Generate sorting criteria based on the provided key.
+
+    Parameters:
+    sort_key (str): Key to determine sort order ("date", "activity", "votes", "comments").
+
+    Returns:
+    list: List of tuples for sorting, including "pinned" and the relevant field,
+          optionally adding "created_at" if needed.
+    """
+    sort_key_mapper = {
+        "date": "created_at",
+        "activity": "last_activity_at",
+        "votes": "votes.point",
+        "comments": "comment_count",
+    }
+    sort_key = sort_key or "date"
+    sort_key = sort_key_mapper.get(sort_key, "")
+
+    if sort_key:
+        # only sort order of -1 (descending) is supported.
+        sort_criteria = [("pinned", -1), (sort_key, -1)]
+        if sort_key not in ["created_at", "last_activity_at"]:
+            sort_criteria.append(("created_at", -1))
+        return sort_criteria
+    else:
+        return []
+
+
 # TODO: Make this function modular
 # pylint: disable=too-many-nested-blocks,too-many-statements
 def handle_threads_query(
@@ -591,14 +622,8 @@ def handle_threads_query(
     if filter_unresponded:
         base_query["comment_count"] = 0
 
-    # Sorting
-    sort_options = {
-        "date": [("created_at", -1)],
-        "activity": [("last_activity_at", -1)],
-        "votes": [("votes.count", -1)],
-        "comments": [("comment_count", -1)],
-    }
-    sort_criteria = sort_options.get(sort_key, [("created_at", -1)])
+    sort_criteria = get_sort_criteria(sort_key)
+
     comment_threads = CommentThread().find(base_query)
     thread_count = CommentThread().count_documents(base_query)
 
@@ -643,7 +668,7 @@ def handle_threads_query(
                     (page - 1) * per_page
                 ).limit(per_page)
                 threads = list(paginated_collection)
-                num_pages = max(1, (thread_count // per_page))
+                num_pages = max(1, math.ceil(thread_count / per_page))
 
         if raw_query:
             return {"result": threads}

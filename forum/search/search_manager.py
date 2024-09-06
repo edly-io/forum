@@ -7,6 +7,10 @@ from typing import Any, Optional
 from django.conf import settings
 from elasticsearch import Elasticsearch
 
+from forum.constants import (
+    FORUM_ELASTICSEARCH_INDEX_NAMES,
+    FORUM_MAX_DEEP_SEARCH_COMMENT_COUNT,
+)
 from forum.models.threads import CommentThread
 
 
@@ -19,8 +23,8 @@ class ElasticsearchManager:
         """
         Init function.
         """
-        self.index_names: str = settings.FORUM_ELASTICSEARCH_INDEX_NAMES
-        self.max_search_count: int = settings.FORUM_MAX_DEEP_SEARCH_COMMENT_COUNT
+        self.index_names: list[str] = FORUM_ELASTICSEARCH_INDEX_NAMES
+        self.max_search_count: int = FORUM_MAX_DEEP_SEARCH_COMMENT_COUNT
         self.client: Elasticsearch = Elasticsearch(settings.ELASTIC_SEARCH_CONFIG)
 
     def execute_search(
@@ -196,3 +200,20 @@ class ThreadSearchManager(ElasticsearchManager):
             )
 
         return []
+
+    def get_thread_ids_with_corrected_text(
+        self,
+        context: str,
+        group_ids: list[int],
+        params: dict[str, str],
+        search_text: str,
+        sort_criteria: Optional[list[dict[str, str]]] = None,
+    ) -> list[str]:
+        """
+        The function is just used of mimicing the behaviour of the test cases.
+        It's same as of the get_thread_ids but it could be used in the test cases for
+        updating the returned values.
+        """
+        return self.get_thread_ids(
+            context, group_ids, params, search_text, sort_criteria
+        )
