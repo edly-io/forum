@@ -77,7 +77,6 @@ class Users(MongoBaseModel):
         default_sort_key: Optional[str] = None,
         read_states: Optional[list[dict[str, Any]]] = None,
         course_stats: Optional[list[dict[str, Any]]] = None,
-        active_flags: Optional[int] = None,
     ) -> int:
         """
         Updates a user document in the database based on the external_id.
@@ -91,7 +90,6 @@ class Users(MongoBaseModel):
                 - default_sort_key: The new default sort key for the user.
                 - read_states: The new read states of the user.
                 - course_stats: The new course statistics of the user.
-                - active_flags: The new active flags of the user.
 
         Returns:
             The number of documents modified.
@@ -103,7 +101,6 @@ class Users(MongoBaseModel):
             ("default_sort_key", default_sort_key),
             ("read_states", read_states),
             ("course_stats", course_stats),
-            ("active_flags", active_flags),
         ]
         update_data: dict[str, Any] = {
             field: value for field, value in fields if value is not None
