@@ -15,10 +15,12 @@ from forum.models.comments import Comment
 from forum.models.model_utils import (
     delete_comments_of_a_thread,
     get_threads,
+    mark_as_read,
     validate_object,
     validate_params,
 )
 from forum.models.threads import CommentThread
+from forum.models.users import Users
 from forum.serializers.thread import ThreadSerializer
 from forum.utils import get_int_value_from_collection, str_to_bool
 
@@ -55,6 +57,9 @@ def prepare_thread_api_response(
             "include_read_state": True,
         }
         if data_or_params:
+            if user_id := data_or_params.get("user_id"):
+                context["user_id"] = user_id
+
             if include_data_from_params:
                 thread_data["resp_skip"] = get_int_value_from_collection(
                     data_or_params, "resp_skip", 0
@@ -77,9 +82,8 @@ def prepare_thread_api_response(
                 context["merge_question_type_responses"] = str_to_bool(
                     data_or_params.get("merge_question_type_responses", "False")
                 )
-
-            if user_id := data_or_params.get("user_id"):
-                context["user_id"] = user_id
+                if user_id and (user := Users().get(user_id)):
+                    mark_as_read(user, thread)
 
     serializer = ThreadSerializer(
         data=thread_data,
@@ -190,6 +194,13 @@ class ThreadsAPIView(APIView):
         if thread:
             update_thread_data["edit_history"] = thread.get("edit_history", [])
             update_thread_data["original_body"] = thread.get("body")
+        if update_thread_data.get("closed"):
+            for field_for_closing in ["close_reason_code", "closed_by_id"]:
+                if field_for_closing not in update_thread_data:
+                    return Response(
+                        {"error": f"{field_for_closing} is not provided"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
         CommentThread().update(thread_id, **update_thread_data)
         updated_thread = CommentThread().get(thread_id)
@@ -230,6 +241,8 @@ class ThreadsAPIView(APIView):
             ("pinned", str_to_bool(data.get("pinned", "False"))),
             ("thread_type", data.get("thread_type", "discussion")),
             ("edit_reason_code", data.get("edit_reason_code")),
+            ("close_reason_code", data.get("close_reason_code")),
+            ("closed_by_id", data.get("closing_user_id")),
         ]
         return {field: value for field, value in fields if value is not None}
 
@@ -291,7 +304,7 @@ class CreateThreadAPIView(APIView):
 
     def create_thread(self, data: dict[str, Any]) -> Any:
         """handle thread creation and returns a thread."""
-        new_comment_id = CommentThread().insert(
+        new_thread_id = CommentThread().insert(
             title=data["title"],
             body=data["body"],
             course_id=data["course_id"],
@@ -301,7 +314,7 @@ class CreateThreadAPIView(APIView):
             commentable_id=data.get("commentable_id", "course"),
             thread_type=data.get("thread_type", "discussion"),
         )
-        return CommentThread().get(new_comment_id)
+        return CommentThread().get(new_thread_id)
 
 
 class UserThreadsAPIView(APIView):

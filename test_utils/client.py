@@ -40,10 +40,18 @@ class APIClient(Client):
 
         return self.generic(method, path, data, headers=headers, **kwargs)
 
-    def get_json(self, path: str, *args: Any, **kwargs: Any) -> Any:
+    def get_json(
+        self,
+        path: str,
+        params: dict[str, Any],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
         """
         Send a GET request.
         """
+        if params:
+            path += "?" + "&".join(f"{k}={v}" for k, v in params.items())
         return self.send_request("GET", path, None, *args, **kwargs)
 
     def post_json(self, path: str, data: Any, *args: Any, **kwargs: Any) -> Any:

@@ -276,6 +276,7 @@ class UserActiveThreadsAPIView(APIView):
             collection = data.get("result", [])
             for thread in collection:
                 thread["_id"] = str(thread.pop("_id"))
+                thread["type"] = str(thread.get("_type", "")).lower()
             data["collection"] = ThreadSerializer(collection, many=True).data
         return Response(data)
 

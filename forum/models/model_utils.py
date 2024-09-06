@@ -875,12 +875,6 @@ def validate_params(
     ]
     if not user_id:
         valid_params.append("user_id")
-        if "user_id" not in params:
-            return Response(
-                {"error": "Missing required parameter: user_id"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        user_id = params.get("user_id")
 
     for key in params:
         if key not in valid_params:

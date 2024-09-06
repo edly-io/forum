@@ -10,8 +10,8 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
-from forum.models import Comment, CommentThread
-from forum.models.model_utils import validate_object
+from forum.models import Comment, CommentThread, Users
+from forum.models.model_utils import mark_as_read, validate_object
 from forum.serializers.comment import CommentSerializer
 from forum.utils import str_to_bool
 
@@ -140,7 +140,7 @@ class CommentsAPIView(APIView):
             The details of the comment that is created.
         """
         try:
-            comment = validate_object(Comment, comment_id)
+            parent_comment = validate_object(Comment, comment_id)
         except ObjectDoesNotExist:
             return Response(
                 {"error": "Comment does not exist"},
@@ -156,6 +156,10 @@ class CommentsAPIView(APIView):
             )
 
         comment = create_comment(data, 1, parent_id=comment_id)
+        user = Users().get(data["user_id"])
+        thread = CommentThread().get(parent_comment["comment_thread_id"])
+        if user and thread and comment:
+            mark_as_read(user, thread)
         try:
             if comment:
                 response_data = prepare_comment_api_response(
@@ -295,7 +299,7 @@ class CreateThreadCommentAPIView(APIView):
             The details of the comment that is created.
         """
         try:
-            validate_object(CommentThread, thread_id)
+            thread = validate_object(CommentThread, thread_id)
         except ObjectDoesNotExist:
             return Response(
                 {"error": "Thread does not exist"},
@@ -311,6 +315,9 @@ class CreateThreadCommentAPIView(APIView):
             )
 
         comment = create_comment(data, 0, thread_id=thread_id)
+        user = Users().get(data["user_id"])
+        if user and comment:
+            mark_as_read(user, thread)
         try:
             if comment:
                 response_data = prepare_comment_api_response(
