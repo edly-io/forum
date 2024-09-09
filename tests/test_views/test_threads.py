@@ -60,6 +60,7 @@ def create_comments_in_a_thread(thread_id: str) -> tuple[str, str]:
 
 
 def test_update_thread(api_client: APIClient) -> None:
+    """Test updaing a thread."""
     user_id, thread_id = setup_models()
     response = api_client.put_json(
         f"/api/v2/threads/{thread_id}",
@@ -82,6 +83,7 @@ def test_update_thread(api_client: APIClient) -> None:
 
 
 def test_update_thread_without_user_id(api_client: APIClient) -> None:
+    """Test updaing a thread without user id."""
     _, thread_id = setup_models()
     response = api_client.put_json(
         f"/api/v2/threads/{thread_id}",
@@ -103,6 +105,7 @@ def test_update_thread_without_user_id(api_client: APIClient) -> None:
 
 
 def test_update_close_reason(api_client: APIClient) -> None:
+    """Test close a thread through update thread API."""
     user_id, thread_id = setup_models()
     response = api_client.put_json(
         f"/api/v2/threads/{thread_id}",
@@ -122,6 +125,7 @@ def test_update_close_reason(api_client: APIClient) -> None:
 
 
 def test_closing_and_reopening_thread_clears_reason_code(api_client: APIClient) -> None:
+    """Test close a thread and reopen a thread through update thread API."""
     user_id, thread_id = setup_models()
     response = api_client.put_json(
         f"/api/v2/threads/{thread_id}",
@@ -150,6 +154,7 @@ def test_closing_and_reopening_thread_clears_reason_code(api_client: APIClient) 
 
 
 def test_update_thread_not_exist(api_client: APIClient) -> None:
+    """Test thread does not exists through update thread API."""
     wrong_thread_id = "66cd75eba3a68c001d51927b"
     response = api_client.put_json(
         f"/api/v2/threads/{wrong_thread_id}",
@@ -163,6 +168,7 @@ def test_update_thread_not_exist(api_client: APIClient) -> None:
 
 
 def test_unicode_data(api_client: APIClient) -> None:
+    """Test data through update thread API."""
     user_id, thread_id = setup_models()
     texts = ["测试", "テスト", "test"]
     for text in texts:
@@ -183,6 +189,7 @@ def test_unicode_data(api_client: APIClient) -> None:
 
 
 def test_delete_thread(api_client: APIClient) -> None:
+    """Test delete a thread."""
     _, thread_id = setup_models()
     comment_id_1, comment_id_2 = create_comments_in_a_thread(thread_id)
     thread_from_db = CommentThread().get(thread_id)
@@ -196,6 +203,7 @@ def test_delete_thread(api_client: APIClient) -> None:
 
 
 def test_delete_thread_not_exist(api_client: APIClient) -> None:
+    """Test thread does not exists through delete thread API."""
     wrong_thread_id = "66cd75eba3a68c001d51927b"
     response = api_client.delete_json(f"/api/v2/threads/{wrong_thread_id}")
     assert response.status_code == 400
@@ -203,6 +211,7 @@ def test_delete_thread_not_exist(api_client: APIClient) -> None:
 
 
 def test_filter_by_course(api_client: APIClient) -> None:
+    """Test filter threads by course id through get thread API."""
     setup_models()
     params = {"course_id": "course1"}
     response = api_client.get_json("/api/v2/threads", params)
@@ -215,6 +224,7 @@ def test_filter_by_course(api_client: APIClient) -> None:
 
 
 def test_filter_exclude_standalone(api_client: APIClient) -> None:
+    """Test filter exclude standalone threads through get thread API."""
     setup_models()
     CommentThread().insert(
         title="Thread 2",
@@ -239,6 +249,7 @@ def test_filter_exclude_standalone(api_client: APIClient) -> None:
 
 
 def test_no_matching_course_id(api_client: APIClient) -> None:
+    """Test no matching course id through get thread API."""
     setup_models()
     wrong_course_id = "abc"
     params = {"course_id": wrong_course_id}
@@ -249,6 +260,7 @@ def test_no_matching_course_id(api_client: APIClient) -> None:
 
 
 def test_filter_flagged_posts(api_client: APIClient) -> None:
+    """Test filter flagged posts through get thread API."""
     user_id, thread_id = setup_models()
     tests_flags = [(True, "1"), (False, "0")]
     for flagged, abuse_flaggers in tests_flags:
@@ -268,6 +280,7 @@ def test_filter_flagged_posts(api_client: APIClient) -> None:
 
 
 def test_filter_by_author(api_client: APIClient) -> None:
+    """Test filter threads by author id through get thread API."""
     user_id1, _ = setup_models()
     user_id2, _ = setup_models("2", "user2", "course2")
 
@@ -292,6 +305,7 @@ def test_filter_by_author(api_client: APIClient) -> None:
 
 
 def test_filter_by_post_type(api_client: APIClient) -> None:
+    """Test filter threads by thread_type through get thread API."""
     setup_models()
     setup_models("2", "user2", "course1")
     CommentThread().insert(
@@ -323,6 +337,7 @@ def test_filter_by_post_type(api_client: APIClient) -> None:
 
 
 def test_filter_unanswered_questions(api_client: APIClient) -> None:
+    """Test filter unanswered questions through get thread API."""
     _, thread1 = setup_models(thread_type="question")
     _, thread2 = setup_models("2", "user2", thread_type="question")
     CommentThread().insert(
@@ -363,6 +378,7 @@ def test_filter_unanswered_questions(api_client: APIClient) -> None:
 
 
 def test_get_thread(api_client: APIClient) -> None:
+    """Test get thread by thread_id."""
     _, thread_id = setup_models()
     response = api_client.get_json(
         f"/api/v2/threads/{thread_id}",
@@ -386,6 +402,7 @@ def test_get_thread(api_client: APIClient) -> None:
 
 
 def test_computes_endorsed_correctly(api_client: APIClient) -> None:
+    """Test computes endorsed correctly through get thread API."""
     _, thread_id = setup_models()
     comment_id = Comment().insert(
         body="Comment 1",
@@ -414,6 +431,7 @@ def test_computes_endorsed_correctly(api_client: APIClient) -> None:
 
 
 def test_no_children_for_informational_request(api_client: APIClient) -> None:
+    """Test no children returned from get thread by thread_id API"""
     _, thread_id = setup_models()
     Comment().insert(
         body="Comment 1",
@@ -441,6 +459,7 @@ def test_no_children_for_informational_request(api_client: APIClient) -> None:
 
 
 def test_mark_as_read(api_client: APIClient) -> None:
+    """Test mark as read"""
     _, thread_id = setup_models()
     response = api_client.get_json(
         f"/api/v2/threads/{thread_id}",
@@ -462,26 +481,23 @@ def test_mark_as_read(api_client: APIClient) -> None:
 
 
 def test_thread_with_comments(api_client: APIClient) -> None:
-    user_id, thread_id = setup_models()
-    response = api_client.post_json(
-        f"/api/v2/threads/{thread_id}/comments",
-        data={
-            "body": "<p>Parent Comment 1</p>",
-            "course_id": "course1",
-            "user_id": user_id,
-        },
-    )
-    assert response.status_code == 200
+    """Test children returned from get thread by thread_id API"""
+    _, thread_id = setup_models()
+    comment_id_1, comment_id_2 = create_comments_in_a_thread(thread_id)
 
     response = api_client.get_json(
         f"/api/v2/threads/{thread_id}",
         params={
             "with_responses": True,
             "mark_as_read": False,
-            "reverse_order": False,
+            "reverse_order": "true",
             "merge_question_type_responses": False,
         },
     )
     assert response.status_code == 200
     thread = response.json()
-    assert thread["children"] is not None
+    thread_children = thread["children"]
+
+    assert len(thread_children) == 2
+    assert thread_children[0]["id"] == comment_id_2
+    assert thread_children[1]["id"] == comment_id_1

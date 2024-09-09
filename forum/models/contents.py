@@ -122,8 +122,8 @@ class BaseContents(MongoBaseModel):
         """
         if self.content_type:
             kwargs["_type"] = self.content_type
-        result = self._collection.find(kwargs)
         sort = kwargs.pop("sort", None)
+        result = self._collection.find(kwargs)
         if sort:
             return result.sort("sk", sort)
         return result

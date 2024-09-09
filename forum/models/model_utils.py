@@ -1290,6 +1290,8 @@ def build_course_stats(author_id: str, course_id: str) -> None:
             responses = counts["count"]
         else:
             threads = counts["count"]
+        last_update_at = make_aware(last_update_at)
+        updated_at = make_aware(updated_at)
         updated_at = max(last_update_at, updated_at)
         active_flags += counts["active_flags"]
         inactive_flags += counts["inactive_flags"]
