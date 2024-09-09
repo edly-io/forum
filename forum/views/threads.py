@@ -16,6 +16,7 @@ from forum.models.model_utils import (
     delete_comments_of_a_thread,
     get_threads,
     mark_as_read,
+    update_stats_for_course,
     validate_object,
     validate_params,
 )
@@ -166,7 +167,11 @@ class ThreadsAPIView(APIView):
                 error.detail,
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        CommentThread().delete(thread_id)
+        result = CommentThread().delete(thread_id)
+        if result:
+            update_stats_for_course(
+                thread["author_id"], thread["course_id"], threads=-1
+            )
 
         return Response(serialized_data, status=status.HTTP_200_OK)
 
@@ -278,6 +283,7 @@ class CreateThreadAPIView(APIView):
             )
 
         thread = self.create_thread(data)
+        update_stats_for_course(thread["author_id"], thread["course_id"], threads=1)
         try:
             serialized_data = prepare_thread_api_response(thread, True, data)
         except ValidationError as error:

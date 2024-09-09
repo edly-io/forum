@@ -11,7 +11,11 @@ from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
 from forum.models import Comment, CommentThread, Users
-from forum.models.model_utils import mark_as_read, validate_object
+from forum.models.model_utils import (
+    mark_as_read,
+    validate_object,
+    update_stats_for_course,
+)
 from forum.serializers.comment import CommentSerializer
 from forum.utils import str_to_bool
 
@@ -38,16 +42,22 @@ def create_comment(
     parent_id: Optional[str] = None,
 ) -> Any:
     """handle comment creation and returns a comment"""
+    author_id = data["user_id"]
+    course_id = data["course_id"]
     new_comment_id = Comment().insert(
         body=data["body"],
-        course_id=data["course_id"],
+        course_id=course_id,
         anonymous=str_to_bool(data.get("anonymous", "False")),
         anonymous_to_peers=str_to_bool(data.get("anonymous_to_peers", "False")),
-        author_id=data["user_id"],
+        author_id=author_id,
         comment_thread_id=thread_id,
         parent_id=parent_id,
         depth=depth,
     )
+    if parent_id:
+        update_stats_for_course(author_id, course_id, replies=1)
+    else:
+        update_stats_for_course(author_id, course_id, responses=1)
     return Comment().get(new_comment_id)
 
 
@@ -251,6 +261,13 @@ class CommentsAPIView(APIView):
             exclude_fields=["endorsement", "sk"],
         )
         Comment().delete(comment_id)
+        author_id = comment["author_id"]
+        course_id = comment["course_id"]
+        parent_comment_id = data["parent_id"]
+        if parent_comment_id:
+            update_stats_for_course(author_id, course_id, replies=-1)
+        else:
+            update_stats_for_course(author_id, course_id, responses=-1)
 
         return Response(data, status=status.HTTP_200_OK)
 
