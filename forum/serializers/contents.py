@@ -73,6 +73,7 @@ class ContentSerializer(serializers.Serializer[dict[str, Any]]):
     )
     edit_history = EditHistorySerializer(default=[], many=True)
     closed = serializers.BooleanField(default=False)
+    type = serializers.CharField()
 
     def create(self, validated_data: dict[str, Any]) -> Any:
         """Raise NotImplementedError"""

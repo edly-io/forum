@@ -372,6 +372,13 @@ def get_abuse_flagged_count(thread_ids: list[str]) -> dict[str, int]:
     return {str(item["_id"]): item["flagged_count"] for item in flagged_threads}
 
 
+def make_aware(dt: datetime) -> datetime:
+    """make datetime timezone-aware"""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 def get_read_states(
     threads: list[dict[str, Any]], user_id: str, course_id: str
 ) -> dict[str, list[Any]]:
@@ -396,7 +403,9 @@ def get_read_states(
             for thread in threads:
                 thread_key = str(thread["_id"])
                 if thread_key in read_dates:
-                    is_read = read_dates[thread_key] >= thread["last_activity_at"]
+                    read_date = make_aware(read_dates[thread_key])
+                    last_activity_at = make_aware(thread["last_activity_at"])
+                    is_read = read_date >= last_activity_at
                     unread_comment_count = Contents().count_documents(
                         {
                             "comment_thread_id": ObjectId(thread_key),
@@ -900,12 +909,6 @@ def validate_params(
     ]
     if not user_id:
         valid_params.append("user_id")
-        if "user_id" not in params:
-            return Response(
-                {"error": "Missing required parameter: user_id"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        user_id = params.get("user_id")
 
     for key in params:
         if key not in valid_params:
@@ -1238,9 +1241,9 @@ def update_user_stats_for_course(user_id: str, stat: dict[str, Any]) -> None:
     Users().update(user_id, course_stats=updated_course_stats)
 
 
-def build_course_stats(username: str, course_id: str) -> None:
+def build_course_stats(author_id: str, course_id: str) -> None:
     """Build course stats."""
-    user = Users().find_one({"username": username})
+    user = Users().get(author_id)
     if not user:
         raise ObjectDoesNotExist
     pipeline = [
@@ -1287,6 +1290,8 @@ def build_course_stats(username: str, course_id: str) -> None:
             responses = counts["count"]
         else:
             threads = counts["count"]
+        last_update_at = make_aware(last_update_at)
+        updated_at = make_aware(updated_at)
         updated_at = max(last_update_at, updated_at)
         active_flags += counts["active_flags"]
         inactive_flags += counts["inactive_flags"]
@@ -1308,14 +1313,14 @@ def update_all_users_in_course(course_id: str) -> list[str]:
         anonymous_to_peers=False,
         course_id=course_id,
     )
-    author_usernames = []
+    author_ids = []
     for content in course_contents:
-        if content["author_username"] not in author_usernames:
-            author_usernames.append(content["author_username"])
+        if content["author_id"] not in author_ids:
+            author_ids.append(content["author_id"])
 
-    for author_username in author_usernames:
-        build_course_stats(author_username, course_id)
-    return author_usernames
+    for author_id in author_ids:
+        build_course_stats(author_id, course_id)
+    return author_ids
 
 
 def get_user_by_username(username: str | None) -> dict[str, Any] | None:

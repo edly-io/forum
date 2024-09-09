@@ -125,7 +125,7 @@ class ThreadSerializer(ContentSerializer):
             Optional[bool]: True if the thread is read, otherwise False or None.
         """
         if self.include_read_state:
-            if isinstance(obj, dict) and obj.get("read") is None:
+            if isinstance(obj, dict) and obj.get("read") is not None:
                 return obj.get("read", True)
             user_id = self.context_data.get("user_id", None)
             course_id = obj["course_id"]
@@ -147,7 +147,7 @@ class ThreadSerializer(ContentSerializer):
             Optional[int]: The number of unread comments or None.
         """
         if self.include_read_state:
-            if isinstance(obj, dict) and obj.get("unread_comments_count") is None:
+            if isinstance(obj, dict) and obj.get("unread_comments_count") is not None:
                 return obj.get("unread_comments_count", 0)
             user_id = self.context_data.get("user_id", None)
             course_id = obj["course_id"]

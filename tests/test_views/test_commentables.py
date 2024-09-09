@@ -50,7 +50,7 @@ def test_get_commentables_counts_api(api_client: APIClient) -> None:
             "discussion": discussion_count,
         }
 
-    response = api_client.get_json(f"/api/v2/commentables/{course_id}/counts")
+    response = api_client.get_json(f"/api/v2/commentables/{course_id}/counts", {})
 
     assert response.status_code == 200
     assert response.json() == id_map

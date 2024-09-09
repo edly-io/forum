@@ -168,11 +168,12 @@ class CommentThread(BaseContents):
             thread_data["group_id"] = group_id
 
         result = self._collection.insert_one(thread_data)
+        thread_id = str(result.inserted_id)
         if result:
             get_handler_by_name("comment_thread_inserted").send(
-                sender=self.__class__, comment_thread_id=str(result.inserted_id)
+                sender=self.__class__, comment_thread_id=thread_id
             )
-        return str(result.inserted_id)
+        return thread_id
 
     def update(
         self,
@@ -200,6 +201,8 @@ class CommentThread(BaseContents):
         original_body: Optional[str] = None,
         editing_user_id: Optional[str] = None,
         edit_reason_code: Optional[str] = None,
+        close_reason_code: Optional[str] = None,
+        closed_by_id: Optional[str] = None,
         group_id: Optional[int] = None,
     ) -> int:
         """
@@ -250,11 +253,17 @@ class CommentThread(BaseContents):
             ("pinned", pinned),
             ("comment_count", comments_count),
             ("endorsed", endorsed),
+            ("close_reason_code", close_reason_code),
+            ("closed_by_id", closed_by_id),
             ("group_id", group_id),
         ]
         update_data: dict[str, Any] = {
             field: value for field, value in fields if value is not None
         }
+        if not closed and (close_reason_code and closed_by_id):
+            update_data["closed_by_id"] = None
+            update_data["close_reason_code"] = None
+
         if editing_user_id:
             edit_history = [] if edit_history is None else edit_history
             edit_history.append(

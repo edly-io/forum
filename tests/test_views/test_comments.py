@@ -68,7 +68,7 @@ def test_get_comment_api(api_client: APIClient) -> None:
     """
     _, _, parent_comment_id = setup_models()
 
-    response = api_client.get_json(f"/api/v2/comments/{parent_comment_id}")
+    response = api_client.get_json(f"/api/v2/comments/{parent_comment_id}", {})
     assert response.status_code == 200
     comment = response.json()
     assert comment["body"] == "<p>Parent Comment</p>"
@@ -121,7 +121,7 @@ def test_delete_comment_api(api_client: APIClient) -> None:
 
 def test_returns_400_when_comment_does_not_exist(api_client: APIClient) -> None:
     incorrect_comment_id = "66c42d4aa3a68c001c6c22db"
-    response = api_client.get_json(f"/api/v2/comments/{incorrect_comment_id}")
+    response = api_client.get_json(f"/api/v2/comments/{incorrect_comment_id}", {})
     assert response.status_code == 400
     assert response.json() == {"error": "Comment does not exist"}
 
