@@ -9,7 +9,7 @@ from django.dispatch import Signal
 from django.http import HttpRequest
 from requests.models import Response
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Response:
@@ -33,7 +33,13 @@ def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Res
     request_data = request.POST.dict()
     request_params = request.GET.dict()
 
-    logger.info(f"{method} request to cs_comments_service url: {url}")
+    log.error(
+        "%s request to Forum V1 URL: %s with Params: %s and Data: %s",
+        method.upper(),
+        url,
+        request_params,
+        request_data,
+    )
     return requests.request(
         method,
         url,
