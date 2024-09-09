@@ -229,6 +229,7 @@ class Contents(BaseContents):
         _id: str,
         author_username: Optional[str] = None,
         abuse_flaggers: Optional[list[str]] = None,
+        historical_abuse_flaggers: Optional[list[str]] = None,
         body: Optional[str] = None,
         title: Optional[str] = None,
         **kwargs: Any
@@ -246,6 +247,7 @@ class Contents(BaseContents):
         fields = [
             ("author_username", author_username),
             ("abuse_flaggers", abuse_flaggers),
+            ("historical_abuse_flaggers", historical_abuse_flaggers),
             ("body", body),
             ("title", title),
         ]

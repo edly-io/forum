@@ -49,7 +49,7 @@ class CommentFlagAPIView(APIView):
             updated_comment = flag_as_abuse(user, comment)
         elif action == "unflag":
             if request_data.get("all") and request_data.get("all") is True:
-                updated_comment = un_flag_all_as_abuse(user["_id"], comment)
+                updated_comment = un_flag_all_as_abuse(comment)
             else:
                 updated_comment = un_flag_as_abuse(user, comment)
         else:
@@ -108,7 +108,7 @@ class ThreadFlagAPIView(APIView):
             updated_thread = flag_as_abuse(user, thread)
         elif action == "unflag":
             if request_data.get("all"):
-                updated_thread = un_flag_all_as_abuse(user["_id"], thread)
+                updated_thread = un_flag_all_as_abuse(thread)
             else:
                 updated_thread = un_flag_as_abuse(user, thread)
         else:
