@@ -355,5 +355,5 @@ class UserThreadsAPIView(APIView):
         }
         filtered_threads = CommentThread().find(thread_filter)
         thread_ids = [thread["_id"] for thread in filtered_threads]
-        threads = get_threads(params, user_id, ThreadSerializer, thread_ids, True)
+        threads = get_threads(params, user_id, ThreadSerializer, thread_ids)
         return Response(data=threads, status=status.HTTP_200_OK)

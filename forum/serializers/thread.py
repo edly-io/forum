@@ -258,6 +258,7 @@ class ThreadSerializer(ContentSerializer):
         """
         data = super().to_representation(instance)
         data.pop("closed_by_id")
+        data.pop("historical_abuse_flaggers")
         if not data.get("abuse_flagged_count", None):
             data.pop("abuse_flagged_count", None)
         if not data.get("closed_by", None):

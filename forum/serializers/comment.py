@@ -89,6 +89,7 @@ class CommentSerializer(ContentSerializer):
 
     def to_representation(self, instance: Any) -> dict[str, Any]:
         comment = super().to_representation(instance)
+        comment.pop("historical_abuse_flaggers")
         if comment["parent_id"] == "None":
             comment["parent_id"] = None
 

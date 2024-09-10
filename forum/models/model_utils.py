@@ -945,9 +945,9 @@ def get_threads(
     user_id: str,
     serializer: Any,
     thread_ids: list[str],
-    include_context: Optional[bool] = False,
 ) -> dict[str, Any]:
     """get subscribed or all threads of a specific course for a specific user."""
+    count_flagged = bool(params.get("count_flagged", False))
     threads = handle_threads_query(
         thread_ids,
         user_id,
@@ -959,19 +959,18 @@ def get_threads(
         bool(params.get("unread", False)),
         bool(params.get("unanswered", False)),
         bool(params.get("unresponded", False)),
-        bool(params.get("count_flagged", False)),
+        count_flagged,
         params.get("sort_key", ""),
         int(params.get("page", 1)),
         int(params.get("per_page", 100)),
     )
-    context: dict[str, Any] = {}
-    if include_context:
-        context = {
-            "include_endorsed": True,
-            "include_read_state": True,
-        }
-        if user_id:
-            context["user_id"] = user_id
+    context: dict[str, Any] = {
+        "count_flagged": count_flagged,
+        "include_endorsed": True,
+        "include_read_state": True,
+    }
+    if user_id:
+        context["user_id"] = user_id
     serializer = serializer(threads.pop("collection"), many=True, context=context)
     threads["collection"] = serializer.data
     return threads
