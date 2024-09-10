@@ -50,7 +50,7 @@ def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Res
     )
 
 
-def str_to_bool(value: str | bool) -> bool:
+def str_to_bool(value: Any) -> bool:
     """Convert str to bool."""
     if isinstance(value, bool):
         return value

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from forum.models import Comment, CommentThread, Users
+from forum.models import Comment, CommentThread, Subscriptions, Users
 from test_utils.client import APIClient
 
 
@@ -190,7 +190,7 @@ def test_unicode_data(api_client: APIClient) -> None:
 
 def test_delete_thread(api_client: APIClient) -> None:
     """Test delete a thread."""
-    _, thread_id = setup_models()
+    user_id, thread_id = setup_models()
     comment_id_1, comment_id_2 = create_comments_in_a_thread(thread_id)
     thread_from_db = CommentThread().get(thread_id)
     assert thread_from_db is not None
@@ -200,6 +200,10 @@ def test_delete_thread(api_client: APIClient) -> None:
     assert CommentThread().get(thread_id) is None
     assert Comment().get(comment_id_1) is None
     assert Comment().get(comment_id_2) is None
+    assert (
+        Subscriptions().get_subscription(subscriber_id=user_id, source_id=thread_id)
+        is None
+    )
 
 
 def test_delete_thread_not_exist(api_client: APIClient) -> None:
@@ -501,3 +505,150 @@ def test_thread_with_comments(api_client: APIClient) -> None:
     assert len(thread_children) == 2
     assert thread_children[0]["id"] == comment_id_2
     assert thread_children[1]["id"] == comment_id_1
+
+
+def test_endorement_is_none_after_unanswering_a_comment_in_question(
+    api_client: APIClient,
+) -> None:
+    """
+    Test endorsement is None by marking it as unanswered.
+    when that question was initialy marked as answered.
+    """
+    user_id, thread_id = setup_models(thread_type="question")
+    comment_id = Comment().insert(
+        body="Comment 1",
+        course_id="course1",
+        author_id=user_id,
+        comment_thread_id=thread_id,
+        author_username="user1",
+    )
+    response = api_client.put_json(
+        f"/api/v2/comments/{comment_id}",
+        data={"endorsed": "True", "endorsement_user_id": user_id},
+    )
+    assert response.status_code == 200
+    comment = Comment().get(comment_id)
+    assert comment is not None
+    assert comment["endorsed"] is True
+    assert comment["endorsement"]["user_id"] == user_id
+
+    response = api_client.put_json(
+        f"/api/v2/comments/{comment_id}",
+        data={"endorsed": "False"},
+    )
+    assert response.status_code == 200
+
+    response = api_client.get_json(
+        f"/api/v2/threads/{thread_id}",
+        params={
+            "recursive": False,
+            "with_responses": True,
+            "user_id": 6,
+            "mark_as_read": False,
+            "resp_skip": 0,
+            "resp_limit": 10,
+            "reverse_order": "true",
+            "merge_question_type_responses": False,
+        },
+    )
+    assert response.status_code == 200
+    thread = response.json()
+    assert thread["thread_type"] == "question"
+    assert thread["children"][0]["endorsement"] is None
+
+
+def test_response_for_thread_type_question(api_client: APIClient) -> None:
+    """
+    Test responses for thread_type question.
+    It varies according to queryparams.
+    """
+    user_id, thread_id = setup_models(thread_type="question")
+    comment_id1 = Comment().insert(
+        body="Comment 1",
+        course_id="course1",
+        author_id=user_id,
+        comment_thread_id=thread_id,
+        author_username="user1",
+    )
+    comment_id2 = Comment().insert(
+        body="Comment 2",
+        course_id="course1",
+        author_id=user_id,
+        comment_thread_id=thread_id,
+        author_username="user1",
+    )
+    response = api_client.put_json(
+        f"/api/v2/comments/{comment_id1}",
+        data={"endorsed": "True", "endorsement_user_id": user_id},
+    )
+    assert response.status_code == 200
+
+    response = api_client.get_json(
+        f"/api/v2/threads/{thread_id}",
+        params={
+            "recursive": False,
+            "with_responses": True,
+            "user_id": 6,
+            "mark_as_read": False,
+            "resp_skip": 0,
+            "resp_limit": 10,
+            "reverse_order": "true",
+            "merge_question_type_responses": False,
+        },
+    )
+    assert response.status_code == 200
+    thread = response.json()
+    assert thread["thread_type"] == "question"
+    assert len(thread["children"]) == 2
+    assert thread["children"][0]["id"] == comment_id2
+    assert thread["children"][1]["id"] == comment_id1
+
+    response = api_client.get_json(
+        f"/api/v2/threads/{thread_id}",
+        params={
+            "with_responses": True,
+            "mark_as_read": False,
+            "reverse_order": False,
+            "merge_question_type_responses": False,
+        },
+    )
+    assert response.status_code == 200
+    thread = response.json()
+    assert thread["thread_type"] == "question"
+    assert thread["non_endorsed_responses"][0]["id"] == comment_id2
+    assert thread["endorsed_responses"][0]["id"] == comment_id1
+    assert thread["non_endorsed_resp_total"] == 1
+
+    response = api_client.get_json(
+        f"/api/v2/threads/{thread_id}",
+        params={
+            "recursive": True,
+            "with_responses": True,
+            "mark_as_read": False,
+            "reverse_order": "true",
+            "merge_question_type_responses": False,
+        },
+    )
+    assert response.status_code == 200
+    thread = response.json()
+    assert thread["thread_type"] == "question"
+    assert thread["non_endorsed_responses"][0]["id"] == comment_id2
+    assert thread["endorsed_responses"][0]["id"] == comment_id1
+    assert thread["non_endorsed_resp_total"] == 1
+
+    response = api_client.get_json(
+        f"/api/v2/threads/{thread_id}",
+        params={
+            "with_responses": True,
+            "user_id": "8",
+            "mark_as_read": False,
+            "reverse_order": False,
+            "merge_question_type_responses": False,
+        },
+    )
+    assert response.status_code == 200
+    thread = response.json()
+    assert thread["thread_type"] == "question"
+    assert thread["non_endorsed_responses"][0]["id"] == comment_id2
+    assert thread["endorsed_responses"][0]["id"] == comment_id1
+    assert thread["non_endorsed_resp_total"] == 1

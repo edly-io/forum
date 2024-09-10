@@ -162,8 +162,11 @@ def test_comment_flag_api_with_all_param(api_client: APIClient) -> None:
 
     assert response.status_code == 200
     flagged_comment = response.json()
-    assert flagged_comment["abuse_flaggers"] == [flag_user, flag_user_2]
-    assert flagged_comment["historical_abuse_flaggers"] == []
+    assert flagged_comment is not None
+    comment = Comment().get(flagged_comment["id"])
+    assert comment is not None
+    assert comment["abuse_flaggers"] == [flag_user, flag_user_2]
+    assert comment["historical_abuse_flaggers"] == []
 
     response = api_client.put_json(
         path=f"/api/v2/comments/{comment_id}/abuse_unflag",
@@ -173,10 +176,10 @@ def test_comment_flag_api_with_all_param(api_client: APIClient) -> None:
     assert response.status_code == 200
     unflagged_comment = response.json()
     assert unflagged_comment is not None
-    assert unflagged_comment["abuse_flaggers"] == []
-    assert set(unflagged_comment["historical_abuse_flaggers"]) == set(
-        [flag_user, flag_user_2]
-    )
+    comment = Comment().get(unflagged_comment["id"])
+    assert comment is not None
+    assert comment["abuse_flaggers"] == []
+    assert set(comment["historical_abuse_flaggers"]) == set([flag_user, flag_user_2])
 
     # Test thread abuse and unabuse.
     response = api_client.put_json(
@@ -186,8 +189,11 @@ def test_comment_flag_api_with_all_param(api_client: APIClient) -> None:
 
     assert response.status_code == 200
     flagged_thread = response.json()
-    assert flagged_thread["abuse_flaggers"] == [flag_user]
-    assert flagged_thread["historical_abuse_flaggers"] == []
+    assert flagged_thread is not None
+    thread = CommentThread().get(flagged_thread["id"])
+    assert thread is not None
+    assert thread["abuse_flaggers"] == [flag_user]
+    assert thread["historical_abuse_flaggers"] == []
 
     response = api_client.put_json(
         path=f"/api/v2/threads/{comment_thread_id}/abuse_unflag",
@@ -197,5 +203,7 @@ def test_comment_flag_api_with_all_param(api_client: APIClient) -> None:
     assert response.status_code == 200
     unflagged_thread = response.json()
     assert unflagged_thread is not None
-    assert unflagged_thread["abuse_flaggers"] == []
-    assert unflagged_thread["historical_abuse_flaggers"] == [flag_user]
+    thread = CommentThread().get(unflagged_thread["id"])
+    assert thread is not None
+    assert thread["abuse_flaggers"] == []
+    assert thread["historical_abuse_flaggers"] == [flag_user]
