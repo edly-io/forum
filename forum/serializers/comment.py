@@ -7,7 +7,7 @@ from typing import Any
 from bson import ObjectId
 from rest_framework import serializers
 
-from forum.models import Comment
+from forum.models import Comment, CommentThread
 from forum.serializers.contents import ContentSerializer
 from forum.serializers.custom_datetime import CustomDateTimeField
 from forum.utils import prepare_comment_data_for_get_children
@@ -91,6 +91,17 @@ class CommentSerializer(ContentSerializer):
         comment = super().to_representation(instance)
         if comment["parent_id"] == "None":
             comment["parent_id"] = None
+
+        thread = CommentThread().get(comment["thread_id"])
+        comment_from_db = Comment().get(comment["id"])
+        if (
+            not comment["endorsed"]
+            and comment_from_db
+            and "endorsement" not in comment_from_db
+            and thread
+            and thread["thread_type"] == "question"
+        ):
+            comment.pop("endorsement", None)
         return comment
 
     def create(self, validated_data: dict[str, Any]) -> Any:

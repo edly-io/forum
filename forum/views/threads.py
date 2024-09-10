@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 from forum.models.comments import Comment
 from forum.models.model_utils import (
     delete_comments_of_a_thread,
+    delete_subscriptions_of_a_thread,
     get_threads,
     mark_as_read,
     update_stats_for_course,
@@ -68,21 +69,16 @@ def prepare_thread_api_response(
                 thread_data["resp_limit"] = get_int_value_from_collection(
                     data_or_params, "resp_limit", 100
                 )
-                context["recursive"] = str_to_bool(
-                    data_or_params.get("recursive", "False")
-                )
-                context["with_responses"] = str_to_bool(
-                    data_or_params.get("with_responses", "True")
-                )
-                context["mark_as_read"] = str_to_bool(
-                    data_or_params.get("mark_as_read", "False")
-                )
-                context["reverse_order"] = str_to_bool(
-                    data_or_params.get("reverse_order", "True")
-                )
-                context["merge_question_type_responses"] = str_to_bool(
-                    data_or_params.get("merge_question_type_responses", "False")
-                )
+                params = [
+                    "recursive",
+                    "with_responses",
+                    "mark_as_read",
+                    "reverse_order",
+                    "merge_question_type_responses",
+                ]
+                for param in params:
+                    if param in data_or_params:
+                        context[param] = str_to_bool(data_or_params.get(param))
                 if user_id and (user := Users().get(user_id)):
                     mark_as_read(user, thread)
 
@@ -168,6 +164,7 @@ class ThreadsAPIView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         result = CommentThread().delete(thread_id)
+        delete_subscriptions_of_a_thread(thread_id)
         if result:
             update_stats_for_course(
                 thread["author_id"], thread["course_id"], threads=-1

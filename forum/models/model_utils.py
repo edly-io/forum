@@ -875,6 +875,16 @@ def delete_comments_of_a_thread(thread_id: str) -> None:
         Comment().delete(comment["_id"])
 
 
+def delete_subscriptions_of_a_thread(thread_id: str) -> None:
+    """Delete subscriptions of a thread."""
+    for subscription in Subscriptions().get_list(
+        source_id=thread_id, source_type="CommentThread"
+    ):
+        Subscriptions().delete_subscription(
+            subscription["subscriber_id"], subscription["source_id"]
+        )
+
+
 def validate_params(
     params: dict[str, Any], user_id: Optional[str] = None
 ) -> Response | None:

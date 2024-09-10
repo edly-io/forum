@@ -262,6 +262,25 @@ class ThreadSerializer(ContentSerializer):
             data.pop("abuse_flagged_count", None)
         if not data.get("closed_by", None):
             data.pop("close_reason_code", None)
+        if (
+            self.with_responses
+            and (
+                not ("recursive" in self.context_data)
+                or self.context_data.get("recursive") is True
+            )
+            and data.get("thread_type") == "question"
+        ):
+            children = data.pop("children")
+            data["non_endorsed_responses"] = []
+            data["endorsed_responses"] = []
+            for child in children:
+                if child["endorsed"]:
+                    data["endorsed_responses"].append(child)
+                else:
+                    data["non_endorsed_responses"].append(child)
+
+            data["non_endorsed_resp_total"] = len(data["non_endorsed_responses"])
+
         return data
 
     def create(self, validated_data: dict[str, Any]) -> Any:
