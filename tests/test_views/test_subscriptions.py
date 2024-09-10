@@ -1,6 +1,6 @@
 """Tests for subscription apis."""
 
-from forum.models import CommentThread, Subscriptions, Users
+from forum.backends.mongodb import CommentThread, Subscriptions, Users
 from test_utils.client import APIClient
 
 

@@ -18,7 +18,7 @@ def patch_default_mongo_database(monkeypatch: pytest.MonkeyPatch) -> None:
     """Mock default mongodb database for tests."""
     client: MongoClient[Any] = mongomock.MongoClient()
     monkeypatch.setattr(
-        "forum.models.base_model.MongoBaseModel.MONGODB_DATABASE",
+        "forum.backends.mongodb.base_model.MongoBaseModel.MONGODB_DATABASE",
         client["test_forum_db"],
     )
 

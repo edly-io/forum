@@ -7,7 +7,7 @@ from typing import Any
 from bson import ObjectId
 from rest_framework import serializers
 
-from forum.models import Comment, CommentThread
+from forum.backends.mongodb import Comment, CommentThread
 from forum.serializers.contents import ContentSerializer
 from forum.serializers.custom_datetime import CustomDateTimeField
 from forum.utils import prepare_comment_data_for_get_children

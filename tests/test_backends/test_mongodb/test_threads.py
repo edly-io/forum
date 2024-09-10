@@ -5,7 +5,7 @@ Tests for the `CommentThread` model.
 
 import pytest
 
-from forum.models import CommentThread
+from forum.backends.mongodb import CommentThread
 
 
 def test_insert_invalid_data() -> None:

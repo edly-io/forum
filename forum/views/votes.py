@@ -9,8 +9,12 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.models import Comment, CommentThread, Users
-from forum.models.model_utils import downvote_content, remove_vote, upvote_content
+from forum.backends.mongodb import Comment, CommentThread, Users
+from forum.backends.mongodb.api import (
+    downvote_content,
+    remove_vote,
+    upvote_content,
+)
 from forum.serializers.comment import CommentSerializer
 from forum.serializers.thread import ThreadSerializer
 from forum.serializers.votes import VotesInputSerializer

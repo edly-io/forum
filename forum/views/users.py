@@ -11,10 +11,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from forum.constants import FORUM_DEFAULT_PAGE, FORUM_DEFAULT_PER_PAGE
-from forum.models import CommentThread, Contents, Users
-from forum.models.model_utils import (
+from forum.backends.mongodb import CommentThread, Contents, Users
+from forum.backends.mongodb.api import (
     find_or_create_user,
-    get_group_ids_from_params,
     get_user_by_username,
     handle_threads_query,
     mark_as_read,
@@ -26,6 +25,7 @@ from forum.models.model_utils import (
 )
 from forum.serializers.thread import ThreadSerializer
 from forum.serializers.users import UserSerializer
+from forum.utils import get_group_ids_from_params
 
 
 class UserAPIView(APIView):

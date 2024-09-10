@@ -10,8 +10,8 @@ from typing import Any, Optional
 import pytest
 from faker import Faker
 
-from forum.models import Comment, CommentThread, Users
-from forum.models.model_utils import build_course_stats
+from forum.backends.mongodb import Comment, CommentThread, Users
+from forum.backends.mongodb.api import build_course_stats
 from test_utils.client import APIClient
 
 fake = Faker()

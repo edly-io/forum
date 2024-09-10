@@ -3,7 +3,7 @@
 Tests for the `forum` models module.
 """
 
-from forum.models import Users
+from forum.backends.mongodb import Users
 
 
 def test_get() -> None:

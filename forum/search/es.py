@@ -7,7 +7,7 @@ from typing import Optional
 from django.conf import settings
 from elasticsearch import Elasticsearch
 
-from forum.models import MODEL_INDICES, BaseContents
+from forum.backends.mongodb import MODEL_INDICES, BaseContents
 
 __all__ = ["Elasticsearch", "ElasticsearchModelMixin"]
 

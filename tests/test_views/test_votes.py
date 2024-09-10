@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from forum.models import Comment, CommentThread, Users
+from forum.backends.mongodb import Comment, CommentThread, Users
 from test_utils.client import APIClient
 
 

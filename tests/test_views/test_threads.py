@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from forum.models import Comment, CommentThread, Subscriptions, Users
+from forum.backends.mongodb import Comment, CommentThread, Subscriptions, Users
 from test_utils.client import APIClient
 
 

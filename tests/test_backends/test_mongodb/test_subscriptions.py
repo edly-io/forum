@@ -3,7 +3,7 @@
 Tests for the Subscriptions model.
 """
 
-from forum.models import Subscriptions
+from forum.backends.mongodb import Subscriptions
 
 
 def test_get() -> None:

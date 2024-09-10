@@ -9,8 +9,8 @@ from pymongo import ASCENDING, DESCENDING
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
 
-from forum.models import Comment
-from forum.models.model_utils import (
+from forum.backends.mongodb import Comment
+from forum.backends.mongodb.api import (
     get_abuse_flagged_count,
     get_endorsed,
     get_read_states,
