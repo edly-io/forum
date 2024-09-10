@@ -115,14 +115,11 @@ def un_flag_as_abuse(
     return Contents().get(entity["_id"])
 
 
-def un_flag_all_as_abuse(
-    user_id: str, entity: dict[str, Any]
-) -> Union[dict[str, Any], None]:
+def un_flag_all_as_abuse(entity: dict[str, Any]) -> Union[dict[str, Any], None]:
     """
     Unflag an entity as abuse for all users.
 
     Args:
-        user_id str: The user unflagging the entity.
         entity (dict[str, Any]): The entity being unflagged as abuse.
 
     Returns:
@@ -135,15 +132,14 @@ def un_flag_all_as_abuse(
     historical_abuse_flaggers = list(
         set(entity["historical_abuse_flaggers"]) | set(entity["abuse_flaggers"])
     )
-    if user_id in entity["abuse_flaggers"]:
-        Contents().update(
-            entity["_id"],
-            abuse_flaggers=entity["abuse_flaggers"].remove(user_id),
-            historical_abuse_flaggers=historical_abuse_flaggers,
-        )
-        update_stats_after_unflag(
-            entity["author_id"], entity["_id"], has_no_historical_flags
-        )
+    Contents().update(
+        entity["_id"],
+        abuse_flaggers=[],
+        historical_abuse_flaggers=historical_abuse_flaggers,
+    )
+    update_stats_after_unflag(
+        entity["author_id"], entity["_id"], has_no_historical_flags
+    )
 
     return Contents().get(entity["_id"])
 

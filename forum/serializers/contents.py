@@ -51,6 +51,7 @@ class ContentSerializer(serializers.Serializer[dict[str, Any]]):
         commentable_id (str): The ID of the entity the content is related to (e.g., course).
         votes (VoteSummarySerializer): A summary of votes on the content.
         abuse_flaggers (list): A list of user IDs who flagged the content as abusive.
+        historical_abuse_flaggers (list): A list of user IDs who historically flagged the content as abusive.
         edit_history (list): A list of previous versions of the content.
         closed (bool): Whether the content is closed for further interactions.
         type (str): The type of content (e.g., "post", "comment").
@@ -69,6 +70,9 @@ class ContentSerializer(serializers.Serializer[dict[str, Any]]):
     commentable_id = serializers.CharField(default="course")
     votes = VoteSummarySerializer()
     abuse_flaggers = serializers.ListField(
+        child=serializers.CharField(), allow_null=True
+    )
+    historical_abuse_flaggers = serializers.ListField(
         child=serializers.CharField(), allow_null=True
     )
     edit_history = EditHistorySerializer(default=[], many=True)
