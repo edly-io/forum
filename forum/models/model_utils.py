@@ -495,11 +495,15 @@ def get_sort_criteria(sort_key: str) -> Sequence[tuple[str, int]]:
     Generate sorting criteria based on the provided key.
 
     Parameters:
-    sort_key (str): Key to determine sort order ("date", "activity", "votes", "comments").
+    -----------
+    sort_key : str
+        Key to determine sort order ("date", "activity", "votes", "comments").
 
     Returns:
-    list: List of tuples for sorting, including "pinned" and the relevant field,
-          optionally adding "created_at" if needed.
+    --------
+    list
+        List of tuples for sorting, including "pinned" and the relevant field,
+        optionally adding "created_at" if needed.
     """
     sort_key_mapper = {
         "date": "created_at",
