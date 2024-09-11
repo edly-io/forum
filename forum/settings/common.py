@@ -11,8 +11,12 @@ def plugin_settings(settings: Any) -> None:
     Set these variables in the Tutor Config or lms.yml for local testing
     """
     settings.FORUM_PORT = "4567"
-    settings.FORUM_MONGO_HOST = "mongodb"
-    settings.FORUM_MONGO_PORT = 27017
+    settings.FORUM_MONGO_HOST = getattr(
+        settings, "FORUM_MONGO_HOST", getattr(settings, "MONGO_HOST", "mongodb")
+    )
+    settings.FORUM_MONGO_PORT = getattr(
+        settings, "FORUM_MONGO_PORT", getattr(settings, "MONGO_HOST", 27017)
+    )
 
     settings.ELASTIC_SEARCH_CONFIG = [
         {

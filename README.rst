@@ -76,7 +76,7 @@ In certain scenarios, you may need to mount the Forum package for extending or d
 
 4. Install this plugin::
 
-    tutor plugins install https://gist.githubusercontent.com/taimoor-ahmed-1/9e947a06d127498a328475877e41d7c0/raw/6152bdc312f941e79d50e2043f00d3d059de70a7/forum-v2.py
+    tutor plugins install https://gist.githubusercontent.com/taimoor-ahmed-1/9e947a06d127498a328475877e41d7c0/raw/c5ec777303c4f558eb58e667aa5ce65dbf4d487f/forumv2.py
 
 5. Enable the plugin::
 
