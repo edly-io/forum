@@ -8,7 +8,6 @@ from forum.views.commentables import CommentablesCountAPIView
 from forum.views.comments import CommentsAPIView, CreateThreadCommentAPIView
 from forum.views.flags import CommentFlagAPIView, ThreadFlagAPIView
 from forum.views.pins import PinThreadAPIView, UnpinThreadAPIView
-from forum.views.proxy import ForumProxyAPIView
 from forum.views.search import SearchThreadsView
 from forum.views.subscriptions import (
     SubscriptionAPIView,
@@ -153,13 +152,17 @@ api_patterns = [
         name="user-retire",
     ),
     # Proxy view for various API endpoints
-    path(
-        "<path:suffix>",
-        ForumProxyAPIView.as_view(),
-        name="forum_proxy",
-    ),
+    # Uncomment to redirect remaining API calls to the V1 API.
+    # path(
+    #     "<path:suffix>",
+    #     ForumProxyAPIView.as_view(),
+    #     name="forum_proxy",
+    # ),
 ]
 
 urlpatterns = [
+    # for backward compatibility with edx-platform
+    path("api/v1/", include(api_patterns)),
+    # for when we will migrate edx-platform to the v2/ prefix
     path("api/v2/", include(api_patterns)),
 ]

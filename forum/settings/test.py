@@ -8,7 +8,7 @@ Django applications, so these settings will not be used.
 from os.path import abspath, dirname, join
 
 
-def root(*args):
+def root(*args: str) -> str:
     """
     Get the absolute path of the given path relative to the project root.
     """
@@ -62,13 +62,13 @@ TEMPLATES = [
     }
 ]
 
-FORUM_PORT = "4567"
-FORUM_MONGO_HOST = "mongo-test-url"
-FORUM_MONGO_PORT = 27017
+FORUM_MONGODB_DATABASE = "testdb"
+FORUM_MONGODB_CLIENT_PARAMETERS: dict[str, str] = {}
+FORUM_MONGODB_AUTH_PARAMETERS: dict[str, str] = {}
 
 FORUM_ENABLE_ELASTIC_SEARCH = False
 if FORUM_ENABLE_ELASTIC_SEARCH:
-    ELASTIC_SEARCH_CONFIG = [
+    FORUM_ELASTIC_SEARCH_CONFIG = [
         {
             "host": "localhost",
             "port": "5200",
@@ -76,4 +76,4 @@ if FORUM_ENABLE_ELASTIC_SEARCH:
         }
     ]
 else:
-    ELASTIC_SEARCH_CONFIG = [{}]
+    FORUM_ELASTIC_SEARCH_CONFIG = [{}]

@@ -2,7 +2,7 @@
 
 from django.core.management.base import BaseCommand
 
-from forum.search.es_helper import ElasticsearchHelper
+from forum.search.backend import get_search_backend
 
 
 class Command(BaseCommand):
@@ -16,8 +16,8 @@ class Command(BaseCommand):
 
         This command deletes all Elasticsearch indices that are not the latest for each model type.
         """
-        es_helper = ElasticsearchHelper()
-        indices_deleted_count = es_helper.delete_unused_indices()
+        search_backend = get_search_backend()
+        indices_deleted_count = search_backend.delete_unused_indices()
         self.stdout.write(
             self.style.SUCCESS(
                 f"{indices_deleted_count} unused indices deleted successfully."

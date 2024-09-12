@@ -23,6 +23,7 @@ class ForumConfig(AppConfig):
         "settings_config": {
             "lms.djangoapp": {
                 "common": {"relative_path": "settings.common"},
+                "devstack": {"relative_path": "settings.devstack"},
                 "production": {"relative_path": "settings.production"},
             }
         },

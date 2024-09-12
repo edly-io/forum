@@ -4,28 +4,16 @@ Elastic Search Index Manager.
 
 from typing import Any, Optional
 
-from django.conf import settings
-from elasticsearch import Elasticsearch
+from forum.constants import FORUM_MAX_DEEP_SEARCH_COMMENT_COUNT
 
-from forum.constants import (
-    FORUM_ELASTICSEARCH_INDEX_NAMES,
-    FORUM_MAX_DEEP_SEARCH_COMMENT_COUNT,
-)
-from forum.models.threads import CommentThread
+from forum.models import CommentThread
+from forum.search.es import ElasticsearchModelMixin
 
 
-class ElasticsearchManager:
+class CommentSearch(ElasticsearchModelMixin):
     """
     Manager for handling Elastic Search Queries.
     """
-
-    def __init__(self) -> None:
-        """
-        Init function.
-        """
-        self.index_names: list[str] = FORUM_ELASTICSEARCH_INDEX_NAMES
-        self.max_search_count: int = FORUM_MAX_DEEP_SEARCH_COMMENT_COUNT
-        self.client: Elasticsearch = Elasticsearch(settings.ELASTIC_SEARCH_CONFIG)
 
     def execute_search(
         self,
@@ -44,7 +32,7 @@ class ElasticsearchManager:
         :return: Elasticsearch response
         """
         body: dict[str, Any] = {
-            "size": size or self.max_search_count,
+            "size": size or FORUM_MAX_DEEP_SEARCH_COMMENT_COUNT,
             "sort": sort_criteria or [{"updated_at": "desc"}],
             "query": {
                 "bool": {"must": must_clause or [], "should": filter_clause or []}
@@ -98,7 +86,7 @@ class ElasticsearchManager:
         return None
 
 
-class ThreadSearchManager(ElasticsearchManager):
+class ThreadSearch(CommentSearch):
     """
     Manager for handling Thread Queries.
     """

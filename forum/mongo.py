@@ -13,35 +13,22 @@ Database = PymongoDatabase[dict[str, Any]]
 
 
 def get_database(
-    host: str = settings.FORUM_MONGO_HOST,
-    port: int = settings.FORUM_MONGO_PORT,
-    user: str = "",
-    password: str = "",
-    database: str = "cs_comments_service",
-    authsource: Optional[str] = None,
-    tz_aware: bool = True,
-    **extra: Any
+    database: Optional[str] = None,
+    client_params: Optional[dict[Any, Any]] = None,
 ) -> Database:
     """
     Connect to MongoDB.
 
     :Parameters:
 
-      - `host`: hostname
-      - `port`: port
-      - `user`: collection username
-      - `password`: collection user password
-      - `database`: name of the database
-      - `authsource`: name of the authentication database
-      - `extra`: parameters to pymongo.MongoClient not listed above
-
+      - `database`: name of the mongodb database
+      - `client_params`: parameters passed to MongoClient(...)
     """
-    connection: MongoClient[Any] = MongoClient(
-        host=host, port=port, tz_aware=tz_aware, **extra
-    )
+    if database is None:
+        database = settings.FORUM_MONGODB_DATABASE
+    if client_params is None:
+        client_params = settings.FORUM_MONGODB_CLIENT_PARAMETERS
+
+    connection: MongoClient[Any] = MongoClient(**client_params)
     db = connection[database]
-
-    if user or password:
-        db.authenticate(user, password, source=authsource)
-
     return db

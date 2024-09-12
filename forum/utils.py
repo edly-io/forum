@@ -24,7 +24,9 @@ def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Res
     Returns:
         Response: The response from the proxied service.
     """
-    comments_service_url = f"http://forum:{settings.FORUM_PORT}"
+    comments_service_url = getattr(
+        settings, "CS_COMMENTS_SERVICE_URL", "http://forum:4567"
+    )
     url = f"{comments_service_url}/api/v1/{suffix}"
     request_headers = {
         "X-Edx-Api-Key": request.headers.get("X-Edx-Api-Key", ""),

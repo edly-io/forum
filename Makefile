@@ -3,7 +3,7 @@
         quality requirements selfcheck test test-all upgrade install_transifex_client
 
 SRC_FILES_PROD = forum tests test_utils manage.py
-SRC_FILES = ${SRC_FILES_PROD} setup.py test_settings.py
+SRC_FILES = ${SRC_FILES_PROD} setup.py
 
 .DEFAULT_GOAL := help
 
@@ -90,7 +90,7 @@ test-mypy: ## run type tests
 test-format: ## Run code formatting tests
 	black --check ${SRC_FILES}
 
-test-pii: export DJANGO_SETTINGS_MODULE=test_settings
+test-pii: export DJANGO_SETTINGS_MODULE=forum.settings.test
 test-pii: ## # check for PII annotations on all Django models
 	 code_annotations django_find_annotations --config_file .pii_annotations.yml --lint --report --coverage
 
