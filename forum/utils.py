@@ -50,8 +50,20 @@ def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Res
     )
 
 
-def str_to_bool(value: Any) -> bool:
-    """Convert str to bool."""
+def str_to_bool(value: str | bool) -> bool:
+    """
+    Convert a string or boolean value to a boolean.
+
+    If the input is already a boolean, the value is returned as is.
+    For string inputs, 'true' (case-insensitive) or '1' are considered True,
+    while any other value is considered False.
+
+    Args:
+        value (str | bool): The input value, either a string or a boolean.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if isinstance(value, bool):
         return value
     return value.lower() in ("true", "1")
