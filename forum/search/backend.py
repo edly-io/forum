@@ -7,37 +7,20 @@ import re
 from datetime import datetime, timedelta
 from typing import Any, Iterator
 
-from django.conf import settings
-from elasticsearch import Elasticsearch, exceptions, helpers
+from elasticsearch import exceptions, helpers
 
-from forum.models import Comment, CommentThread
 from forum.models.contents import BaseContents
+from forum.search.es import ElasticsearchModelMixin
 
 log = logging.getLogger(__name__)
 
 
-class ElasticsearchHelper:
+class ElasticsearchBackend(ElasticsearchModelMixin):
     """
     Helper class for managing Forum indices.
     """
 
     INDEX_REGEX = r"_\d{14}$"
-
-    def __init__(self) -> None:
-        """
-        Initialize the Elasticsearch client and sets up the models to be indexed.
-        """
-        self.models = [CommentThread, Comment]
-        self.client: Elasticsearch = Elasticsearch(settings.ELASTIC_SEARCH_CONFIG)
-
-    def index_names(self) -> list[str]:
-        """
-        Retrieve the base index names for the configured models.
-
-        Returns:
-            list[str]: List of base index names.
-        """
-        return [model.index_name for model in self.models]
 
     def rebuild_indices(
         self, batch_size: int = 500, extra_catchup_minutes: int = 5
@@ -149,7 +132,7 @@ class ElasticsearchHelper:
         # Fetch all indices related to models
         all_indices = [
             index
-            for pattern in self.index_names()
+            for pattern in self.index_names
             for index in self.client.indices.get(f"{pattern}*")
         ]
 
@@ -265,7 +248,7 @@ class ElasticsearchHelper:
         Args:
             force_new_index (bool): If True, forces the creation of new indices regardless of existing ones.
         """
-        if force_new_index or not self.exists_aliases(self.index_names()):
+        if force_new_index or not self.exists_aliases(self.index_names):
             index_names = self.create_indices()
             for index_name in index_names:
                 model = self.get_index_model_rel(index_name)
@@ -280,7 +263,7 @@ class ElasticsearchHelper:
         Raises:
             ValueError: If indices do not exist, or mappings/properties are missing or incorrect.
         """
-        actual_mappings = self.client.indices.get_mapping(index=self.index_names())
+        actual_mappings = self.client.indices.get_mapping(index=self.index_names)
 
         if not actual_mappings:
             raise ValueError("Indices do not exist!")
@@ -375,7 +358,7 @@ class ElasticsearchHelper:
         return ",".join(
             [
                 list(self.client.indices.get_alias(name=index_name).keys())[0]
-                for index_name in self.index_names()
+                for index_name in self.index_names
                 if self.exists_alias(index_name)
             ]
         )
@@ -443,3 +426,11 @@ class ElasticsearchHelper:
             log.info(f"Document {doc_id} indexed in {index_name}")
         except exceptions.RequestError as e:
             log.error(f"Error indexing document {doc_id} in {index_name}: {e}")
+
+
+def get_search_backend() -> ElasticsearchBackend:
+    """
+    Future-proof backend provider that will eventually be compatible with multiple
+    backend.
+    """
+    return ElasticsearchBackend()

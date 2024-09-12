@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 
 from django.core.management.base import BaseCommand
 
-from forum.search.es_helper import ElasticsearchHelper
+from forum.search.backend import get_search_backend
 from forum.utils import get_int_value_from_collection
 
 
@@ -42,14 +42,14 @@ class Command(BaseCommand):
             args: Additional arguments.
             kwargs: Command options.
         """
-        es_helper = ElasticsearchHelper()
+        search_backend = get_search_backend()
 
         batch_size = get_int_value_from_collection(kwargs, "batch_size", 500)
         extra_catchup_minutes = get_int_value_from_collection(
             kwargs, "extra_catchup_minutes", 5
         )
 
-        es_helper.rebuild_indices(
+        search_backend.rebuild_indices(
             batch_size=batch_size, extra_catchup_minutes=extra_catchup_minutes
         )
         self.stdout.write(self.style.SUCCESS("Forum indices rebuilt successfully."))

@@ -40,7 +40,7 @@ sys.path.append(REPO_ROOT)
 
 VERSION = get_version('../forum', '__init__.py')
 # Configure Django for autodoc usage
-os.environ['DJANGO_SETTINGS_MODULE'] = 'test_settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'forum.settings.test'
 django_setup()
 
 # If extensions (or modules to document with autodoc) are in another directory,

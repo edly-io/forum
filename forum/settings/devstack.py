@@ -1,5 +1,5 @@
 """
-Production settings for forum app.
+Development settings for forum app.
 """
 
 from typing import Any

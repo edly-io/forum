@@ -29,7 +29,7 @@ Development
 
 When developing this application, it is recommended to clone this repository locally. First, install our custom plugin to auto-mount the forum repository::
 
-    tutor plugins install https://gist.githubusercontent.com/taimoor-ahmed-1/9e947a06d127498a328475877e41d7c0/raw/6152bdc312f941e79d50e2043f00d3d059de70a7/forum-v2.py
+    tutor plugins install https://gist.githubusercontent.com/taimoor-ahmed-1/9e947a06d127498a328475877e41d7c0/raw/forumv2.py
     tutor config save
     tutor images build openedx-dev
     tutor dev launch

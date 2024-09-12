@@ -5,7 +5,6 @@ from typing import Any, Optional
 
 from bson import ObjectId
 
-from forum.constants import COMMENTS_INDEX
 from forum.models.contents import BaseContents
 from forum.models.threads import CommentThread
 from forum.models.users import Users
@@ -17,7 +16,7 @@ class Comment(BaseContents):
     Comment class for cs_comments_service content model
     """
 
-    index_name = COMMENTS_INDEX
+    index_name = "comments"
     content_type = "Comment"
 
     def override_query(self, query: dict[str, Any]) -> dict[str, Any]:

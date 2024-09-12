@@ -3,7 +3,7 @@ branch = True
 data_file = .coverage
 source=forum
 omit =
-    test_settings.py
+    forum/settings/test.py
     */migrations/*
     *admin.py
     */static/*

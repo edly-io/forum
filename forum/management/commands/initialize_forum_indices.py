@@ -5,7 +5,7 @@ from typing import Any
 
 from django.core.management.base import BaseCommand
 
-from forum.search.es_helper import ElasticsearchHelper
+from forum.search.backend import get_search_backend
 
 
 class Command(BaseCommand):
@@ -35,7 +35,7 @@ class Command(BaseCommand):
             args: Additional arguments.
             kwargs: Command options.
         """
-        es_helper = ElasticsearchHelper()
+        search_backend = get_search_backend()
         force_new_index = bool(kwargs.get("force", False))
-        es_helper.initialize_indices(force_new_index=force_new_index)
+        search_backend.initialize_indices(force_new_index=force_new_index)
         self.stdout.write(self.style.SUCCESS("Forum indices initialized successfully."))

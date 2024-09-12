@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 
 from forum.constants import FORUM_DEFAULT_PAGE, FORUM_DEFAULT_PER_PAGE
 from forum.models.model_utils import handle_threads_query
-from forum.search.search_manager import ThreadSearchManager
+from forum.search.comment_search import ThreadSearch
 from forum.serializers.thread import ThreadSerializer
 
 
@@ -98,13 +98,13 @@ class SearchThreadsView(APIView):
                 - A suggested correction for the search text, or None if no correction is found.
         """
         corrected_text: Optional[str] = None
-        search_manager = ThreadSearchManager()
+        thread_search = ThreadSearch()
 
-        thread_ids = search_manager.get_thread_ids(context, group_ids, params, text)
+        thread_ids = thread_search.get_thread_ids(context, group_ids, params, text)
         if not thread_ids:
-            corrected_text = search_manager.get_suggested_text(text, ["body", "title"])
+            corrected_text = thread_search.get_suggested_text(text, ["body", "title"])
             if corrected_text:
-                thread_ids = search_manager.get_thread_ids_with_corrected_text(
+                thread_ids = thread_search.get_thread_ids_with_corrected_text(
                     context, group_ids, params, corrected_text
                 )
             if not thread_ids:

@@ -2,7 +2,7 @@
 
 from django.core.management.base import BaseCommand
 
-from forum.search.es_helper import ElasticsearchHelper
+from forum.search.backend import get_search_backend
 
 
 class Command(BaseCommand):
@@ -17,6 +17,6 @@ class Command(BaseCommand):
         Raises:
             ValueError: If indices do not exist or if mappings/properties are missing or incorrect.
         """
-        es_helper = ElasticsearchHelper()
-        es_helper.validate_indices()
+        search_backend = get_search_backend()
+        search_backend.validate_indices()
         self.stdout.write(self.style.SUCCESS("Forum indices validated successfully."))

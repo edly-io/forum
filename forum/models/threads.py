@@ -5,7 +5,6 @@ from typing import Any, Optional
 
 from bson import ObjectId
 
-from forum.constants import COMMENT_THREADS_INDEX
 from forum.models.contents import BaseContents
 from forum.models.users import Users
 from forum.utils import get_handler_by_name
@@ -16,7 +15,7 @@ class CommentThread(BaseContents):
     CommentThread class for cs_comments_service content model
     """
 
-    index_name = COMMENT_THREADS_INDEX
+    index_name = "comment_threads"
     content_type = "CommentThread"
 
     def delete(self, _id: str) -> int:

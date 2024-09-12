@@ -6,8 +6,8 @@ However, it is recommended to use the actual Elasticsearch for verifying all tes
 
 To do so, update the following configurations:
 
-- Set FORUM_ENABLE_ELASTIC_SEARCH=True in test_settings.py.
-- Update ELASTIC_SEARCH_CONFIG based on your Elasticsearch instance. By default, it queries localhost:5000.
+- Set FORUM_ENABLE_ELASTIC_SEARCH=True in forum.settings.test.py.
+- Update FORUM_ELASTIC_SEARCH_CONFIG based on your Elasticsearch instance. By default, it queries localhost:5000.
 To test it quickly, you can create a new container with the same image as the production instance.
 
 Run this command to start Elasticsearch on localhost:5000.
@@ -30,8 +30,8 @@ from requests import Response
 
 from forum.models import Comment, CommentThread, Users
 from forum.models.model_utils import mark_as_read
-from forum.search.es_helper import ElasticsearchHelper
-from forum.search.search_manager import ThreadSearchManager
+from forum.search.backend import ElasticsearchBackend
+from forum.search.comment_search import ThreadSearch
 from test_utils.client import APIClient
 
 
@@ -39,7 +39,7 @@ from test_utils.client import APIClient
 def initialize_indices() -> None:
     """Initialize Elasticsearch indices if Elasticsearch is enabled."""
     if settings.FORUM_ENABLE_ELASTIC_SEARCH:
-        es = ElasticsearchHelper()
+        es = ElasticsearchBackend()
         es.client.indices.delete(index="*")
         es.initialize_indices()
 
@@ -59,7 +59,7 @@ def get_search_response(
     get_therad_ids_with_corrected_text_values: Optional[list[str]] = None,
 ) -> Response:
     """
-    Helper function to patch ThreadSearchManager methods and get search response.
+    Helper function to patch ThreadSearch methods and get search response.
 
     :param api_client: The API client used to make the request.
     :param query_string: The query string for the search.
@@ -76,15 +76,15 @@ def get_search_response(
 
     if not settings.FORUM_ENABLE_ELASTIC_SEARCH:
         with patch.object(
-            ThreadSearchManager, "get_thread_ids", return_value=get_thread_ids_value
+            ThreadSearch, "get_thread_ids", return_value=get_thread_ids_value
         ):
             with patch.object(
-                ThreadSearchManager,
+                ThreadSearch,
                 "get_suggested_text",
                 return_value=get_suggested_text_value,
             ):
                 with patch.object(
-                    ThreadSearchManager,
+                    ThreadSearch,
                     "get_thread_ids_with_corrected_text",
                     return_value=get_therad_ids_with_corrected_text_values,
                 ):
@@ -98,7 +98,7 @@ def get_search_response(
 def refresh_elastic_search_indices() -> None:
     """Refresh Elasticsearch indices."""
     if settings.FORUM_ENABLE_ELASTIC_SEARCH:
-        ElasticsearchHelper().refresh_indices()
+        ElasticsearchBackend().refresh_indices()
 
 
 def test_invalid_request(api_client: APIClient) -> None:
