@@ -77,8 +77,8 @@ def prepare_thread_api_response(
                     "merge_question_type_responses",
                 ]
                 for param in params:
-                    if param in data_or_params:
-                        context[param] = str_to_bool(data_or_params.get(param))
+                    if value := data_or_params.get(param):
+                        context[param] = str_to_bool(value)
                 if user_id and (user := Users().get(user_id)):
                     mark_as_read(user, thread)
 
