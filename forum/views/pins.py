@@ -9,28 +9,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.backends.mongodb.api import handle_pin_unpin_thread_request
-from forum.serializers.thread import ThreadSerializer
+from forum.api import pin_thread, unpin_thread
 from forum.utils import ForumV2RequestError
 
 log = logging.getLogger(__name__)
-
-
-def pin_unpin_thread(
-    user_id: str,
-    thread_id: str,
-    action: str,
-) -> dict[str, Any]:
-    """Pin or Unpin  a thread."""
-    try:
-        thread_data: dict[str, Any] = handle_pin_unpin_thread_request(
-            user_id, thread_id, action, ThreadSerializer
-        )
-    except ValueError as e:
-        log.error(f"Forumv2RequestError for {action} thread request.")
-        raise ForumV2RequestError(str(e)) from e
-
-    return thread_data
 
 
 class PinThreadAPIView(APIView):
@@ -53,8 +35,8 @@ class PinThreadAPIView(APIView):
             A response with the updated thread data.
         """
         try:
-            thread_data: dict[str, Any] = pin_unpin_thread(
-                request.data.get("user_id", ""), thread_id, "pin"
+            thread_data: dict[str, Any] = pin_thread(
+                request.data.get("user_id", ""), thread_id
             )
         except ForumV2RequestError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -82,8 +64,8 @@ class UnpinThreadAPIView(APIView):
             A response with the updated thread data.
         """
         try:
-            thread_data: dict[str, Any] = pin_unpin_thread(
-                request.data.get("user_id", ""), thread_id, "unpin"
+            thread_data: dict[str, Any] = unpin_thread(
+                request.data.get("user_id", ""), thread_id
             )
         except ForumV2RequestError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

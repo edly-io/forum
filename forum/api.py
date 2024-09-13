@@ -1,12 +1,14 @@
 """
-Native Python Functions.
+Native Python APIs.
 """
 
 from typing import Any
 
+from forum.api_utils import (
+    pin_unpin_thread,
+    retrieve_user_data,
+)
 from forum.models.model_utils import get_commentables_counts_based_on_type
-from forum.views.pins import pin_unpin_thread
-from forum.views.users import retrieve_user_data
 
 
 def pin_thread(user_id: str, thread_id: str) -> dict[str, Any]:

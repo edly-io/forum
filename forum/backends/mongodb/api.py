@@ -16,6 +16,7 @@ from forum.backends.mongodb import (
     Subscriptions,
     Users,
 )
+from forum.utils import make_aware
 from forum.constants import RETIRED_BODY, RETIRED_TITLE
 from forum.utils import get_group_ids_from_params, get_sort_criteria, make_aware
 

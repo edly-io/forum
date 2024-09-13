@@ -1,7 +1,7 @@
 """Forum Utils."""
 
-from datetime import datetime, timezone
 import logging
+from datetime import datetime, timezone
 from typing import Any, Sequence
 
 import requests
@@ -221,3 +221,10 @@ def get_sort_criteria(sort_key: str) -> Sequence[tuple[str, int]]:
 
 class ForumV2RequestError(Exception):
     pass
+
+
+def make_aware(dt: datetime) -> datetime:
+    """Make datetime timezone-aware."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
