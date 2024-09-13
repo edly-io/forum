@@ -99,14 +99,14 @@ def fixture_build_structure_and_response() -> dict[str, Any]:
             if historical_abuse_flaggers_comment:
                 expected_data[comment_author]["inactive_flags"] += 1
 
+            comment = Comment().get(comment_id)
+            if not comment:
+                continue
+            Comment().update(
+                comment_id,
+                child_count=comment["child_count"],
+            )
             for _ in range(3):
-                comment = Comment().get(comment_id)
-                if not comment:
-                    continue
-                Comment().update(
-                    comment_id,
-                    child_count=comment["child_count"],
-                )
                 reply_author = random.choice(authors)
                 expected_data[reply_author]["replies"] += 1
                 reply_id = Comment().insert(
