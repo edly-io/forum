@@ -171,13 +171,17 @@ def get_group_ids_from_params(params: dict[str, Any]) -> list[int]:
     Raises:
         ValueError: If both `group_id` and `group_ids` are specified in the parameters.
     """
+
     if "group_id" in params and "group_ids" in params:
         raise ValueError("Cannot specify both group_id and group_ids")
-    group_ids = []
-    if "group_id" in params:
-        group_ids.append(int(params["group_id"]))
-    elif "group_ids" in params:
-        group_ids.extend([int(x) for x in params["group_ids"].split(",")])
+    group_ids: str | list[str] = []
+    if group_id := params.get("group_id"):
+        return [int(group_id)]
+    elif group_ids := params.get("group_ids", []):
+        if isinstance(group_ids, str):
+            return [int(x) for x in group_ids.split(",")]
+        elif isinstance(group_ids, list):
+            return [int(x) for x in group_ids]
     return group_ids
 
 
@@ -213,3 +217,7 @@ def get_sort_criteria(sort_key: str) -> Sequence[tuple[str, int]]:
         return sort_criteria
     else:
         return []
+
+
+class ForumV2RequestError(Exception):
+    pass

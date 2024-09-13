@@ -1,5 +1,6 @@
 """Forum Pin/Unpin thread API Views."""
 
+import logging
 from typing import Any
 
 from rest_framework import status
@@ -10,6 +11,26 @@ from rest_framework.views import APIView
 
 from forum.backends.mongodb.api import handle_pin_unpin_thread_request
 from forum.serializers.thread import ThreadSerializer
+from forum.utils import ForumV2RequestError
+
+log = logging.getLogger(__name__)
+
+
+def pin_unpin_thread(
+    user_id: str,
+    thread_id: str,
+    action: str,
+) -> dict[str, Any]:
+    """Pin or Unpin  a thread."""
+    try:
+        thread_data: dict[str, Any] = handle_pin_unpin_thread_request(
+            user_id, thread_id, action, ThreadSerializer
+        )
+    except ValueError as e:
+        log.error(f"Forumv2RequestError for {action} thread request.")
+        raise ForumV2RequestError(str(e)) from e
+
+    return thread_data
 
 
 class PinThreadAPIView(APIView):
@@ -32,10 +53,10 @@ class PinThreadAPIView(APIView):
             A response with the updated thread data.
         """
         try:
-            thread_data: dict[str, Any] = handle_pin_unpin_thread_request(
-                request.data.get("user_id", ""), thread_id, "pin", ThreadSerializer
+            thread_data: dict[str, Any] = pin_unpin_thread(
+                request.data.get("user_id", ""), thread_id, "pin"
             )
-        except ValueError as e:
+        except ForumV2RequestError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(thread_data, status=status.HTTP_200_OK)
@@ -61,13 +82,10 @@ class UnpinThreadAPIView(APIView):
             A response with the updated thread data.
         """
         try:
-            thread_data: dict[str, Any] = handle_pin_unpin_thread_request(
-                request.data.get("user_id", ""),
-                thread_id,
-                "unpin",
-                ThreadSerializer,
+            thread_data: dict[str, Any] = pin_unpin_thread(
+                request.data.get("user_id", ""), thread_id, "unpin"
             )
-        except ValueError as e:
+        except ForumV2RequestError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(thread_data, status=status.HTTP_200_OK)

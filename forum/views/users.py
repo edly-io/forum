@@ -1,5 +1,6 @@
 """Subscriptions API Views."""
 
+import logging
 import math
 from typing import Any
 
@@ -26,6 +27,23 @@ from forum.backends.mongodb.api import (
 from forum.serializers.thread import ThreadSerializer
 from forum.serializers.users import UserSerializer
 from forum.utils import get_group_ids_from_params
+from forum.utils import ForumV2RequestError
+
+log = logging.getLogger(__name__)
+
+
+def retrieve_user_data(user_id: str, params: dict[str, Any]) -> dict[str, Any]:
+    """Get user data."""
+    user = Users().get(user_id)
+    if not user:
+        log.error(f"Forumv2RequestError for retrieving user's data for id {user_id}.")
+        raise ForumV2RequestError(str(f"user not found with id: {user_id}"))
+
+    group_ids = get_group_ids_from_params(params)
+    params.update({"group_ids": group_ids})
+    hashed_user = user_to_hash(user, params)
+    serializer = UserSerializer(hashed_user)
+    return serializer.data
 
 
 class UserAPIView(APIView):
@@ -36,14 +54,12 @@ class UserAPIView(APIView):
     def get(self, request: Request, user_id: str) -> Response:
         """Get user data."""
         params: dict[str, Any] = request.GET.dict()
-        user = Users().get(user_id)
-        if not user:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        group_ids = get_group_ids_from_params(params)
-        params.update({"group_ids": group_ids})
-        hashed_user = user_to_hash(user, params)
-        serializer = UserSerializer(hashed_user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            user_data: dict[str, Any] = retrieve_user_data(user_id, params)
+        except ForumV2RequestError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(user_data, status=status.HTTP_200_OK)
 
     def put(self, request: Request, user_id: str) -> Response:
         """Update user data."""
