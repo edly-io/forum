@@ -11,7 +11,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.api import retrieve_user
+from forum.api import get_user
 from forum.constants import FORUM_DEFAULT_PAGE, FORUM_DEFAULT_PER_PAGE
 from forum.backends.mongodb import CommentThread, Contents, Users
 from forum.backends.mongodb.api import (
@@ -42,7 +42,7 @@ class UserAPIView(APIView):
         """Get user data."""
         params: dict[str, Any] = request.GET.dict()
         try:
-            user_data: dict[str, Any] = retrieve_user(user_id, params)
+            user_data: dict[str, Any] = get_user(user_id, params)
         except ForumV2RequestError as e:
             return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
 
