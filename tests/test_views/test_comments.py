@@ -107,16 +107,59 @@ def test_update_comment_endorsed_api(api_client: APIClient) -> None:
     assert comment["endorsement"] is None
 
 
-def test_delete_comment_api(api_client: APIClient) -> None:
+def test_delete_parent_comment(api_client: APIClient) -> None:
     """
     Test deleting a comment.
     """
 
-    _, _, parent_comment_id = setup_models()
+    user_id, _, parent_comment_id = setup_models()
 
+    response = api_client.post_json(
+        f"/api/v2/comments/{parent_comment_id}",
+        data={
+            "body": "<p>Child Comment 1</p>",
+            "course_id": "course-xyz",
+            "user_id": user_id,
+        },
+    )
+    assert response.status_code == 200
     response = api_client.delete_json(f"/api/v2/comments/{parent_comment_id}")
     assert response.status_code == 200
     assert Comment().get(parent_comment_id) is None
+
+
+def test_delete_child_comment(api_client: APIClient) -> None:
+    """
+    Test creating a new child comment.
+    """
+
+    user_id, _, parent_comment_id = setup_models()
+
+    response = api_client.post_json(
+        f"/api/v2/comments/{parent_comment_id}",
+        data={
+            "body": "<p>Child Comment 1</p>",
+            "course_id": "course-xyz",
+            "user_id": user_id,
+        },
+    )
+    assert response.status_code == 200
+    child_comment_id = response.json()["id"]
+    assert child_comment_id is not None
+
+    parent_comment = Comment().get(parent_comment_id) or {}
+    previous_child_count = parent_comment.get("child_count")
+
+    response = api_client.delete_json(f"/api/v2/comments/{child_comment_id}")
+    assert previous_child_count is not None
+    assert response.status_code == 200
+    assert Comment().get(child_comment_id) is None
+
+    parent_comment = Comment().get(parent_comment_id) or {}
+    new_child_count = parent_comment.get("child_count")
+
+    assert new_child_count is not None
+    assert new_child_count == previous_child_count - 1
 
 
 def test_returns_400_when_comment_does_not_exist(api_client: APIClient) -> None:

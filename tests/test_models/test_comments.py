@@ -29,6 +29,11 @@ def test_delete() -> None:
         author_id="author1",
         author_username="author_user",
     )
+
+    invalid_id = "66dedf65a2e0d02feebde812"
+    result = Comment().delete(invalid_id)
+    assert result == 0
+
     result = Comment().delete(comment_id)
     assert result == 1
     comment_data = Comment().get(_id=comment_id)

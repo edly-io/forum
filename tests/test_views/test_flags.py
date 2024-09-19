@@ -31,6 +31,17 @@ def test_comment_thread_api(api_client: APIClient) -> None:
         f"/api/v2/threads/{comment_thread_id}/abuse_flag",
         data={"user_id": str(flag_user)},
     )
+
+    assert response.status_code == 200
+    comment_thread = response.json()
+    assert comment_thread["abuse_flaggers"] == [str(flag_user)]
+
+    # Call API second time, it should not update the results.
+    response = api_client.put_json(
+        f"/api/v2/threads/{comment_thread_id}/abuse_flag",
+        data={"user_id": str(flag_user)},
+    )
+
     assert response.status_code == 200
     comment_thread = response.json()
     assert comment_thread["abuse_flaggers"] == [str(flag_user)]

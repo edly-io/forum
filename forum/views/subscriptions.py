@@ -46,18 +46,20 @@ class SubscriptionAPIView(APIView):
         """
         request_data = request.data
         user = Users().get(user_id)
-        thread = None
-        if request_data.get("source_id"):
-            thread = CommentThread().get(request_data["source_id"])
+        source_id = request_data.get("source_id")
+        if not source_id:
+            return Response(
+                {"error": "source_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        thread = CommentThread().get(source_id)
         if not (user and thread):
             return Response(
                 {"error": "User / Thread doesn't exist"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        subscription = subscribe_user(
-            user_id, request_data["source_id"], thread["_type"]
-        )
+        subscription = subscribe_user(user_id, source_id, thread["_type"])
         serializer = SubscriptionSerializer(subscription)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
 

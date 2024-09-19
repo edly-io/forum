@@ -21,10 +21,9 @@ class CommentThread(BaseContents):
     def delete(self, _id: str) -> int:
         """Delete CommentThread"""
         result = super().delete(_id)
-        if result:
-            get_handler_by_name("comment_thread_deleted").send(
-                sender=self.__class__, comment_thread_id=_id
-            )
+        get_handler_by_name("comment_thread_deleted").send(
+            sender=self.__class__, comment_thread_id=_id
+        )
         return result
 
     @classmethod
@@ -168,10 +167,11 @@ class CommentThread(BaseContents):
 
         result = self._collection.insert_one(thread_data)
         thread_id = str(result.inserted_id)
-        if result:
-            get_handler_by_name("comment_thread_inserted").send(
-                sender=self.__class__, comment_thread_id=thread_id
-            )
+
+        # Notify Thread inserted
+        get_handler_by_name("comment_thread_inserted").send(
+            sender=self.__class__, comment_thread_id=thread_id
+        )
         return thread_id
 
     def update(
@@ -282,10 +282,11 @@ class CommentThread(BaseContents):
             {"_id": ObjectId(thread_id)},
             {"$set": update_data},
         )
-        if result:
-            get_handler_by_name("comment_thread_updated").send(
-                sender=self.__class__, comment_thread_id=thread_id
-            )
+
+        # Notify thread updated
+        get_handler_by_name("comment_thread_updated").send(
+            sender=self.__class__, comment_thread_id=thread_id
+        )
         return result.modified_count
 
     def get_author_username(self, author_id: str) -> str | None:

@@ -3,7 +3,32 @@
 Tests for the `CommentThread` model.
 """
 
+import pytest
+
 from forum.models import CommentThread
+
+
+def test_insert_invalid_data() -> None:
+    """The inserting invalid data"""
+    with pytest.raises(ValueError, match="Invalid thread_type"):
+        CommentThread().insert(
+            title="Test title",
+            body="Test body",
+            course_id="course_123",
+            commentable_id="commentable_123",
+            author_id="author_123",
+            thread_type="invalid_type",
+        )
+
+    with pytest.raises(ValueError, match="Invalid context"):
+        CommentThread().insert(
+            title="Test title",
+            body="Test body",
+            course_id="course_123",
+            commentable_id="commentable_123",
+            author_id="author_123",
+            context="invalid_context",
+        )
 
 
 def test_insert() -> None:
