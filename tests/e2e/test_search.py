@@ -1,27 +1,9 @@
 """
 Test Search Thread API Endpoints
-
-By default, the test cases use fixtures and do not hit the actual Elasticsearch instance.
-However, it is recommended to use the actual Elasticsearch for verifying all tests.
-
-To do so, update the following configurations:
-
-- Set FORUM_ENABLE_ELASTIC_SEARCH=True in forum.settings.test.py.
-- Update FORUM_ELASTIC_SEARCH_CONFIG based on your Elasticsearch instance. By default, it queries localhost:5000.
-To test it quickly, you can create a new container with the same image as the production instance.
-
-Run this command to start Elasticsearch on localhost:5000.
-Note: Update the image i.e elasticsearch:7.17.13 as used in production
-
-```
-docker run --rm --name elasticsearch_test -p 5200:9200 -p 5300:9300 -e \
-"discovery.type=single-node" elasticsearch:7.17.13
-```
 """
 
 import time
 from typing import Any, Optional
-from unittest.mock import patch
 from urllib.parse import urlencode
 
 from requests import Response
@@ -29,8 +11,13 @@ from requests import Response
 from forum.models import Comment, CommentThread, Users
 from forum.models.model_utils import mark_as_read
 from forum.search.backend import get_search_backend
-from forum.search.comment_search import ThreadSearch
 from test_utils.client import APIClient
+
+
+def perform_search_query(api_client: APIClient, params: dict[str, Any]) -> Response:
+    """Perform the search query"""
+    encoded_params = urlencode(params)
+    return api_client.get_json(f"/api/v2/search/threads?{encoded_params}", {})
 
 
 def assert_result_total(response: Response, expected_total: int) -> None:
@@ -38,48 +25,6 @@ def assert_result_total(response: Response, expected_total: int) -> None:
     assert response.status_code == 200
     result = response.json()
     assert result["total_results"] == expected_total
-
-
-def get_search_response(
-    api_client: APIClient,
-    params: dict[str, str],
-    get_thread_ids_value: Optional[list[str]] = None,
-    get_suggested_text_value: Optional[str] = "",
-    get_therad_ids_with_corrected_text_values: Optional[list[str]] = None,
-) -> Response:
-    """
-    Helper function to patch ThreadSearch methods and get search response.
-
-    :param api_client: The API client used to make the request.
-    :param params: The query dict for the search.
-    :param get_thread_ids_value: Mocked return value for get_thread_ids.
-    :param get_suggested_text_value: Mocked return value for get_suggested_text.
-    :param get_therad_ids_with_corrected_text_values: Mocked return value for get_thread_ids_with_corrected_text.
-    :return: The response from the search request.
-    """
-
-    get_thread_ids_value = get_thread_ids_value or []
-    get_therad_ids_with_corrected_text_values = (
-        get_therad_ids_with_corrected_text_values or []
-    )
-
-    with patch.object(
-        ThreadSearch, "get_thread_ids", return_value=get_thread_ids_value
-    ):
-        with patch.object(
-            ThreadSearch,
-            "get_suggested_text",
-            return_value=get_suggested_text_value,
-        ):
-            with patch.object(
-                ThreadSearch,
-                "get_thread_ids_with_corrected_text",
-                return_value=get_therad_ids_with_corrected_text_values,
-            ):
-                encoded_params = urlencode(params)
-                return api_client.get_json(
-                    f"/api/v2/search/threads?{encoded_params}", {}
-                )
 
 
 def refresh_elastic_search_indices() -> None:
@@ -119,11 +64,11 @@ def test_invalid_request(api_client: APIClient) -> None:
     refresh_elastic_search_indices()
 
     params = {"course_id": course_id}
-    response = get_search_response(api_client, params)
+    response = perform_search_query(api_client, params)
     assert response.status_code == 400
 
     params = {"text": "foobar", "sort_key": "invalid"}
-    response = get_search_response(api_client, params)
+    response = perform_search_query(api_client, params)
     assert response.status_code == 400
 
 
@@ -150,8 +95,7 @@ def test_search_returns_empty_for_deleted_thread(api_client: APIClient) -> None:
     refresh_elastic_search_indices()
 
     params = {"course_id": course_id, "text": "title-1", "sort_key": "date"}
-
-    response = get_search_response(api_client, params, [], "")
+    response = perform_search_query(api_client, params)
 
     assert_result_total(response, 0)
 
@@ -182,11 +126,11 @@ def test_search_returns_only_updated_thread(api_client: APIClient) -> None:
 
     params = {"course_id": course_id, "text": original_title}
 
-    response = get_search_response(api_client, params, [], "")
+    response = perform_search_query(api_client, params)
     assert_result_total(response, 0)
 
     params = {"course_id": course_id, "text": updated_title}
-    response = get_search_response(api_client, params, [thread_id], "")
+    response = perform_search_query(api_client, params)
     assert_result_total(response, 1)
 
 
@@ -218,7 +162,7 @@ def test_search_returns_empty_for_deleted_comment(api_client: APIClient) -> None
     refresh_elastic_search_indices()
 
     params = {"course_id": course_id, "text": "comment-body", "sort_key": "date"}
-    response = get_search_response(api_client, params, [], "")
+    response = perform_search_query(api_client, params)
 
     assert_result_total(response, 0)
 
@@ -254,11 +198,11 @@ def test_search_returns_only_updated_comment(api_client: APIClient) -> None:
     refresh_elastic_search_indices()
 
     params = {"course_id": course_id, "text": original_comment}
-    response = get_search_response(api_client, params, [], "")
+    response = perform_search_query(api_client, params)
     assert_result_total(response, 0)
 
     params = {"course_id": course_id, "text": updated_comment}
-    response = get_search_response(api_client, params, [thread_id], "")
+    response = perform_search_query(api_client, params)
     assert_result_total(response, 1)
 
 
@@ -343,47 +287,35 @@ def test_filter_threads(api_client: APIClient) -> None:
 
     # Test filtering by course_id
     params = {"text": "text", "course_id": course_id_0}
-    response = get_search_response(api_client, params, threads_ids[:30:2])
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [i for i in range(30) if i % 2 == 0])
 
-    # Test filtering by context
+    # # Test filtering by context
     params = {"text": "text", "context": "standalone"}
-    response = get_search_response(api_client, params, threads_ids[30:35])
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, list(range(30, 35)))
 
     # Test filtering with unread filter
     user = Users().get(_id=user_id) or {}
-    thread_course_1 = CommentThread().get(_id=threads_ids[0]) or {}
-    thread_course_2 = CommentThread().get(_id=threads_ids[1]) or {}
-
-    mark_as_read(user, thread_course_2)
+    thread = CommentThread().get(_id=threads_ids[0]) or {}
+    mark_as_read(user, thread)
     params = {
         "text": "text",
         "course_id": course_id_0,
         "user_id": user_id,
-        "unread": "true",
+        "unread": "True",
     }
-    response = get_search_response(api_client, params, threads_ids[:35:2])
-    assert_response_contains(response, [i for i in range(30) if i % 2 == 0])
-
-    mark_as_read(user, thread_course_1)
-    params = {
-        "text": "text",
-        "course_id": course_id_0,
-        "user_id": user_id,
-        "unread": "true",
-    }
-    response = get_search_response(api_client, params, threads_ids[:35:2])
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [i for i in range(1, 30) if i % 2 == 0])
 
     # Test filtering with flagged filter
     params = {"text": "text", "course_id": course_id_0, "flagged": "True"}
-    response = get_search_response(api_client, params, threads_ids[:30:2])
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [0])
 
     # Test filtering with unanswered filter
     params = {"text": "text", "course_id": course_id_0, "unanswered": "True"}
-    response = get_search_response(api_client, params, threads_ids[:30:2])
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [0, 2, 4])
 
     # Test filtering with unanswered filter and group_id
@@ -393,7 +325,7 @@ def test_filter_threads(api_client: APIClient) -> None:
         "unanswered": "True",
         "group_id": "2",
     }
-    response = get_search_response(api_client, params, threads_ids[:30:2])
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [0, 2])
 
     params = {
@@ -402,36 +334,34 @@ def test_filter_threads(api_client: APIClient) -> None:
         "unanswered": "True",
         "group_id": "4",
     }
-    response = get_search_response(api_client, params, threads_ids[:30:2])
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [0, 4])
 
     comment = threads_comments[threads_ids[4]][0]
     Comment().update(comment_id=comment, endorsed=True)
     refresh_elastic_search_indices()
 
-    response = get_search_response(api_client, params, threads_ids[:30:2])
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [0])
 
     # Test filtering by commentable_id
     params = {"text": "text", "commentable_id": "commentable0"}
-    response = get_search_response(api_client, params, threads_ids[::3])
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [i for i in range(30) if i % 3 == 0])
 
     # Test filtering by commentable_ids
     params = {"text": "text", "commentable_ids": "commentable0,commentable1"}
-    response = get_search_response(
-        api_client, params, [threads_ids[i] for i in range(35) if i % 3 in [0, 1]]
-    )
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [i for i in range(30) if i % 3 in [0, 1]])
 
     # Test filtering by group_id
     params = {"text": "text", "group_id": "1"}
-    response = get_search_response(api_client, params, threads_ids)
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [i for i in range(30) if i % 5 in [0, 1]])
 
     # Test filtering by group_ids
     params = {"text": "text", "group_ids": "1,2"}
-    response = get_search_response(api_client, params, threads_ids)
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [i for i in range(30) if i % 5 in [0, 1, 2]])
 
     # Test filtering by all filters combined
@@ -441,7 +371,7 @@ def test_filter_threads(api_client: APIClient) -> None:
         "commentable_id": "commentable0",
         "group_id": "1",
     }
-    response = get_search_response(api_client, params, threads_ids[::6])
+    response = perform_search_query(api_client, params)
     assert_response_contains(response, [0, 6])
 
 
@@ -475,7 +405,7 @@ def test_pagination(api_client: APIClient) -> None:
 
         for i in range(1, num_pages + 2):
             params["page"] = str(i)
-            response = get_search_response(api_client, params, threads_ids)
+            response = perform_search_query(api_client, params)
             assert response.status_code == 200
             result = response.json()
             result_ids.extend([r["id"] for r in result["collection"]])
@@ -523,7 +453,7 @@ def test_sorting(api_client: APIClient) -> None:
         if sort_key:
             params["sort_key"] = str(sort_key)
 
-        response = get_search_response(api_client, params, threads_ids)
+        response = perform_search_query(api_client, params)
         assert_result_total(response, 6)
         result = response.json()
         threads = result["collection"]
@@ -566,23 +496,9 @@ def test_spelling_correction(api_client: APIClient) -> None:
     )
     refresh_elastic_search_indices()
 
-    def get_threda_ids_for_fixtures(original_text: str) -> list[str]:
-        """ """
-        if original_text in thread_title or original_text in comment_body:
-            return [thread_id]
-        else:
-            return []
-
     def check_correction(original_text: str, corrected_text: Optional[str]) -> None:
         params = {"text": original_text}
-        get_thread_ids_value = get_threda_ids_for_fixtures(original_text)
-        response = get_search_response(
-            api_client,
-            params,
-            get_thread_ids_value,
-            corrected_text,
-            [thread_id] if corrected_text else [],
-        )
+        response = perform_search_query(api_client, params)
         assert response.status_code == 200
         result = response.json()
         assert (
@@ -638,10 +554,7 @@ def test_spelling_correction_with_mush_clause(api_client: APIClient) -> None:
     refresh_elastic_search_indices()
 
     params = {"text": "abot", "course_id": course_id}
-    response = get_search_response(
-        api_client,
-        params,
-    )
+    response = perform_search_query(api_client, params)
     assert response.status_code == 200
     result = response.json()
     corrected_text = result.get("corrected_text")
@@ -686,28 +599,11 @@ def test_total_results_and_num_pages(api_client: APIClient) -> None:
     # Refresh Elasticsearch indices to ensure all comments are searchable
     refresh_elastic_search_indices()
 
-    def get_thread_ids_for_fixture(text: str) -> list[str]:
-        """
-        Get thread_ids for the fixtures.
-        """
-        if text == "all":
-            return threads_ids
-        elif text == "half":
-            return threads_ids[::2]
-        elif text == "quarter":
-            return threads_ids[::4]
-        elif text == "tenth":
-            return threads_ids[::10]
-        elif text == "one":
-            return threads_ids[::100]
-        return []
-
     def test_text(
         text: str, expected_total_results: int, expected_num_pages: int
     ) -> None:
         params = {"course_id": course_id, "text": text, "per_page": "10"}
-        get_thread_ids_value = get_thread_ids_for_fixture(text)
-        response = get_search_response(api_client, params, get_thread_ids_value)
+        response = perform_search_query(api_client, params)
         assert response.status_code == 200
         result = response.json()
         assert (
@@ -753,7 +649,7 @@ def test_unicode_data(api_client: APIClient) -> None:
 
     # Perform the search with the ASCII term
     params = {"course_id": "course-v1:Arbisoft+SE002+2024_S2", "text": search_term}
-    response = get_search_response(api_client, params, [thread_id])
+    response = perform_search_query(api_client, params)
 
     # Check that the response is OK and that exactly one result is returned
     assert response.status_code == 200

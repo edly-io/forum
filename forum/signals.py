@@ -21,6 +21,7 @@ comment_thread_inserted = Signal()
 comment_updated = Signal()
 comment_thread_updated = Signal()
 
+# TODO this setting should not exist. We need elasticsearch in production, and there is no way around it.
 if settings.FORUM_ENABLE_ELASTIC_SEARCH:
     # Connect the handlers when FORUM_ENABLE_ELASTIC_SEARCH is enabled.
     comment_deleted.connect(handle_comment_deletion)

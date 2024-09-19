@@ -8,3 +8,4 @@ pytest-django             # pytest extension for better Django support
 code-annotations          # provides commands used by the pii_check tox target.
 tox
 mongomock
+Faker

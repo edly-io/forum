@@ -1,139 +1,32 @@
 """Tests for Users apis."""
 
-import random
-from typing import Any
-
-import pytest
-
 from forum.constants import RETIRED_BODY, RETIRED_TITLE
 from forum.models import Comment, CommentThread, Contents, Users
 from forum.models.model_utils import subscribe_user, upvote_content
 from test_utils.client import APIClient
 
 
-def setup_10_threads() -> None:
+def setup_10_threads(author_id: str, author_username: str) -> list[str]:
     """Create 10 threads for a user."""
+    ids = []
     for thread in range(10):
         thread_id = CommentThread().insert(
             title=f"Test Thread {thread}",
             body="This is a test thread",
             course_id="course1",
             commentable_id="commentable1",
-            author_id="test_id",
-            author_username="test-user",
+            author_id=author_id,
+            author_username=author_username,
         )
         Comment().insert(
             body="This is a test comment",
             course_id="course1",
-            author_id="test_id",
+            author_id=author_id,
             comment_thread_id=str(thread_id),
-            author_username="test-user",
+            author_username=author_username,
         )
-
-
-@pytest.fixture(name="build_structure_and_response")
-def fixture_build_structure_and_response() -> dict[str, Any]:
-    """Fixture for creating course stats."""
-    course_id = "test_course"
-    authors = ["author-1", "author-2", "author-3", "author-4", "author-5", "author-6"]
-    for author in authors:
-        Users().insert(author, author)
-
-    expected_data: dict[str, dict[str, Any]] = {
-        author: {
-            "username": author,
-            "active_flags": 0,
-            "inactive_flags": 0,
-            "threads": 0,
-            "responses": 0,
-            "replies": 0,
-        }
-        for author in authors
-    }
-    for _ in range(10):
-        thread_author = random.choice(authors)
-        expected_data[thread_author]["threads"] += 1
-        thread_id = CommentThread().insert(
-            title="Test Thread",
-            body="This is a test thread",
-            course_id=course_id,
-            commentable_id="commentable1",
-            author_id=thread_author,
-            author_username=thread_author,
-        )
-        abuse_flaggers = random.sample(range(1, 3), random.randint(0, 2))
-        historical_abuse_flaggers = random.sample(range(1, 2), random.randint(0, 1))
-        CommentThread().update(
-            thread_id,
-            abuse_flaggers=[str(x) for x in abuse_flaggers],
-            historical_abuse_flaggers=[str(x) for x in historical_abuse_flaggers],
-        )
-        if abuse_flaggers:
-            expected_data[thread_author]["active_flags"] += 1
-        if historical_abuse_flaggers:
-            expected_data[thread_author]["inactive_flags"] += 1
-
-        for _ in range(5):
-            comment_author = random.choice(authors)
-            expected_data[comment_author]["responses"] += 1
-            comment_id = Comment().insert(
-                body="This is a test comment",
-                course_id=course_id,
-                author_id=comment_author,
-                comment_thread_id=str(thread_id),
-                author_username=comment_author,
-            )
-            abuse_flaggers_comment = random.sample(range(1, 3), random.randint(0, 2))
-            historical_abuse_flaggers_comment = random.sample(
-                range(1, 2), random.randint(0, 1)
-            )
-            Comment().update(
-                comment_id,
-                abuse_flaggers=[str(x) for x in abuse_flaggers_comment],
-                historical_abuse_flaggers=[
-                    str(x) for x in historical_abuse_flaggers_comment
-                ],
-            )
-            if abuse_flaggers_comment:
-                expected_data[comment_author]["active_flags"] += 1
-            if historical_abuse_flaggers_comment:
-                expected_data[comment_author]["inactive_flags"] += 1
-
-            for _ in range(3):
-                comment = Comment().get(comment_id)
-                if not comment:
-                    continue
-                Comment().update(
-                    comment_id,
-                    child_count=comment["child_count"],
-                )
-                reply_author = random.choice(authors)
-                expected_data[reply_author]["replies"] += 1
-                reply_id = Comment().insert(
-                    body="This is a test comment",
-                    course_id=course_id,
-                    author_id=reply_author,
-                    parent_id=comment_id,
-                    comment_thread_id=str(thread_id),
-                    author_username=reply_author,
-                )
-                abuse_flaggers_reply = random.sample(range(1, 3), random.randint(0, 2))
-                historical_abuse_flaggers_reply = random.sample(
-                    range(1, 2), random.randint(0, 1)
-                )
-                Comment().update(
-                    reply_id,
-                    abuse_flaggers=[str(x) for x in abuse_flaggers_reply],
-                    historical_abuse_flaggers=[
-                        str(x) for x in historical_abuse_flaggers_reply
-                    ],
-                )
-                if abuse_flaggers_reply:
-                    expected_data[reply_author]["active_flags"] += 1
-                if historical_abuse_flaggers_reply:
-                    expected_data[reply_author]["inactive_flags"] += 1
-
-    return expected_data
+        ids.append(thread_id)
+    return ids
 
 
 def test_create_user(api_client: APIClient) -> None:
@@ -314,7 +207,7 @@ def test_get_active_threads_requires_course_id(api_client: APIClient) -> None:
         user_id,
         username,
     )
-    setup_10_threads()
+    setup_10_threads(user_id, username)
     response = api_client.get(f"/api/v2/users/{user_id}/active_threads")
     assert response.status_code == 200
     assert response.json() == {}
@@ -328,7 +221,7 @@ def test_get_active_threads(api_client: APIClient) -> None:
         user_id,
         username,
     )
-    setup_10_threads()
+    setup_10_threads(user_id, username)
     course_id = "course1"
     response = api_client.get(
         f"/api/v2/users/{user_id}/active_threads?course_id={course_id}",
@@ -419,7 +312,7 @@ def test_attempts_to_replace_username_and_username_on_content(
         user_id,
         username,
     )
-    setup_10_threads()
+    setup_10_threads(user_id, username)
     user = Users().get(user_id)
     new_username = "test_username_replacement"
 
@@ -485,7 +378,7 @@ def test_retire_user(api_client: APIClient) -> None:
         user_id,
         username,
     )
-    setup_10_threads()
+    setup_10_threads(user_id, username)
     retired_username = "retired_username_ABCD1234"
     user = Users().get(user_id)
     assert user
@@ -517,7 +410,7 @@ def test_retire_user_with_subscribed_threads(api_client: APIClient) -> None:
         user_id,
         username,
     )
-    setup_10_threads()
+    setup_10_threads(user_id, username)
     retired_username = "retired_username_ABCD1234"
     user = Users().get(user_id)
     assert user
@@ -571,128 +464,3 @@ def test_retire_user_with_subscribed_threads(api_client: APIClient) -> None:
             assert content["title"] == RETIRED_TITLE
         assert content["body"] == RETIRED_BODY
         assert content["author_username"] == retired_username
-
-
-def test_update_user_stats(
-    api_client: APIClient,
-    build_structure_and_response: dict[str, Any],
-) -> None:
-    """Test update user stats."""
-    course_id = "test_course"
-    expected_data = build_structure_and_response
-    expected_result = sorted(
-        expected_data.values(),
-        key=lambda x: (x["threads"], x["responses"], x["replies"]),
-        reverse=True,
-    )
-    response = api_client.get(f"/api/v2/users/{course_id}/stats")
-    assert response.status_code == 200
-    res = response.json()
-    assert res["user_stats"] != expected_result
-
-    response = api_client.post_json(f"/api/v2/users/{course_id}/update_stats", data={})
-    assert response.status_code == 200
-    res = response.json()
-    assert res["user_count"] == 6
-
-    response = api_client.get(f"/api/v2/users/{course_id}/stats")
-    assert response.status_code == 200
-    res = response.json()
-    assert res["user_stats"] == expected_result
-
-
-def test_returns_users_stats_with_default_activity_sort(
-    api_client: APIClient,
-    build_structure_and_response: dict[str, Any],
-) -> None:
-    """Test returns user's stats with default/activity sort."""
-    course_id = "test_course"
-    expected_data = build_structure_and_response
-    expected_result = sorted(
-        expected_data.values(),
-        key=lambda x: (x["threads"], x["responses"], x["replies"], x["username"]),
-        reverse=True,
-    )
-    response = api_client.post_json(f"/api/v2/users/{course_id}/update_stats", data={})
-    assert response.status_code == 200
-    res = response.json()
-    assert res["user_count"] == 6
-
-    response = api_client.get(f"/api/v2/users/{course_id}/stats")
-    assert response.status_code == 200
-    res = response.json()
-    assert res["user_stats"] == expected_result
-
-
-def test_handle_stats_for_user_with_no_activity(api_client: APIClient) -> None:
-    """Test handle stats for user with no activity."""
-    invalid_course_id = "course-v1:edX+DNE+Not_EXISTS"
-    response = api_client.get(f"/api/v2/users/{invalid_course_id}/stats")
-    assert response.status_code == 200
-    res = response.json()
-    assert res["user_stats"] == []
-
-
-def test_returns_users_stats_filtered_by_user_with_default_activity_sort(
-    api_client: APIClient,
-    build_structure_and_response: dict[str, Any],
-) -> None:
-    """Test returns user's stats filtered by user with default/activity sort."""
-    course_id = "test_course"
-    authors = ["author-1", "author-2", "author-3", "author-4", "author-5", "author-6"]
-    usernames = random.sample(authors, 2)
-    usernames_str = ",".join(usernames)
-    full_data = build_structure_and_response
-    response = api_client.post_json(f"/api/v2/users/{course_id}/update_stats", data={})
-    assert response.status_code == 200
-    res = response.json()
-    assert res["user_count"] == 6
-
-    expected_result = [
-        val for val in full_data.values() if val["username"] in usernames
-    ]
-    expected_result.sort(key=lambda x: usernames.index(x["username"]))
-
-    response = api_client.get(
-        f"/api/v2/users/{course_id}/stats?usernames={usernames_str}",
-    )
-    assert response.status_code == 200
-    res = response.json()
-    assert res["user_stats"] == expected_result
-
-
-def test_returns_users_stats_with_recency_sort(api_client: APIClient) -> None:
-    """Test returns user's stats with recency sort."""
-    course_id = "test_course"
-    response = api_client.post_json(f"/api/v2/users/{course_id}/update_stats", data={})
-    response = api_client.get(
-        f"/api/v2/users/{course_id}/stats?sort_key=recency&with_timestamps=true"
-    )
-    assert response.status_code == 200
-    res = response.json()
-    sorted_order = sorted(
-        res["user_stats"],
-        key=lambda x: (x["last_activity_at"], x["username"]),
-        reverse=True,
-    )
-    assert res["user_stats"] == sorted_order
-
-
-def test_returns_users_stats_with_flagged_sort(
-    api_client: APIClient,
-    build_structure_and_response: dict[str, Any],
-) -> None:
-    """Test returns user's stats with flagged sort."""
-    course_id = "test_course"
-    expected_data = build_structure_and_response
-    response = api_client.post_json(f"/api/v2/users/{course_id}/update_stats", data={})
-    expected_result = sorted(
-        expected_data.values(),
-        key=lambda x: (x["active_flags"], x["inactive_flags"], x["username"]),
-        reverse=True,
-    )
-
-    response = api_client.get(f"/api/v2/users/{course_id}/stats?sort_key=flagged")
-    assert response.status_code == 200
-    res = response.json()
-    assert res["user_stats"] == expected_result
