@@ -7,7 +7,7 @@ from forum.backends.mongodb.api import get_commentables_counts_based_on_type
 
 def get_commentables_stats(course_id: str) -> dict[str, int]:
     """
-    Get the threads count based on thread_type.
+    Get the threads count based on thread_type and group them by commentable_id.
 
     Parameters:
         course_id: The ID of the course.
@@ -16,9 +16,6 @@ def get_commentables_stats(course_id: str) -> dict[str, int]:
     Response:
         The threads count for the given course_id based on thread_type.
         e.g.
-        reponse = {
-                "discussion": 10,
-                "question": 20
-            }
+        reponse = {'course': {'discussion': 1, 'question': 1}}
     """
     return get_commentables_counts_based_on_type(course_id)

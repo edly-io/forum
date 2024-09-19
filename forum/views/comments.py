@@ -66,15 +66,18 @@ class CommentsAPIView(APIView):
             The details of the comment that is created.
         """
         try:
-            comment = create_child_comment(comment_id, request.data)
+            request_data = request.data
+            comment = create_child_comment(
+                comment_id,
+                request_data["body"],
+                request_data["user_id"],
+                request_data["course_id"],
+                str_to_bool(request_data.get("anonymous", False)),
+                str_to_bool(request_data.get("anonymous_to_peers", False)),
+            )
         except ForumV2RequestError:
             return Response(
                 {"error": f"Comment does not exist with Id: {comment_id}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except ValueError as e:
-            return Response(
-                {"error": e},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except ValidationError as e:
@@ -97,7 +100,20 @@ class CommentsAPIView(APIView):
             The details of the comment that is updated.
         """
         try:
-            comment = update_comment(comment_id, request.data)
+            request_data = request.data
+            comment = update_comment(
+                comment_id,
+                request_data.get("body"),
+                request_data.get("course_id"),
+                request_data.get("user_id"),
+                str_to_bool(request_data.get("anonymous", False)),
+                str_to_bool(request_data.get("anonymous_to_peers", False)),
+                str_to_bool(request_data.get("endorsed", False)),
+                str_to_bool(request_data.get("closed", False)),
+                request_data.get("editing_user_id", False),
+                request_data.get("edit_reason_code", False),
+                request_data.get("endorsement_user_id", False),
+            )
         except ForumV2RequestError:
             return Response(
                 {"error": f"Comment does not exist with Id: {comment_id}"},
@@ -156,7 +172,15 @@ class CreateThreadCommentAPIView(APIView):
             The details of the comment that is created.
         """
         try:
-            comment = create_parent_comment(thread_id, request.data)
+            request_data = request.data
+            comment = create_parent_comment(
+                thread_id,
+                request_data["body"],
+                request_data["user_id"],
+                request_data["course_id"],
+                str_to_bool(request_data.get("anonymous", False)),
+                str_to_bool(request_data.get("anonymous_to_peers", False)),
+            )
         except ForumV2RequestError:
             return Response(
                 {"error": f"Thread does not exist with Id: {thread_id}"},

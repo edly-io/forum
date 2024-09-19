@@ -159,8 +159,6 @@ class Comment(BaseContents):
         child_count: Optional[int] = None,
         depth: Optional[int] = None,
         closed: Optional[bool] = None,
-        edit_history: Optional[list[dict[str, Any]]] = None,
-        original_body: Optional[str] = None,
         editing_user_id: Optional[str] = None,
         edit_reason_code: Optional[str] = None,
         endorsement_user_id: Optional[str] = None,
@@ -221,7 +219,11 @@ class Comment(BaseContents):
             update_data["endorsement"] = None
 
         if editing_user_id:
-            edit_history = [] if edit_history is None else edit_history
+            edit_history = []
+            original_body = ""
+            if comment := Comment().get(comment_id):
+                edit_history = comment.get("edit_history", [])
+                original_body = comment.get("body", "")
             edit_history.append(
                 {
                     "author_id": editing_user_id,

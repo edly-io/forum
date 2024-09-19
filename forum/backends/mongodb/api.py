@@ -1269,3 +1269,108 @@ def find_or_create_user(user_id: str) -> str:
         return user["external_id"]
     user_id = Users().insert(user_id)
     return user_id
+
+
+def create_comment(
+    body: str,
+    user_id: str,
+    course_id: str,
+    anonymous: bool,
+    anonymous_to_peers: bool,
+    depth: int,
+    thread_id: Optional[str] = None,
+    parent_id: Optional[str] = None,
+) -> Any:
+    """
+    handle comment creation and returns a comment.
+
+    Parameters:
+        body: The content of the comment.
+        course_id: The Id of the respective course.
+        user_id: The requesting user id.
+        anonymous: anonymous flag(True or False).
+        anonymous_to_peers: anonymous to peers flag(True or False).
+        depth: It's value is 0 for parent comment and 1 for child comment.
+        thread_id (Optional): Id of the Thread where this comment will belong.
+        parent_id (Optional): Id of the parent comment. It will be given
+                                if creating a child comment.
+    Response:
+        The details of the comment that is created.
+    """
+    new_comment_id = Comment().insert(
+        body=body,
+        author_id=user_id,
+        course_id=course_id,
+        anonymous=anonymous,
+        anonymous_to_peers=anonymous_to_peers,
+        depth=depth,
+        comment_thread_id=thread_id,
+        parent_id=parent_id,
+    )
+    if parent_id:
+        update_stats_for_course(user_id, course_id, replies=1)
+    else:
+        update_stats_for_course(user_id, course_id, responses=1)
+    return Comment().get(new_comment_id)
+
+
+def get_user_by_id(user_id: str) -> dict[str, Any] | None:
+    """Get user by it's id."""
+    return Users().get(user_id)
+
+
+def get_thread_by_id(comment_thread_id: str) -> dict[str, Any] | None:
+    """Get thread by it's id."""
+    return CommentThread().get(comment_thread_id)
+
+
+def update_comment_and_get_updated_comment(
+    comment_id: str,
+    body: Optional[str] = None,
+    course_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    anonymous: Optional[bool] = False,
+    anonymous_to_peers: Optional[bool] = False,
+    endorsed: Optional[bool] = False,
+    closed: Optional[bool] = False,
+    editing_user_id: Optional[str] = None,
+    edit_reason_code: Optional[str] = None,
+    endorsement_user_id: Optional[str] = None,
+) -> dict[str, Any] | None:
+    """
+    Update an existing child/parent comment.
+
+    Parameters:
+        comment_id: The ID of the comment to be edited.
+        body (Optional[str]): The content of the comment.
+        course_id (Optional[str]): The Id of the respective course.
+        user_id (Optional[str]): The requesting user id.
+        anonymous (Optional[bool]): anonymous flag(True or False).
+        anonymous_to_peers (Optional[bool]): anonymous to peers flag(True or False).
+        endorsed (Optional[bool]): Flag indicating if the comment is endorsed by any user.
+        closed (Optional[bool]): Flag indicating if the comment thread is closed.
+        editing_user_id (Optional[str]): The ID of the user editing the comment.
+        edit_reason_code (Optional[str]): The reason for editing the comment, typically represented by a code.
+        endorsement_user_id (Optional[str]): The ID of the user endorsing the comment.
+    Response:
+        The details of the comment that is updated.
+    """
+    Comment().update(
+        comment_id,
+        body=body,
+        course_id=course_id,
+        author_id=user_id,
+        anonymous=anonymous,
+        anonymous_to_peers=anonymous_to_peers,
+        endorsed=endorsed,
+        closed=closed,
+        editing_user_id=editing_user_id,
+        edit_reason_code=edit_reason_code,
+        endorsement_user_id=endorsement_user_id,
+    )
+    return Comment().get(comment_id)
+
+
+def delete_comment_by_id(comment_id: str) -> None:
+    """Delete a comment by it's Id."""
+    Comment().delete(comment_id)
