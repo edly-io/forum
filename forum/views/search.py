@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from forum.constants import FORUM_DEFAULT_PAGE, FORUM_DEFAULT_PER_PAGE
-from forum.models.model_utils import handle_threads_query
+from forum.models.model_utils import get_group_ids_from_params, handle_threads_query
 from forum.search.comment_search import ThreadSearch
 from forum.serializers.thread import ThreadSerializer
 
@@ -76,7 +76,7 @@ class SearchThreadsView(APIView):
         )
 
         # Group IDs extraction
-        params["group_ids"] = self.get_group_ids_from_params(request.GET)
+        params["group_ids"] = get_group_ids_from_params(request.GET)
 
         return params
 
@@ -166,21 +166,3 @@ class SearchThreadsView(APIView):
             data["total_results"] = len(thread_ids)
 
         return Response(data)
-
-    def get_group_ids_from_params(self, params: dict[str, Any]) -> list[int]:
-        """
-        Extract group IDs from the query parameters.
-
-        Args:
-            params (dict[str, Any]): Query parameters from the request.
-
-        Returns:
-            list[int]: A list of group IDs extracted from the query parameters.
-        """
-        group_id: Optional[str] = params.get("group_id")
-        group_ids: Optional[str] = params.get("group_ids")
-        if group_id:
-            return [int(group_id)]
-        elif group_ids:
-            return [int(gid) for gid in group_ids.split(",")]
-        return []

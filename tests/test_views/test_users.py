@@ -7,7 +7,7 @@ import pytest
 
 from forum.constants import RETIRED_BODY, RETIRED_TITLE
 from forum.models import Comment, CommentThread, Contents, Users
-from forum.models.model_utils import upvote_content, subscribe_user
+from forum.models.model_utils import subscribe_user, upvote_content
 from test_utils.client import APIClient
 
 

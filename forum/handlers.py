@@ -46,12 +46,11 @@ def handle_comment_thread_insertion(sender: Any, **kwargs: dict[str, Any]) -> No
         **kwargs (dict[str, Any]): Additional arguments, including 'comment_thread_id'.
     """
     thread_id = get_str_value_from_collection(kwargs, "comment_thread_id")
-    if thread_id:
-        thread = sender().get(_id=thread_id)
-        search_backend = get_search_backend()
-        doc = sender().doc_to_hash(thread)
-        search_backend.index_document(sender.index_name, thread_id, doc)
-        log.info(f"Thread {thread_id} added to Elasticsearch index")
+    thread = sender().get(_id=thread_id)
+    es_helper = get_search_backend()
+    doc = sender().doc_to_hash(thread)
+    es_helper.index_document(sender.index_name, thread_id, doc)
+    log.info(f"Thread {thread_id} added to Elasticsearch index")
 
 
 def handle_comment_insertion(sender: Any, **kwargs: dict[str, Any]) -> None:
@@ -63,12 +62,11 @@ def handle_comment_insertion(sender: Any, **kwargs: dict[str, Any]) -> None:
         **kwargs (dict[str, Any]): Additional arguments, including 'comment_id'.
     """
     comment_id = get_str_value_from_collection(kwargs, "comment_id")
-    if comment_id:
-        comment = sender().get(_id=comment_id)
-        search_backend = get_search_backend()
-        doc = sender().doc_to_hash(comment)
-        search_backend.index_document(sender.index_name, comment_id, doc)
-        log.info(f"Comment {comment_id} added to Elasticsearch index")
+    comment = sender().get(_id=comment_id)
+    es_helper = get_search_backend()
+    doc = sender().doc_to_hash(comment)
+    es_helper.index_document(sender.index_name, comment_id, doc)
+    log.info(f"Comment {comment_id} added to Elasticsearch index")
 
 
 def handle_comment_thread_updated(sender: Any, **kwargs: dict[str, Any]) -> None:
@@ -80,12 +78,11 @@ def handle_comment_thread_updated(sender: Any, **kwargs: dict[str, Any]) -> None
         **kwargs (dict[str, Any]): Additional arguments, including 'comment_thread_id'.
     """
     thread_id = get_str_value_from_collection(kwargs, "comment_thread_id")
-    if thread_id:
-        thread = sender().get(_id=thread_id)
-        search_backend = get_search_backend()
-        doc = sender().doc_to_hash(thread)
-        search_backend.update_document(sender.index_name, thread_id, doc)
-        log.info(f"Thread {thread_id} added to Elasticsearch index")
+    thread = sender().get(_id=thread_id)
+    es_helper = get_search_backend()
+    doc = sender().doc_to_hash(thread)
+    es_helper.update_document(sender.index_name, thread_id, doc)
+    log.info(f"Thread {thread_id} added to Elasticsearch index")
 
 
 def handle_comment_updated(sender: Any, **kwargs: dict[str, Any]) -> None:
@@ -97,9 +94,8 @@ def handle_comment_updated(sender: Any, **kwargs: dict[str, Any]) -> None:
         **kwargs (dict[str, Any]): Additional arguments, including 'comment_id'.
     """
     comment_id = get_str_value_from_collection(kwargs, "comment_id")
-    if comment_id:
-        comment = sender().get(_id=comment_id)
-        search_backend = get_search_backend()
-        doc = sender().doc_to_hash(comment)
-        search_backend.update_document(sender.index_name, comment_id, doc)
-        log.info(f"Comment {comment_id} added to Elasticsearch index")
+    comment = sender().get(_id=comment_id)
+    es_helper = get_search_backend()
+    doc = sender().doc_to_hash(comment)
+    es_helper.update_document(sender.index_name, comment_id, doc)
+    log.info(f"Comment {comment_id} added to Elasticsearch index")

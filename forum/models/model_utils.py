@@ -414,43 +414,6 @@ def get_read_states(
     return read_states
 
 
-def get_filtered_thread_ids(
-    thread_ids: list[str], context: str, group_ids: list[str]
-) -> set[str]:
-    """
-    Filters thread IDs based on context and group ID criteria.
-
-    Args:
-        thread_ids (list[str]): List of thread IDs to filter.
-        context (str): The context to filter by.
-        group_ids (list[str]): List of group IDs for group-based filtering.
-
-    Returns:
-        set: A set of filtered thread IDs based on the context and group ID criteria.
-    """
-    context_query = {
-        "_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
-        "context": context,
-    }
-    context_threads = CommentThread().find(context_query)
-    context_thread_ids = {str(thread["_id"]) for thread in context_threads}
-
-    if not group_ids:
-        return context_thread_ids
-
-    group_query = {
-        "_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
-        "$or": [
-            {"group_id": {"$in": group_ids}},
-            {"group_id": {"$exists": False}},
-        ],
-    }
-    group_threads = CommentThread().find(group_query)
-    group_thread_ids = {str(thread["_id"]) for thread in group_threads}
-
-    return context_thread_ids.union(group_thread_ids)
-
-
 def get_endorsed(thread_ids: list[str]) -> dict[str, bool]:
     """
     Retrieves endorsed status for each thread in the provided list of thread IDs.
@@ -919,6 +882,7 @@ def validate_params(
     ]
     if not user_id:
         valid_params.append("user_id")
+        user_id = params.get("user_id")
 
     for key in params:
         if key not in valid_params:
@@ -1203,7 +1167,7 @@ def mark_as_read(user: dict[str, Any], thread: dict[str, Any]) -> None:
     new_read_states = update_user["read_states"]
     updated_read_states = []
     for state in new_read_states:
-        if read_state["course_id"] == thread["course_id"]:
+        if state["course_id"] == thread["course_id"]:
             state = read_state
         updated_read_states.append(state)
 

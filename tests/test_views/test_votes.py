@@ -100,6 +100,11 @@ def test_upvote_thread_api(
         f"/api/v2/threads/{thread_id}/votes",
         data={"user_id": user_id, "value": "up"},
     )
+    # Calling the API second time, it should have no impact on the results.
+    response = api_client.put_json(
+        f"/api/v2/threads/{thread_id}/votes",
+        data={"user_id": user_id, "value": "up"},
+    )
     assert response.status_code == 200
     response_data = response.json()
     assert response_data is not None
@@ -107,6 +112,59 @@ def test_upvote_thread_api(
 
     thread_data = CommentThread().get(_id=thread_id) or {}
     assert thread_data["votes"]["up_count"] == prev_up_count + 1
+
+
+def test_vote_thread_api(
+    api_client: APIClient, user: dict[str, Any], thread: dict[str, Any]
+) -> None:
+    """
+    Test the API for upvoting, downvote, and again upvotes the same thread.
+
+    This test verifies that an upvote on a thread increases the upvote count correctly.
+    It also checks downvote the upvote thread decreases the count.
+
+    Args:
+        api_client (APIClient): The API client to perform requests.
+        user (dict[str, Any]): The test user performing the upvote.
+        thread (dict[str, Any]): The thread to be upvoted.
+    """
+    user_id = user["_id"]
+    thread_id = thread["_id"]
+
+    prev_up_count = thread["votes"]["up_count"]
+    prev_down_count = thread["votes"]["down_count"]
+
+    # Upvote the Thread
+    response = api_client.put_json(
+        f"/api/v2/threads/{thread_id}/votes",
+        data={"user_id": user_id, "value": "up"},
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data is not None
+    assert response_data["votes"]["up_count"] == prev_up_count + 1
+    assert response_data["votes"]["down_count"] == prev_down_count
+
+    # Downvote the upvoted Thread
+    response = api_client.put_json(
+        f"/api/v2/threads/{thread_id}/votes",
+        data={"user_id": user_id, "value": "down"},
+    )
+
+    thread_data = CommentThread().get(_id=thread_id) or {}
+    assert thread_data["votes"]["up_count"] == prev_up_count
+    assert thread_data["votes"]["down_count"] == prev_down_count + 1
+
+    # Upvote the downvoted Thread
+    response = api_client.put_json(
+        f"/api/v2/threads/{thread_id}/votes",
+        data={"user_id": user_id, "value": "up"},
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data is not None
+    assert response_data["votes"]["up_count"] == prev_up_count + 1
+    assert response_data["votes"]["down_count"] == prev_down_count
 
 
 def test_downvote_thread_api(
@@ -168,6 +226,25 @@ def test_remove_vote_thread_api(
         data={"user_id": user_id, "value": "up"},
     )
 
+    response = api_client.delete_json(
+        f"/api/v2/threads/{thread_id}/votes?user_id={user_id}",
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data is not None
+    assert response_data["votes"]["up_count"] == prev_up_count
+    assert response_data["votes"]["down_count"] == prev_down_count
+
+    thread_data = CommentThread().get(_id=thread_id) or {}
+    assert thread_data is not None
+    assert thread_data["votes"]["up_count"] == prev_up_count
+    assert thread_data["votes"]["down_count"] == prev_down_count
+
+    # Downvote the thread first
+    api_client.put_json(
+        f"/api/v2/threads/{thread_id}/votes",
+        data={"user_id": user_id, "value": "down"},
+    )
     response = api_client.delete_json(
         f"/api/v2/threads/{thread_id}/votes?user_id={user_id}",
     )

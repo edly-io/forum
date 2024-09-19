@@ -70,6 +70,7 @@ def test_update_thread(api_client: APIClient) -> None:
             "commentable_id": "new_commentable_id",
             "thread_type": "question",
             "user_id": user_id,
+            "editing_user_id": user_id,
         },
     )
     assert response.status_code == 200
@@ -214,6 +215,21 @@ def test_delete_thread_not_exist(api_client: APIClient) -> None:
     assert response.data["error"] == "thread does not exist"
 
 
+def test_invalide_data(api_client: APIClient) -> None:
+    """Test invalid data"""
+    setup_models()
+    response = api_client.get_json("/api/v2/threads", {})
+    assert response.status_code == 400
+
+    params = {"course_id": "course1", "invalid": "zyx"}
+    response = api_client.get_json("/api/v2/threads", params)
+    assert response.status_code == 400
+
+    params = {"course_id": "course1", "user_id": "4"}
+    response = api_client.get_json("/api/v2/threads", params)
+    assert response.status_code == 400
+
+
 def test_filter_by_course(api_client: APIClient) -> None:
     """Test filter threads by course id through get thread API."""
     setup_models()
@@ -252,6 +268,35 @@ def test_filter_exclude_standalone(api_client: APIClient) -> None:
         assert res["context"] == "course"
 
 
+def test_api_with_count_flagged(api_client: APIClient) -> None:
+    """Test thread API with count flagged."""
+
+    _, thread_id = setup_models()
+    comment_id_1, comment_id_2 = create_comments_in_a_thread(thread_id)
+
+    # Mark Comment 1 as abused
+    Comment().update(comment_id_1, abuse_flaggers=["1"])
+
+    params = {"course_id": "course1", "count_flagged": "true"}
+    response = api_client.get_json("/api/v2/threads", params)
+    assert response.status_code == 200
+    results = response.json().get("collection", [])
+
+    assert len(results) == 1
+    assert results[0]["abuse_flagged_count"] == 1
+
+    # Mark Comment 2 as abused
+    Comment().update(comment_id_2, abuse_flaggers=["1"])
+
+    params = {"course_id": "course1", "count_flagged": "true"}
+    response = api_client.get_json("/api/v2/threads", params)
+    assert response.status_code == 200
+    results = response.json().get("collection", [])
+
+    assert len(results) == 1
+    assert results[0]["abuse_flagged_count"] == 2
+
+
 def test_no_matching_course_id(api_client: APIClient) -> None:
     """Test no matching course id through get thread API."""
     setup_models()
@@ -271,7 +316,7 @@ def test_filter_flagged_posts(api_client: APIClient) -> None:
         action = "flag" if flagged else "unflag"
         response = api_client.put_json(
             path=f"/api/v2/threads/{thread_id}/abuse_{action}",
-            data={"user_id": str(user_id)},
+            data={"user_id": str(user_id), "count_flagged": True},
         )
         params = {"course_id": "course1", "flagged": flagged}
         response = api_client.get_json("/api/v2/threads", params)
@@ -306,6 +351,64 @@ def test_filter_by_author(api_client: APIClient) -> None:
     assert response.status_code == 200
     result = response.json()["collection"]
     assert len(result) == 0
+
+
+def test_anonymous_threads(api_client: APIClient) -> None:
+    """Test Anonymus threads are only visible to Authors"""
+
+    course_id = "course-1"
+    author_id = "1"
+    author_username = "author-1"
+    Users().insert(author_id, username=author_username, email="author@example.com")
+
+    CommentThread().insert(
+        title="Thread 1",
+        body="Thread 1",
+        course_id=course_id,
+        commentable_id="CommentThread",
+        author_id=author_id,
+        author_username=author_username,
+    )
+
+    CommentThread().insert(
+        title="Thread 2",
+        body="Thread 2",
+        course_id=course_id,
+        commentable_id="CommentThread",
+        author_id=author_id,
+        author_username=author_username,
+        anonymous=True,
+        anonymous_to_peers=True,
+    )
+
+    user_id = Users().insert("2", username="anonymus-user", email="email2")
+
+    params = {"course_id": course_id, "author_id": author_id, "user_id": user_id}
+    response = api_client.get_json("/api/v2/threads", params)
+    assert response.status_code == 200
+    result = response.json()["collection"]
+    assert len(result) == 1
+
+    params = {"course_id": course_id, "author_id": author_id, "user_id": author_id}
+    response = api_client.get_json("/api/v2/threads", params)
+    assert response.status_code == 200
+    result = response.json()["collection"]
+    assert len(result) == 2
+
+
+def test_unresponded_filter(api_client: APIClient) -> None:
+    """Test unresponded filter"""
+    _, thread_id = setup_models()
+    create_comments_in_a_thread(thread_id)
+    setup_models("2", "user2")
+
+    response = api_client.get_json(
+        "/api/v2/threads", params={"course_id": "course1", "unresponded": "true"}
+    )
+
+    assert response.status_code == 200
+    thread = response.json()["collection"]
+    assert len(thread) == 1
 
 
 def test_filter_by_post_type(api_client: APIClient) -> None:

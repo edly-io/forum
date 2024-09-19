@@ -69,8 +69,8 @@ class Comment(BaseContents):
         body: str,
         course_id: str,
         author_id: str,
+        comment_thread_id: str,
         parent_id: Optional[str] = None,
-        comment_thread_id: Optional[str] = None,
         author_username: Optional[str] = None,
         anonymous: bool = False,
         anonymous_to_peers: bool = False,
@@ -98,11 +98,6 @@ class Comment(BaseContents):
         Returns:
             str: The ID of the inserted document.
         """
-        if parent_id and not comment_thread_id:
-            parent_comment = self.get(parent_id)
-            if parent_comment:
-                comment_thread_id = parent_comment.get("comment_thread_id")
-
         date = datetime.now()
         comment_data = {
             "votes": self.get_votes_dict(up=[], down=[]),
@@ -131,14 +126,17 @@ class Comment(BaseContents):
         comment_data["endorsement"] = None
 
         result = self._collection.insert_one(comment_data)
+
         if parent_id:
             self.update_child_count_in_parent_comment(parent_id, 1)
-        if comment_thread_id:
-            self.update_comment_count_in_comment_thread(comment_thread_id, 1)
-        if result:
-            get_handler_by_name("comment_inserted").send(
-                sender=self.__class__, comment_id=str(result.inserted_id)
-            )
+
+        self.update_comment_count_in_comment_thread(comment_thread_id, 1)
+
+        # Notify Comment inserted
+        get_handler_by_name("comment_inserted").send(
+            sender=self.__class__, comment_id=str(result.inserted_id)
+        )
+
         self.update_sk(str(result.inserted_id), parent_id)
         return str(result.inserted_id)
 
@@ -240,10 +238,11 @@ class Comment(BaseContents):
             {"_id": ObjectId(comment_id)},
             {"$set": update_data},
         )
-        if result:
-            get_handler_by_name("comment_updated").send(
-                sender=self.__class__, comment_id=comment_id
-            )
+
+        # Notify Comment updated
+        get_handler_by_name("comment_updated").send(
+            sender=self.__class__, comment_id=comment_id
+        )
 
         return result.modified_count
 
@@ -258,7 +257,10 @@ class Comment(BaseContents):
             The number of comments deleted.
         """
         comment = self.get(_id)
-        parent_comment_id = comment and comment.get("parent_id")
+        if not comment:
+            return 0
+
+        parent_comment_id = comment.get("parent_id")
         child_comments_deleted_count = 0
         if not parent_comment_id:
             child_comments_deleted_count = self.delete_child_comments(_id)
@@ -268,15 +270,16 @@ class Comment(BaseContents):
             self.update_child_count_in_parent_comment(parent_comment_id, -1)
 
         no_of_comments_delete = result.deleted_count + child_comments_deleted_count
-        comment_thread_id = comment and comment.get("comment_thread_id")
-        if comment_thread_id:
-            self.update_comment_count_in_comment_thread(
-                comment_thread_id, -(int(no_of_comments_delete))
-            )
-        if result:
-            get_handler_by_name("comment_deleted").send(
-                sender=self.__class__, comment_id=_id
-            )
+        comment_thread_id = comment["comment_thread_id"]
+
+        self.update_comment_count_in_comment_thread(
+            comment_thread_id, -(int(no_of_comments_delete))
+        )
+
+        # Notify Comments deleted
+        get_handler_by_name("comment_deleted").send(
+            sender=self.__class__, comment_id=_id
+        )
 
         return no_of_comments_delete
 
@@ -302,6 +305,12 @@ class Comment(BaseContents):
         child_comments_deleted = self._collection.delete_many(
             {"_id": {"$in": child_comment_ids_to_delete}}
         )
+
+        for child_comment_id in child_comment_ids_to_delete:
+            get_handler_by_name("comment_deleted").send(
+                sender=self.__class__, comment_id=child_comment_id
+            )
+
         return child_comments_deleted.deleted_count
 
     def update_child_count_in_parent_comment(self, parent_id: str, count: int) -> None:

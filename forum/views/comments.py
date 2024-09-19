@@ -35,10 +35,20 @@ def validate_comments_request_data(data: dict[str, Any]) -> None:
             raise ValueError(f"{field} is missing.")
 
 
+def get_thread_id(parent_comment_id: str) -> str:
+    """
+    The thread Id from the parent comment.
+    """
+    parent_comment = Comment().get(parent_comment_id)
+    if parent_comment:
+        return parent_comment["comment_thread_id"]
+    raise ValueError("Comment doesn't have the thread.")
+
+
 def create_comment(
     data: dict[str, Any],
     depth: int,
-    thread_id: Optional[str] = None,
+    thread_id: str,
     parent_id: Optional[str] = None,
 ) -> Any:
     """handle comment creation and returns a comment"""
@@ -159,13 +169,14 @@ class CommentsAPIView(APIView):
         data = request.data
         try:
             validate_comments_request_data(data)
+            thread_id = get_thread_id(comment_id)
         except ValueError as error:
             return Response(
                 {"error": str(error)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        comment = create_comment(data, 1, parent_id=comment_id)
+        comment = create_comment(data, 1, thread_id, parent_id=comment_id)
         user = Users().get(data["user_id"])
         thread = CommentThread().get(parent_comment["comment_thread_id"])
         if user and thread and comment:
@@ -331,7 +342,7 @@ class CreateThreadCommentAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        comment = create_comment(data, 0, thread_id=thread_id)
+        comment = create_comment(data, 0, thread_id)
         user = Users().get(data["user_id"])
         if user and comment:
             mark_as_read(user, thread)

@@ -369,7 +369,7 @@ def test_filter_threads(api_client: APIClient) -> None:
     response = get_search_response(api_client, query_string, threads_ids[:30:2])
     assert_response_contains(response, [i for i in range(30) if i % 2 == 0])
 
-    # # Test filtering by context
+    # Test filtering by context
     params = {"text": "text", "context": "standalone"}
     query_string = urllib.parse.urlencode(params)
     response = get_search_response(api_client, query_string, threads_ids[30:35])
@@ -377,13 +377,26 @@ def test_filter_threads(api_client: APIClient) -> None:
 
     # Test filtering with unread filter
     user = Users().get(_id=user_id) or {}
-    thread = CommentThread().get(_id=threads_ids[0]) or {}
-    mark_as_read(user, thread)
+    thread_course_1 = CommentThread().get(_id=threads_ids[0]) or {}
+    thread_course_2 = CommentThread().get(_id=threads_ids[1]) or {}
+
+    mark_as_read(user, thread_course_2)
     params = {
         "text": "text",
         "course_id": course_id_0,
         "user_id": user_id,
-        "unread": "True",
+        "unread": "true",
+    }
+    query_string = urllib.parse.urlencode(params)
+    response = get_search_response(api_client, query_string, threads_ids[:35:2])
+    assert_response_contains(response, [i for i in range(30) if i % 2 == 0])
+
+    mark_as_read(user, thread_course_1)
+    params = {
+        "text": "text",
+        "course_id": course_id_0,
+        "user_id": user_id,
+        "unread": "true",
     }
     query_string = urllib.parse.urlencode(params)
     response = get_search_response(api_client, query_string, threads_ids[:35:2])
