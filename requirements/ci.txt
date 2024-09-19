@@ -20,7 +20,7 @@ cachetools==5.5.0
     # via
     #   -r requirements/quality.txt
     #   tox
-certifi==2024.7.4
+certifi==2024.8.30
     # via
     #   -r requirements/quality.txt
     #   elasticsearch
@@ -64,7 +64,7 @@ distlib==0.3.8
     # via
     #   -r requirements/quality.txt
     #   virtualenv
-django==4.2.15
+django==4.2.16
     # via
     #   -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
     #   -r requirements/quality.txt
@@ -81,24 +81,26 @@ django-stubs-ext==5.0.4
     #   django-stubs
 djangorestframework==3.15.2
     # via -r requirements/quality.txt
-djangorestframework-stubs==3.15.0
+djangorestframework-stubs==3.15.1
     # via -r requirements/quality.txt
 dnspython==2.6.1
     # via
     #   -r requirements/quality.txt
     #   pymongo
-edx-lint==5.3.7
+edx-lint==5.4.0
     # via -r requirements/quality.txt
 elasticsearch==7.13.4
     # via
     #   -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
     #   -r requirements/quality.txt
-filelock==3.15.4
+faker==28.4.1
+    # via -r requirements/quality.txt
+filelock==3.16.1
     # via
     #   -r requirements/quality.txt
     #   tox
     #   virtualenv
-idna==3.7
+idna==3.10
     # via
     #   -r requirements/quality.txt
     #   requests
@@ -122,16 +124,16 @@ mccabe==0.7.0
     # via
     #   -r requirements/quality.txt
     #   pylint
-mongomock==4.1.2
+mongomock==4.2.0.post1
     # via -r requirements/quality.txt
-mypy==1.11.1
+mypy==1.11.2
     # via -r requirements/quality.txt
 mypy-extensions==1.0.0
     # via
     #   -r requirements/quality.txt
     #   black
     #   mypy
-openedx-atlas==0.6.1
+openedx-atlas==0.6.2
     # via -r requirements/quality.txt
 packaging==24.1
     # via
@@ -143,11 +145,11 @@ packaging==24.1
     #   tox
 pathspec==0.12.1
     # via black
-pbr==6.0.0
+pbr==6.1.0
     # via
     #   -r requirements/quality.txt
     #   stevedore
-platformdirs==4.2.2
+platformdirs==4.3.6
     # via
     #   -r requirements/quality.txt
     #   black
@@ -163,7 +165,7 @@ pycodestyle==2.12.1
     # via -r requirements/quality.txt
 pydocstyle==6.3.0
     # via -r requirements/quality.txt
-pylint==3.2.6
+pylint==3.2.7
     # via
     #   -r requirements/quality.txt
     #   edx-lint
@@ -183,25 +185,33 @@ pylint-plugin-utils==0.8.2
     #   -r requirements/quality.txt
     #   pylint-celery
     #   pylint-django
-pymongo==4.8.0
+pymongo==4.9.1
     # via -r requirements/quality.txt
-pyproject-api==1.7.1
+pyproject-api==1.8.0
     # via
     #   -r requirements/quality.txt
     #   tox
-pytest==8.3.2
+pytest==8.3.3
     # via
     #   -r requirements/quality.txt
     #   pytest-cov
     #   pytest-django
 pytest-cov==5.0.0
     # via -r requirements/quality.txt
-pytest-django==4.8.0
+pytest-django==4.9.0
     # via -r requirements/quality.txt
+python-dateutil==2.9.0.post0
+    # via
+    #   -r requirements/quality.txt
+    #   faker
 python-slugify==8.0.4
     # via
     #   -r requirements/quality.txt
     #   code-annotations
+pytz==2024.2
+    # via
+    #   -r requirements/quality.txt
+    #   mongomock
 pyyaml==6.0.2
     # via
     #   -r requirements/quality.txt
@@ -218,6 +228,7 @@ six==1.16.0
     # via
     #   -r requirements/quality.txt
     #   edx-lint
+    #   python-dateutil
 snowballstemmer==2.2.0
     # via
     #   -r requirements/quality.txt
@@ -226,7 +237,7 @@ sqlparse==0.5.1
     # via
     #   -r requirements/quality.txt
     #   django
-stevedore==5.2.0
+stevedore==5.3.0
     # via
     #   -r requirements/quality.txt
     #   code-annotations
@@ -238,9 +249,9 @@ tomlkit==0.13.2
     # via
     #   -r requirements/quality.txt
     #   pylint
-tox==4.18.0
+tox==4.20.0
     # via -r requirements/quality.txt
-types-pyyaml==6.0.12.20240808
+types-pyyaml==6.0.12.20240917
     # via
     #   -r requirements/quality.txt
     #   django-stubs
@@ -260,12 +271,12 @@ typing-extensions==4.12.2
     #   django-stubs-ext
     #   djangorestframework-stubs
     #   mypy
-urllib3==1.26.19
+urllib3==1.26.20
     # via
     #   -r requirements/quality.txt
     #   elasticsearch
     #   requests
-virtualenv==20.26.3
+virtualenv==20.26.5
     # via
     #   -r requirements/quality.txt
     #   tox

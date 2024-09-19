@@ -1237,9 +1237,23 @@ def build_course_stats(author_id: str, course_id: str) -> None:
             "$group": {
                 "_id": {"type": "$_type", "is_reply": "$is_reply"},
                 "count": {"$sum": 1},
-                "active_flags": {"$sum": {"$gt": [{"$size": "$abuse_flaggers"}, 0]}},
+                "active_flags": {
+                    "$sum": {
+                        "$cond": {
+                            "if": {"$gt": [{"$size": "$abuse_flaggers"}, 0]},
+                            "then": 1,
+                            "else": 0,
+                        }
+                    }
+                },
                 "inactive_flags": {
-                    "$sum": {"$gt": [{"$size": "$historical_abuse_flaggers"}, 0]}
+                    "$sum": {
+                        "$cond": {
+                            "if": {"$gt": [{"$size": "$historical_abuse_flaggers"}, 0]},
+                            "then": 1,
+                            "else": 0,
+                        }
+                    }
                 },
                 "latest_update_at": {"$max": "$updated_at"},
             }

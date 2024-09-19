@@ -67,7 +67,7 @@ piptools: ## install pinned version of pip-compile and pip-sync
 requirements: clean_tox piptools ## install development environment requirements
 	pip-sync -q requirements/dev.txt requirements/private.*
 
-test-all: clean test test-quality test-pii selfcheck ## run all tests
+test-all: selfcheck clean test test-quality test-pii test-e2e ## run all tests
 
 test: ## run unit tests
 	pytest
@@ -93,6 +93,15 @@ test-format: ## Run code formatting tests
 test-pii: export DJANGO_SETTINGS_MODULE=forum.settings.test
 test-pii: ## # check for PII annotations on all Django models
 	 code_annotations django_find_annotations --config_file .pii_annotations.yml --lint --report --coverage
+
+test-e2e: e2e-stop-services e2e-start-services # run end-to-end tests
+	pytest tests/e2e
+
+e2e-start-services: # Start dependency containers necessary for e2e tests
+	docker compose -f tests/e2e/docker-compose.yml --project-name forum_e2e up -d
+
+e2e-stop-services: # Stop dependency containers necessary for e2e tests
+	docker compose -f tests/e2e/docker-compose.yml --project-name forum_e2e down
 
 selfcheck: ## check that the Makefile is well-formed
 	@echo "The Makefile is well-formed."

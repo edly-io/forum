@@ -1,4 +1,6 @@
-name: Python CI
+# This workflow can be troubleshooted with act https://github.com/nektos/act
+# For example: act --job run_tests --matrix toxenv:e2e
+name: Run tests
 
 on:
   push:
@@ -20,7 +22,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ['3.11', '3.12']
-        toxenv: [py, quality, django42]
+        toxenv: [py, quality, django42, e2e]
 
     steps:
       - uses: actions/checkout@v4

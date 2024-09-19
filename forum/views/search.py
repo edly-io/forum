@@ -31,52 +31,49 @@ class SearchThreadsView(APIView):
         """
         Validate and extract query parameters from the request.
         """
+        data = request.query_params
         params: dict[str, Any] = {}
 
         # Required parameters
-        text = request.GET.get("text")
+        text = data.get("text")
         if not text:
             raise ValueError("text is required")
         params["text"] = text
 
         # Sort key validation
         VALID_SORT_KEYS = ("activity", "comments", "date", "votes")
-        sort_key = request.GET.get("sort_key", "date")
+        sort_key = data.get("sort_key", "date")
         if sort_key not in VALID_SORT_KEYS:
             raise ValueError("invalid sort_key")
         params["sort_key"] = sort_key
 
         # Pagination handling
-        page = request.GET.get("page", FORUM_DEFAULT_PAGE)
+        page = data.get("page", FORUM_DEFAULT_PAGE)
         try:
             params["page"] = int(page)
         except ValueError as exc:
             raise ValueError("Invalid page value.") from exc
 
-        per_page = request.GET.get("per_page", FORUM_DEFAULT_PER_PAGE)
+        per_page = data.get("per_page", FORUM_DEFAULT_PER_PAGE)
         try:
             params["per_page"] = int(per_page)
         except ValueError as exc:
             raise ValueError("Invalid per_page value.") from exc
 
         # Optional parameters with default values and type conversion
-        params["context"] = request.GET.get("context", "course")
-        params["user_id"] = request.GET.get("user_id", "")
-        params["course_id"] = request.GET.get("course_id", "")
-        params["author_id"] = request.GET.get("author_id")
-        params["thread_type"] = request.GET.get("thread_type")
-        params["flagged"] = request.GET.get("flagged", "false").lower() == "true"
-        params["unread"] = request.GET.get("unread", "false").lower() == "true"
-        params["unanswered"] = request.GET.get("unanswered", "false").lower() == "true"
-        params["unresponded"] = (
-            request.GET.get("unresponded", "false").lower() == "true"
-        )
-        params["count_flagged"] = (
-            request.GET.get("count_flagged", "false").lower() == "true"
-        )
+        params["context"] = data.get("context", "course")
+        params["user_id"] = data.get("user_id", "")
+        params["course_id"] = data.get("course_id", "")
+        params["author_id"] = data.get("author_id")
+        params["thread_type"] = data.get("thread_type")
+        params["flagged"] = data.get("flagged", "false").lower() == "true"
+        params["unread"] = data.get("unread", "false").lower() == "true"
+        params["unanswered"] = data.get("unanswered", "false").lower() == "true"
+        params["unresponded"] = data.get("unresponded", "false").lower() == "true"
+        params["count_flagged"] = data.get("count_flagged", "false").lower() == "true"
 
         # Group IDs extraction
-        params["group_ids"] = get_group_ids_from_params(request.GET)
+        params["group_ids"] = get_group_ids_from_params(data)
 
         return params
 
@@ -122,13 +119,14 @@ class SearchThreadsView(APIView):
         Returns:
             Response: A JSON response containing the search results, corrected text (if any), and total results.
         """
+
         try:
             params = self._validate_and_extract_params(request)
         except ValueError as error:
             return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
 
         thread_ids, corrected_text = self._get_thread_ids_from_indexes(
-            params["context"], params["group_ids"], request.GET, params["text"]
+            params["context"], params["group_ids"], request.query_params, params["text"]
         )
 
         data: dict[str, Any] = handle_threads_query(

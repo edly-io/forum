@@ -1,0 +1,17 @@
+# Docker Compose service declaration for end-to-end testing. This runs services without
+# data persistence. Be careful about losing your data!
+services:
+    mongodb:
+        # https://hub.docker.com/_/mongo/tags
+        image: docker.io/mongo:7.0.14
+        ports:
+            - 127.0.0.1:27017:27017
+
+    elasticsearch:
+        # https://hub.docker.com/_/elasticsearch/tags
+        image: docker.io/elasticsearch:7.17.23
+        ports:
+            - 127.0.0.1:5200:9200
+        environment:
+            - discovery.type=single-node
+            - xpack.security.enabled=false

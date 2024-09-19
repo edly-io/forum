@@ -11,7 +11,6 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
-from forum.models.comments import Comment
 from forum.models.model_utils import (
     delete_comments_of_a_thread,
     delete_subscriptions_of_a_thread,
@@ -166,9 +165,10 @@ class ThreadsAPIView(APIView):
         result = CommentThread().delete(thread_id)
         delete_subscriptions_of_a_thread(thread_id)
         if result:
-            update_stats_for_course(
-                thread["author_id"], thread["course_id"], threads=-1
-            )
+            if not (thread["anonymous"] or thread["anonymous_to_peers"]):
+                update_stats_for_course(
+                    thread["author_id"], thread["course_id"], threads=-1
+                )
 
         return Response(serialized_data, status=status.HTTP_200_OK)
 
@@ -185,7 +185,7 @@ class ThreadsAPIView(APIView):
             The details of the thread that is updated.
         """
         try:
-            thread = validate_object(Comment, thread_id)
+            thread = validate_object(CommentThread, thread_id)
         except ObjectDoesNotExist:
             return Response(
                 {"error": "thread does not exist"},
@@ -280,7 +280,8 @@ class CreateThreadAPIView(APIView):
             )
 
         thread = self.create_thread(data)
-        update_stats_for_course(thread["author_id"], thread["course_id"], threads=1)
+        if not (thread["anonymous"] or thread["anonymous_to_peers"]):
+            update_stats_for_course(thread["author_id"], thread["course_id"], threads=1)
         try:
             serialized_data = prepare_thread_api_response(thread, True, data)
         except ValidationError as error:
