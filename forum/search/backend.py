@@ -9,7 +9,7 @@ from typing import Any, Iterator
 
 from elasticsearch import exceptions, helpers
 
-from forum.models.contents import BaseContents
+from forum.backends.mongodb.contents import BaseContents
 from forum.search.es import ElasticsearchModelMixin
 
 log = logging.getLogger(__name__)

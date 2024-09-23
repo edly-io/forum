@@ -11,9 +11,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from forum.constants import FORUM_DEFAULT_PAGE, FORUM_DEFAULT_PER_PAGE
-from forum.models.model_utils import get_group_ids_from_params, handle_threads_query
+from forum.backends.mongodb.api import handle_threads_query
 from forum.search.comment_search import ThreadSearch
 from forum.serializers.thread import ThreadSerializer
+from forum.utils import get_group_ids_from_params
 
 
 class SearchThreadsView(APIView):

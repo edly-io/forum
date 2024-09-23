@@ -8,8 +8,8 @@ from urllib.parse import urlencode
 
 from requests import Response
 
-from forum.models import Comment, CommentThread, Users
-from forum.models.model_utils import mark_as_read
+from forum.backends.mongodb import Comment, CommentThread, Users
+from forum.backends.mongodb.api import mark_as_read
 from forum.search.backend import get_search_backend
 from test_utils.client import APIClient
 

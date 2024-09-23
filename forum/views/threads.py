@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
-from forum.models.model_utils import (
+from forum.backends.mongodb.api import (
     delete_comments_of_a_thread,
     delete_subscriptions_of_a_thread,
     get_threads,
@@ -20,8 +20,8 @@ from forum.models.model_utils import (
     validate_object,
     validate_params,
 )
-from forum.models.threads import CommentThread
-from forum.models.users import Users
+from forum.backends.mongodb.threads import CommentThread
+from forum.backends.mongodb.users import Users
 from forum.serializers.thread import ThreadSerializer
 from forum.utils import get_int_value_from_collection, str_to_bool
 

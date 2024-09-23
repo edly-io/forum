@@ -3,7 +3,7 @@
 import random
 import uuid
 
-from forum.models import CommentThread
+from forum.backends.mongodb import CommentThread
 from test_utils.client import APIClient
 
 

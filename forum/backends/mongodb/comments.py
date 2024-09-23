@@ -5,9 +5,9 @@ from typing import Any, Optional
 
 from bson import ObjectId
 
-from forum.models.contents import BaseContents
-from forum.models.threads import CommentThread
-from forum.models.users import Users
+from forum.backends.mongodb.contents import BaseContents
+from forum.backends.mongodb.threads import CommentThread
+from forum.backends.mongodb.users import Users
 from forum.utils import get_handler_by_name
 
 

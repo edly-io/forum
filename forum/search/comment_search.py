@@ -4,8 +4,8 @@ Elastic Search Index Manager.
 
 from typing import Any, Optional
 
+from forum.backends.mongodb.threads import CommentThread
 from forum.constants import FORUM_MAX_DEEP_SEARCH_COMMENT_COUNT
-from forum.models import CommentThread
 from forum.search.es import ElasticsearchModelMixin
 
 

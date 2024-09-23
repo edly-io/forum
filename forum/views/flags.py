@@ -6,8 +6,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.models import Comment, CommentThread, Users
-from forum.models.model_utils import (
+from forum.backends.mongodb import Comment, CommentThread, Users
+from forum.backends.mongodb.api import (
     flag_as_abuse,
     un_flag_all_as_abuse,
     un_flag_as_abuse,

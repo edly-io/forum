@@ -8,7 +8,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.models.model_utils import handle_pin_unpin_thread_request
+from forum.backends.mongodb.api import handle_pin_unpin_thread_request
 from forum.serializers.thread import ThreadSerializer
 
 

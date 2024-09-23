@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 from bson import ObjectId
 
-from forum.models.base_model import MongoBaseModel
+from forum.backends.mongodb.base_model import MongoBaseModel
 
 
 class BaseContents(MongoBaseModel):

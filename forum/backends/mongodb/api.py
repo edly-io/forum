@@ -2,15 +2,22 @@
 
 import math
 from datetime import datetime, timezone
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Optional, Union
 
 from bson import ObjectId
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
 from rest_framework.response import Response
 
+from forum.backends.mongodb import (
+    Comment,
+    CommentThread,
+    Contents,
+    Subscriptions,
+    Users,
+)
 from forum.constants import RETIRED_BODY, RETIRED_TITLE
-from forum.models import Comment, CommentThread, Contents, Subscriptions, Users
+from forum.utils import get_group_ids_from_params, get_sort_criteria, make_aware
 
 
 def update_stats_for_course(user_id: str, course_id: str, **kwargs: Any) -> None:
@@ -368,13 +375,6 @@ def get_abuse_flagged_count(thread_ids: list[str]) -> dict[str, int]:
     return {str(item["_id"]): item["flagged_count"] for item in flagged_threads}
 
 
-def make_aware(dt: datetime) -> datetime:
-    """make datetime timezone-aware"""
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt
-
-
 def get_read_states(
     threads: list[dict[str, Any]], user_id: str, course_id: str
 ) -> dict[str, list[Any]]:
@@ -451,40 +451,6 @@ def get_user_read_state_by_course_id(
         if read_state["course_id"] == course_id:
             return read_state
     return {}
-
-
-def get_sort_criteria(sort_key: str) -> Sequence[tuple[str, int]]:
-    """
-    Generate sorting criteria based on the provided key.
-
-    Parameters:
-    -----------
-    sort_key : str
-        Key to determine sort order ("date", "activity", "votes", "comments").
-
-    Returns:
-    --------
-    list
-        List of tuples for sorting, including "pinned" and the relevant field,
-        optionally adding "created_at" if needed.
-    """
-    sort_key_mapper = {
-        "date": "created_at",
-        "activity": "last_activity_at",
-        "votes": "votes.point",
-        "comments": "comment_count",
-    }
-    sort_key = sort_key or "date"
-    sort_key = sort_key_mapper.get(sort_key, "")
-
-    if sort_key:
-        # only sort order of -1 (descending) is supported.
-        sort_criteria = [("pinned", -1), (sort_key, -1)]
-        if sort_key not in ["created_at", "last_activity_at"]:
-            sort_criteria.append(("created_at", -1))
-        return sort_criteria
-    else:
-        return []
 
 
 # TODO: Make this function modular
@@ -790,30 +756,6 @@ def find_subscribed_threads(user_id: str, course_id: Optional[str] = None) -> li
         subscribed_ids.append(thread["_id"])
 
     return subscribed_ids
-
-
-def get_group_ids_from_params(params: dict[str, Any]) -> list[int]:
-    """
-    Extract group IDs from the provided parameters.
-
-    Args:
-        params (dict): A dictionary containing the parameters.
-
-    Returns:
-        list: A list of group IDs.
-
-    Raises:
-        ValueError: If both `group_id` and `group_ids` are specified in the parameters.
-    """
-
-    if "group_id" in params and "group_ids" in params:
-        raise ValueError("Cannot specify both group_id and group_ids")
-    group_ids = []
-    if "group_id" in params:
-        group_ids.append(int(params["group_id"]))
-    elif "group_ids" in params:
-        group_ids.extend([int(x) for x in params["group_ids"].split(",")])
-    return group_ids
 
 
 def subscribe_user(

@@ -8,8 +8,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.models import CommentThread, Subscriptions, Users
-from forum.models.model_utils import (
+from forum.backends.mongodb import CommentThread, Subscriptions, Users
+from forum.backends.mongodb.api import (
     find_subscribed_threads,
     get_threads,
     subscribe_user,

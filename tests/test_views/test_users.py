@@ -1,8 +1,8 @@
 """Tests for Users apis."""
 
 from forum.constants import RETIRED_BODY, RETIRED_TITLE
-from forum.models import Comment, CommentThread, Contents, Users
-from forum.models.model_utils import subscribe_user, upvote_content
+from forum.backends.mongodb import Comment, CommentThread, Contents, Users
+from forum.backends.mongodb.api import subscribe_user, upvote_content
 from test_utils.client import APIClient
 
 

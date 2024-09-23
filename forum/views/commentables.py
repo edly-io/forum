@@ -6,7 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.models.model_utils import get_commentables_counts_based_on_type
+from forum.backends.mongodb.api import get_commentables_counts_based_on_type
 
 
 class CommentablesCountAPIView(APIView):

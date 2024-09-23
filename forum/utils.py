@@ -1,10 +1,12 @@
 """Forum Utils."""
 
+from datetime import datetime, timezone
 import logging
-from typing import Any
+from typing import Any, Sequence
 
 import requests
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.dispatch import Signal
 from django.http import HttpRequest
 from requests.models import Response
@@ -141,3 +143,73 @@ def prepare_comment_data_for_get_children(
             }
         )
     return children_data
+
+
+def validate_upvote_or_downvote(value: int) -> None:
+    """Validate upvote or downvote value."""
+    if value not in [1, -1]:
+        raise ValidationError("This field only accepts 1 or -1.")
+
+
+def make_aware(dt: datetime) -> datetime:
+    """Make datetime timezone-aware."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def get_group_ids_from_params(params: dict[str, Any]) -> list[int]:
+    """
+    Extract group IDs from the provided parameters.
+
+    Args:
+        params (dict): A dictionary containing the parameters.
+
+    Returns:
+        list: A list of group IDs.
+
+    Raises:
+        ValueError: If both `group_id` and `group_ids` are specified in the parameters.
+    """
+    if "group_id" in params and "group_ids" in params:
+        raise ValueError("Cannot specify both group_id and group_ids")
+    group_ids = []
+    if "group_id" in params:
+        group_ids.append(int(params["group_id"]))
+    elif "group_ids" in params:
+        group_ids.extend([int(x) for x in params["group_ids"].split(",")])
+    return group_ids
+
+
+def get_sort_criteria(sort_key: str) -> Sequence[tuple[str, int]]:
+    """
+    Generate sorting criteria based on the provided key.
+
+    Parameters:
+    -----------
+    sort_key : str
+        Key to determine sort order ("date", "activity", "votes", "comments").
+
+    Returns:
+    --------
+    list
+        List of tuples for sorting, including "pinned" and the relevant field,
+        optionally adding "created_at" if needed.
+    """
+    sort_key_mapper = {
+        "date": "created_at",
+        "activity": "last_activity_at",
+        "votes": "votes.point",
+        "comments": "comment_count",
+    }
+    sort_key = sort_key or "date"
+    sort_key = sort_key_mapper.get(sort_key, "")
+
+    if sort_key:
+        # only sort order of -1 (descending) is supported.
+        sort_criteria = [("pinned", -1), (sort_key, -1)]
+        if sort_key not in ["created_at", "last_activity_at"]:
+            sort_criteria.append(("created_at", -1))
+        return sort_criteria
+    else:
+        return []

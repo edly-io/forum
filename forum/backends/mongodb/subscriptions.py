@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from forum.models.base_model import MongoBaseModel
+from forum.backends.mongodb.base_model import MongoBaseModel
 
 
 class Subscriptions(MongoBaseModel):

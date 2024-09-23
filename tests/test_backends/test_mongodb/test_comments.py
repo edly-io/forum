@@ -2,7 +2,7 @@
 """
 Tests for the `Comment` model.
 """
-from forum.models import Comment
+from forum.backends.mongodb import Comment
 
 
 def test_insert() -> None:

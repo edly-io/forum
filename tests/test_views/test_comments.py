@@ -1,6 +1,6 @@
 """Test comments api endpoints."""
 
-from forum.models import Comment, CommentThread, Users
+from forum.backends.mongodb import Comment, CommentThread, Users
 from test_utils.client import APIClient
 
 

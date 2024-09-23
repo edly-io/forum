@@ -10,8 +10,8 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
-from forum.models import Comment, CommentThread, Users
-from forum.models.model_utils import (
+from forum.backends.mongodb import Comment, CommentThread, Users
+from forum.backends.mongodb.api import (
     mark_as_read,
     validate_object,
     update_stats_for_course,
