@@ -4,7 +4,6 @@ Serializer for the thread data.
 
 from typing import Any, Optional
 
-from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
@@ -210,7 +209,7 @@ class ThreadSerializer(ContentSerializer):
             )
             children = list(
                 Comment().get_list(
-                    comment_thread_id=ObjectId(obj["_id"]),
+                    comment_thread_id=obj["_id"],
                     depth=0,
                     parent_id=None,
                     sort=sorting_order,

@@ -365,7 +365,7 @@ def get_abuse_flagged_count(thread_ids: list[str]) -> dict[str, int]:
     pipeline: list[dict[str, Any]] = [
         {
             "$match": {
-                "comment_thread_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
+                "comment_thread_id": {"$in": [tid for tid in thread_ids]},
                 "abuse_flaggers": {"$ne": []},
             }
         },
@@ -405,7 +405,7 @@ def get_read_states(
                     is_read = read_date >= last_activity_at
                     unread_comment_count = Contents().count_documents(
                         {
-                            "comment_thread_id": ObjectId(thread_key),
+                            "comment_thread_id": thread_key,
                             "created_at": {"$gte": read_dates[thread_key]},
                             "author_id": {"$ne": str(user_id)},
                         }
@@ -413,6 +413,43 @@ def get_read_states(
                     read_states[thread_key] = [is_read, unread_comment_count]
 
     return read_states
+
+
+def get_filtered_thread_ids(
+    thread_ids: list[str], context: str, group_ids: list[str]
+) -> set[str]:
+    """
+    Filters thread IDs based on context and group ID criteria.
+
+    Args:
+        thread_ids (list[str]): List of thread IDs to filter.
+        context (str): The context to filter by.
+        group_ids (list[str]): List of group IDs for group-based filtering.
+
+    Returns:
+        set: A set of filtered thread IDs based on the context and group ID criteria.
+    """
+    context_query = {
+        "_id": {"$in": [tid for tid in thread_ids]},
+        "context": context,
+    }
+    context_threads = CommentThread().find(context_query)
+    context_thread_ids = {str(thread["_id"]) for thread in context_threads}
+
+    if not group_ids:
+        return context_thread_ids
+
+    group_query = {
+        "_id": {"$in": [tid for tid in thread_ids]},
+        "$or": [
+            {"group_id": {"$in": group_ids}},
+            {"group_id": {"$exists": False}},
+        ],
+    }
+    group_threads = CommentThread().find(group_query)
+    group_thread_ids = {str(thread["_id"]) for thread in group_threads}
+
+    return context_thread_ids.union(group_thread_ids)
 
 
 def get_endorsed(thread_ids: list[str]) -> dict[str, bool]:
@@ -427,7 +464,7 @@ def get_endorsed(thread_ids: list[str]) -> dict[str, bool]:
     """
     endorsed_comments = Comment().find(
         {
-            "comment_thread_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
+            "comment_thread_id": {"$in": [tid for tid in thread_ids]},
             "endorsed": True,
         }
     )
@@ -498,14 +535,9 @@ def handle_threads_query(
     Returns:
         dict[str, Any]: A dictionary containing the paginated thread results and associated metadata.
     """
-    # Convert thread_ids to ObjectId
-    comment_thread_obj_ids: list[ObjectId] = [
-        ObjectId(tid) for tid in comment_thread_ids
-    ]
-
     # Base query
     base_query: dict[str, Any] = {
-        "_id": {"$in": comment_thread_obj_ids},
+        "_id": {"$in": comment_thread_ids},
         "context": context,
     }
 
@@ -536,7 +568,7 @@ def handle_threads_query(
         flagged_comments = Comment().distinct("comment_thread_id", flagged_query)
         flagged_threads = CommentThread().distinct("_id", flagged_query)
         base_query["_id"]["$in"] = list(
-            set(comment_thread_obj_ids) & set(flagged_comments + flagged_threads)
+            set(comment_thread_ids) & set(flagged_comments + flagged_threads)
         )
 
     # Unanswered questions filtering
@@ -745,7 +777,7 @@ def find_subscribed_threads(user_id: str, course_id: Optional[str] = None) -> li
 
     thread_ids = []
     for subscription in subscriptions_cursor:
-        thread_ids.append(ObjectId(subscription["source_id"]))
+        thread_ids.append(subscription["source_id"])
 
     thread_filter: dict[str, Any] = {"_id": {"$in": thread_ids}}
     if course_id:
@@ -778,7 +810,7 @@ def unsubscribe_user(user_id: str, source_id: str) -> None:
 def delete_comments_of_a_thread(thread_id: str) -> None:
     """Delete comments of a thread."""
     for comment in Comment().get_list(
-        comment_thread_id=ObjectId(thread_id),
+        comment_thread_id=thread_id,
         depth=0,
         parent_id=None,
     ):
@@ -1002,7 +1034,7 @@ def user_to_hash(
             comment_thread_ids = filter_standalone_threads(list(comments))
 
             group_query = {
-                "_id": {"$in": [ObjectId(tid) for tid in comment_thread_ids]},
+                "_id": {"$in": [tid for tid in comment_thread_ids]},
                 "$and": [
                     {"group_id": {"$in": specified_groups_or_global}},
                     {"group_id": {"$exists": False}},
@@ -1086,7 +1118,7 @@ def find_or_create_read_state(user_id: str, thread_id: str) -> dict[str, Any]:
             return state
 
     read_state = {
-        "_id": ObjectId(),
+        "_id": str(ObjectId()),
         "course_id": thread["course_id"],
         "last_read_times": {},
     }
@@ -1129,7 +1161,7 @@ def find_or_create_user_stats(user_id: str, course_id: str) -> dict[str, Any]:
             return stat
 
     course_stat = {
-        "_id": ObjectId(),
+        "_id": str(ObjectId()),
         "active_flags": 0,
         "inactive_flags": 0,
         "threads": 0,

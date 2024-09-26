@@ -3,6 +3,8 @@
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from bson import ObjectId
+
 from forum.backends.mongodb.base_model import MongoBaseModel
 
 
@@ -26,6 +28,7 @@ class Subscriptions(MongoBaseModel):
 
         """
         subscription = {
+            "_id": str(ObjectId()),
             "subscriber_id": subscriber_id,
             "source_id": source_id,
             "source_type": source_type,

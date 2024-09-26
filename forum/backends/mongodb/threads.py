@@ -139,6 +139,7 @@ class CommentThread(BaseContents):
 
         date = datetime.now()
         thread_data = {
+            "_id": str(ObjectId()),
             "votes": self.get_votes_dict(up=[], down=[]),
             "thread_type": thread_type,
             "context": context,
@@ -279,7 +280,7 @@ class CommentThread(BaseContents):
         date = datetime.now()
         update_data["updated_at"] = date
         result = self._collection.update_one(
-            {"_id": ObjectId(thread_id)},
+            {"_id": thread_id},
             {"$set": update_data},
         )
 

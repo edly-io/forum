@@ -5,7 +5,6 @@ Database models for forum.
 from abc import ABC
 from typing import Any, Optional
 
-from bson import ObjectId
 from pymongo.collection import Collection as PymongoCollection
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
@@ -40,7 +39,7 @@ class MongoBaseModel(ABC):
 
     def get(self, _id: str) -> Optional[dict[str, Any]]:
         """Get a document by ID."""
-        return self._collection.find_one({"_id": ObjectId(_id)})
+        return self._collection.find_one({"_id": _id})
 
     def get_list(self, **kwargs: Any) -> Cursor[dict[str, Any]]:
         """Get a list of all documents filtered by kwargs."""
@@ -56,7 +55,7 @@ class MongoBaseModel(ABC):
         Returns:
             The number of documents deleted.
         """
-        result = self._collection.delete_one({"_id": ObjectId(_id)})
+        result = self._collection.delete_one({"_id": _id})
         return result.deleted_count
 
     def find(self, query: dict[str, Any]) -> Cursor[dict[str, Any]]:

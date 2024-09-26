@@ -3,8 +3,6 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from bson import ObjectId
-
 from forum.backends.mongodb.base_model import MongoBaseModel
 
 
@@ -168,7 +166,7 @@ class BaseContents(MongoBaseModel):
         """
         update_data = {"votes": votes, "updated_at": datetime.now()}
         result = self._collection.update_one(
-            {"_id": ObjectId(content_id)},
+            {"_id": content_id},
             {"$set": update_data},
         )
         return result.modified_count
@@ -182,7 +180,7 @@ class BaseContents(MongoBaseModel):
             query (dict[str, Any]): Query to update the count in a specific field.
         """
         result = self._collection.update_one(
-            {"_id": ObjectId(content_id)},
+            {"_id": content_id},
             query,
         )
         return result.modified_count
@@ -215,7 +213,7 @@ class Contents(BaseContents):
             str: The ID of the inserted document.
         """
         content_data = {
-            "_id": ObjectId(_id),
+            "_id": _id,
             "author_id": author_id,
             "abuse_flaggers": abuse_flaggers,
             "historical_abuse_flaggers": historical_abuse_flaggers,
@@ -256,7 +254,7 @@ class Contents(BaseContents):
         }
 
         result = self._collection.update_one(
-            {"_id": ObjectId(_id)},
+            {"_id": _id},
             {"$set": update_data},
         )
         return result.modified_count
