@@ -171,7 +171,6 @@ def get_group_ids_from_params(params: dict[str, Any]) -> list[int]:
     Raises:
         ValueError: If both `group_id` and `group_ids` are specified in the parameters.
     """
-
     if "group_id" in params and "group_ids" in params:
         raise ValueError("Cannot specify both group_id and group_ids")
     group_ids: str | list[str] = []
@@ -221,10 +220,3 @@ def get_sort_criteria(sort_key: str) -> Sequence[tuple[str, int]]:
 
 class ForumV2RequestError(Exception):
     pass
-
-
-def make_aware(dt: datetime) -> datetime:
-    """Make datetime timezone-aware."""
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt

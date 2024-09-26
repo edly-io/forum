@@ -14,7 +14,7 @@ from forum.api import (
     get_parent_comment,
     update_comment,
 )
-from forum.utils import ForumV2RequestError
+from forum.utils import ForumV2RequestError, str_to_bool
 
 
 class CommentsAPIView(APIView):

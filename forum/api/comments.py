@@ -11,6 +11,7 @@ from rest_framework.serializers import ValidationError
 from forum.backends.mongodb.api import (
     create_comment,
     delete_comment_by_id,
+    get_thread_id_by_comment_id,
     get_thread_by_id,
     get_user_by_id,
     mark_as_read,
@@ -18,6 +19,8 @@ from forum.backends.mongodb.api import (
     update_comment_and_get_updated_comment,
     update_stats_for_course,
 )
+from forum.backends.mongodb.comments import Comment
+from forum.backends.mongodb.threads import CommentThread
 from forum.serializers.comment import CommentSerializer
 from forum.utils import ForumV2RequestError
 
@@ -120,6 +123,7 @@ def create_child_comment(
         anonymous,
         anonymous_to_peers,
         1,
+        get_thread_id_by_comment_id(parent_comment_id),
         parent_id=parent_comment_id,
     )
     if not comment:

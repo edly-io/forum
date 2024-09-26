@@ -27,7 +27,6 @@ from forum.backends.mongodb.api import (
 )
 from forum.serializers.thread import ThreadSerializer
 from forum.serializers.users import UserSerializer
-from forum.utils import get_group_ids_from_params
 from forum.utils import ForumV2RequestError
 
 log = logging.getLogger(__name__)

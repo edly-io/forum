@@ -6,12 +6,9 @@ import logging
 from typing import Any
 
 from forum.backends.mongodb import Users
-from forum.backends.mongodb.api import (
-    get_group_ids_from_params,
-    user_to_hash,
-)
+from forum.backends.mongodb.api import user_to_hash
 from forum.serializers.users import UserSerializer
-from forum.utils import ForumV2RequestError
+from forum.utils import ForumV2RequestError, get_group_ids_from_params
 
 log = logging.getLogger(__name__)
 

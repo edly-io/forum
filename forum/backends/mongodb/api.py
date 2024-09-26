@@ -16,7 +16,6 @@ from forum.backends.mongodb import (
     Subscriptions,
     Users,
 )
-from forum.utils import make_aware
 from forum.constants import RETIRED_BODY, RETIRED_TITLE
 from forum.utils import get_group_ids_from_params, get_sort_criteria, make_aware
 
@@ -365,7 +364,7 @@ def get_abuse_flagged_count(thread_ids: list[str]) -> dict[str, int]:
     pipeline: list[dict[str, Any]] = [
         {
             "$match": {
-                "comment_thread_id": {"$in": [tid for tid in thread_ids]},
+                "comment_thread_id": {"$in": thread_ids},
                 "abuse_flaggers": {"$ne": []},
             }
         },
@@ -430,7 +429,7 @@ def get_filtered_thread_ids(
         set: A set of filtered thread IDs based on the context and group ID criteria.
     """
     context_query = {
-        "_id": {"$in": [tid for tid in thread_ids]},
+        "_id": {"$in": thread_ids},
         "context": context,
     }
     context_threads = CommentThread().find(context_query)
@@ -440,7 +439,7 @@ def get_filtered_thread_ids(
         return context_thread_ids
 
     group_query = {
-        "_id": {"$in": [tid for tid in thread_ids]},
+        "_id": {"$in": thread_ids},
         "$or": [
             {"group_id": {"$in": group_ids}},
             {"group_id": {"$exists": False}},
@@ -464,7 +463,7 @@ def get_endorsed(thread_ids: list[str]) -> dict[str, bool]:
     """
     endorsed_comments = Comment().find(
         {
-            "comment_thread_id": {"$in": [tid for tid in thread_ids]},
+            "comment_thread_id": {"$in": thread_ids},
             "endorsed": True,
         }
     )
@@ -1034,7 +1033,7 @@ def user_to_hash(
             comment_thread_ids = filter_standalone_threads(list(comments))
 
             group_query = {
-                "_id": {"$in": [tid for tid in comment_thread_ids]},
+                "_id": {"$in": comment_thread_ids},
                 "$and": [
                     {"group_id": {"$in": specified_groups_or_global}},
                     {"group_id": {"$exists": False}},
@@ -1310,7 +1309,7 @@ def create_comment(
     anonymous: bool,
     anonymous_to_peers: bool,
     depth: int,
-    thread_id: Optional[str] = None,
+    thread_id: str,
     parent_id: Optional[str] = None,
 ) -> Any:
     """
@@ -1406,3 +1405,13 @@ def update_comment_and_get_updated_comment(
 def delete_comment_by_id(comment_id: str) -> None:
     """Delete a comment by it's Id."""
     Comment().delete(comment_id)
+
+
+def get_thread_id_by_comment_id(parent_comment_id: str) -> str:
+    """
+    The thread Id from the parent comment.
+    """
+    parent_comment = Comment().get(parent_comment_id)
+    if parent_comment:
+        return parent_comment["comment_thread_id"]
+    raise ValueError("Comment doesn't have the thread.")

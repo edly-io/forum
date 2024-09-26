@@ -100,7 +100,7 @@ class Comment(BaseContents):
         """
         date = datetime.now()
         comment_data = {
-            "_id":str(ObjectId()),
+            "_id": str(ObjectId()),
             "votes": self.get_votes_dict(up=[], down=[]),
             "visible": visible,
             "abuse_flaggers": abuse_flaggers or [],
