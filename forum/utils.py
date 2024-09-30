@@ -54,7 +54,7 @@ def handle_proxy_requests(request: HttpRequest, suffix: str, method: str) -> Res
     )
 
 
-def str_to_bool(value: str | bool) -> bool:
+def str_to_bool(value: str | bool | None) -> bool | None:
     """
     Convert a string or boolean value to a boolean.
 
@@ -68,7 +68,9 @@ def str_to_bool(value: str | bool) -> bool:
     Returns:
         bool: The converted boolean value.
     """
-    if isinstance(value, bool):
+    if value is None:
+        return None
+    elif isinstance(value, bool):
         return value
     return value.lower() in ("true", "1")
 

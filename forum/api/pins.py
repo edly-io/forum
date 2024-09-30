@@ -5,9 +5,7 @@ Native Python Pins APIs.
 import logging
 from typing import Any
 
-from forum.backends.mongodb.api import (
-    handle_pin_unpin_thread_request,
-)
+from forum.backends.mongodb.api import handle_pin_unpin_thread_request
 from forum.serializers.thread import ThreadSerializer
 from forum.utils import ForumV2RequestError
 

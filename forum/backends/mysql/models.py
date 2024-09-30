@@ -1,12 +1,13 @@
 """MySQL models for forum v2."""
 
 from __future__ import annotations
+
 from datetime import datetime
 from typing import Any, Optional
 
 from django.contrib.auth.models import User  # pylint: disable=E5142
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import QuerySet
 from django.utils import timezone

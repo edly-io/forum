@@ -6,14 +6,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.backends.mongodb import Comment, CommentThread, Users
-from forum.backends.mongodb.api import (
-    flag_as_abuse,
-    un_flag_all_as_abuse,
-    un_flag_as_abuse,
-)
-from forum.serializers.comment import CommentSerializer
-from forum.serializers.thread import ThreadSerializer
+from forum.api.flags import update_comment_flag, update_thread_flag
+from forum.utils import ForumV2RequestError
 
 
 class CommentFlagAPIView(APIView):
@@ -38,41 +32,15 @@ class CommentFlagAPIView(APIView):
         Response: A response with the updated comment data.
         """
         request_data = request.data
-        user = Users().get(request_data["user_id"])
-        comment = Comment().get(comment_id)
-        if not (user and comment):
-            return Response(
-                {"error": "User / Comment doesn't exist"},
-                status=status.HTTP_400_BAD_REQUEST,
+        update_all = request_data.get("all")
+        user_id = request_data.get("user_id")
+        try:
+            serializer_data = update_comment_flag(
+                user_id, comment_id, action, update_all
             )
-        if action == "flag":
-            updated_comment = flag_as_abuse(user, comment)
-        elif action == "unflag":
-            if request_data.get("all") and request_data.get("all") is True:
-                updated_comment = un_flag_all_as_abuse(comment)
-            else:
-                updated_comment = un_flag_as_abuse(user, comment)
-        else:
-            return Response(
-                {"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if updated_comment is None:
-            return Response(
-                {"error": "Failed to update comment"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        context = {
-            "id": str(updated_comment["_id"]),
-            **updated_comment,
-            "user_id": user["_id"],
-            "username": user["username"],
-            "type": "comment",
-            "thread_id": str(updated_comment.get("comment_thread_id", None)),
-        }
-        serializer = CommentSerializer(context)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer_data, status=status.HTTP_200_OK)
+        except ForumV2RequestError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ThreadFlagAPIView(APIView):
@@ -97,39 +65,10 @@ class ThreadFlagAPIView(APIView):
         Response: A response with the updated thread data.
         """
         request_data = request.data
-        user = Users().get(request_data["user_id"])
-        thread = CommentThread().get(thread_id)
-        if not (user and thread):
-            return Response(
-                {"error": "User / Thread doesn't exist"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if action == "flag":
-            updated_thread = flag_as_abuse(user, thread)
-        elif action == "unflag":
-            if request_data.get("all"):
-                updated_thread = un_flag_all_as_abuse(thread)
-            else:
-                updated_thread = un_flag_as_abuse(user, thread)
-        else:
-            return Response(
-                {"error": "Invalid action"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if updated_thread is None:
-            return Response(
-                {"error": "Failed to update thread"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        context = {
-            "id": str(updated_thread["_id"]),
-            **updated_thread,
-            "user_id": user["_id"],
-            "username": user["username"],
-            "type": "thread",
-            "thread_id": str(updated_thread.get("comment_thread_id", None)),
-        }
-        serializer = ThreadSerializer(context)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        update_all = request_data.get("all")
+        user_id = request_data.get("user_id")
+        try:
+            serializer_data = update_thread_flag(user_id, thread_id, action, update_all)
+            return Response(serializer_data, status=status.HTTP_200_OK)
+        except ForumV2RequestError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

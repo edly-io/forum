@@ -91,21 +91,23 @@ class ThreadSearch(CommentSearch):
     """
 
     def build_must_clause(
-        self, params: dict[str, str], search_text: str
+        self,
+        search_text: str,
+        commentable_id: Optional[str] = None,
+        commentable_ids: Optional[str] = None,
+        course_id: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """
         Build the 'must' clause for thread-specific Elasticsearch queries based on input parameters.
         """
         must: list[dict[str, Any]] = []
 
-        if params.get("commentable_id"):
-            must.append({"term": {"commentable_id": params["commentable_id"]}})
-        if params.get("commentable_ids"):
-            must.append(
-                {"terms": {"commentable_id": params["commentable_ids"].split(",")}}
-            )
-        if params.get("course_id"):
-            must.append({"term": {"course_id": params["course_id"]}})
+        if commentable_id:
+            must.append({"term": {"commentable_id": commentable_id}})
+        if commentable_ids:
+            must.append({"terms": {"commentable_id": commentable_ids.split(",")}})
+        if course_id:
+            must.append({"term": {"course_id": course_id}})
 
         must.append(
             {
@@ -158,14 +160,18 @@ class ThreadSearch(CommentSearch):
         self,
         context: str,
         group_ids: list[int],
-        params: dict[str, str],
         search_text: str,
         sort_criteria: Optional[list[dict[str, str]]] = None,
+        commentable_id: Optional[str] = None,
+        commentable_ids: Optional[str] = None,
+        course_id: Optional[str] = None,
     ) -> list[str]:
         """
         Retrieve thread IDs based on search criteria.
         """
-        must_clause: list[dict[str, Any]] = self.build_must_clause(params, search_text)
+        must_clause: list[dict[str, Any]] = self.build_must_clause(
+            search_text, commentable_id, commentable_ids, course_id
+        )
         filter_clause: list[dict[str, Any]] = self.build_filter_clause(
             context, group_ids
         )
@@ -192,9 +198,11 @@ class ThreadSearch(CommentSearch):
         self,
         context: str,
         group_ids: list[int],
-        params: dict[str, str],
         search_text: str,
         sort_criteria: Optional[list[dict[str, str]]] = None,
+        commentable_id: Optional[str] = None,
+        commentable_ids: Optional[str] = None,
+        course_id: Optional[str] = None,
     ) -> list[str]:
         """
         The function is just used of mimicing the behaviour of the test cases.
@@ -202,5 +210,11 @@ class ThreadSearch(CommentSearch):
         updating the returned values.
         """
         return self.get_thread_ids(
-            context, group_ids, params, search_text, sort_criteria
+            context,
+            group_ids,
+            search_text,
+            sort_criteria,
+            commentable_id,
+            commentable_ids,
+            course_id,
         )

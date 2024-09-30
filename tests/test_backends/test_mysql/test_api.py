@@ -3,10 +3,7 @@
 import pytest
 from django.contrib.auth import get_user_model
 
-from forum.backends.mysql.models import (
-    AbuseFlagger,
-    CommentThread,
-)
+from forum.backends.mysql.models import AbuseFlagger, CommentThread
 from forum.backends.mysql.api import (
     flag_as_abuse,
     un_flag_all_as_abuse,

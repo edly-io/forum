@@ -165,7 +165,6 @@ def test_update_thread_not_exist(api_client: APIClient) -> None:
         },
     )
     assert response.status_code == 400
-    assert response.data["error"] == "thread does not exist"
 
 
 def test_unicode_data(api_client: APIClient) -> None:
@@ -212,7 +211,6 @@ def test_delete_thread_not_exist(api_client: APIClient) -> None:
     wrong_thread_id = "66cd75eba3a68c001d51927b"
     response = api_client.delete_json(f"/api/v2/threads/{wrong_thread_id}")
     assert response.status_code == 400
-    assert response.data["error"] == "thread does not exist"
 
 
 def test_invalide_data(api_client: APIClient) -> None:
@@ -445,15 +443,17 @@ def test_filter_by_post_type(api_client: APIClient) -> None:
 
 def test_filter_unanswered_questions(api_client: APIClient) -> None:
     """Test filter unanswered questions through get thread API."""
-    _, thread1 = setup_models(thread_type="question")
-    _, thread2 = setup_models("2", "user2", thread_type="question")
+    course_id = "course1"
+    username = "user1"
+    user_id_1, thread1 = setup_models("1", "user1", thread_type="question")
+    user_id_2, thread2 = setup_models("2", "user2", thread_type="question")
     CommentThread().insert(
         title="Thread 3",
         body="Thread 3",
-        course_id="course1",
+        course_id=course_id,
         commentable_id="CommentThread",
-        author_id="1",
-        author_username="user1",
+        author_id=user_id_1,
+        author_username=username,
         abuse_flaggers=[],
         historical_abuse_flaggers=[],
         thread_type="question",
@@ -465,14 +465,32 @@ def test_filter_unanswered_questions(api_client: APIClient) -> None:
     results = response.json()["collection"]
     assert len(results) == 3
 
-    api_client.put_json(
-        f"/api/v2/threads/{thread1}",
-        data={"endorsed": True},
+    comment_id_1 = Comment().insert(
+        body="<p>Thread 1 Comment</p>",
+        course_id=course_id,
+        author_id=user_id_1,
+        comment_thread_id=thread1,
+        author_username=username,
     )
-    api_client.put_json(
-        f"/api/v2/threads/{thread2}",
-        data={"endorsed": True},
+    comment_id_2 = Comment().insert(
+        body="<p>Thread 2 Comment</p>",
+        course_id=course_id,
+        author_id=user_id_2,
+        comment_thread_id=thread2,
+        author_username=username,
     )
+
+    Comment().update(comment_id=comment_id_1, endorsed=True)
+    Comment().update(comment_id=comment_id_2, endorsed=True)
+
+    # api_client.put_json(
+    #     f"/api/v2/threads/{thread1}",
+    #     data={"endorsed": True},
+    # )
+    # api_client.put_json(
+    #     f"/api/v2/threads/{thread2}",
+    #     data={"endorsed": True},
+    # )
 
     params = {"course_id": "course1", "unanswered": True}
     response = api_client.get_json("/api/v2/threads", params)

@@ -1,24 +1,19 @@
 """Subscriptions API Views."""
 
-from typing import Any
-
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.backends.mongodb import CommentThread, Subscriptions, Users
-from forum.backends.mongodb.api import (
-    find_subscribed_threads,
-    get_threads,
-    subscribe_user,
-    unsubscribe_user,
-    validate_params,
+from forum.api.subscriptions import (
+    create_subscription,
+    delete_subscription,
+    get_thread_subscriptions,
+    get_user_subscriptions,
 )
 from forum.pagination import ForumPagination
-from forum.serializers.subscriptions import SubscriptionSerializer
-from forum.serializers.thread import ThreadSerializer
+from forum.utils import ForumV2RequestError
 
 
 class SubscriptionAPIView(APIView):
@@ -45,23 +40,11 @@ class SubscriptionAPIView(APIView):
             HTTP_400_BAD_REQUEST: If the user or content does not exist.
         """
         request_data = request.data
-        user = Users().get(user_id)
-        source_id = request_data.get("source_id")
-        if not source_id:
-            return Response(
-                {"error": "source_id is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        thread = CommentThread().get(source_id)
-        if not (user and thread):
-            return Response(
-                {"error": "User / Thread doesn't exist"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        subscription = subscribe_user(user_id, source_id, thread["_type"])
-        serializer = SubscriptionSerializer(subscription)
-        return Response(data=serializer.data, status=status.HTTP_200_OK)
+        try:
+            serilized_data = create_subscription(user_id, request_data["source_id"])
+        except ForumV2RequestError as e:
+            return Response(data={"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(data=serilized_data, status=status.HTTP_200_OK)
 
     def delete(self, request: Request, user_id: str) -> Response:
         """
@@ -77,31 +60,12 @@ class SubscriptionAPIView(APIView):
         Raises:
             HTTP_400_BAD_REQUEST: If the user or subscription does not exist.
         """
-        params = request.GET.dict()
-        user = Users().get(user_id)
-        if not user:
-            return Response(
-                {"error": "User doesn't exist"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if not params.get("source_id"):
-            return Response(
-                {"error": "Missing required parameter source_id"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        subscription = Subscriptions().get_subscription(
-            user_id,
-            params["source_id"],
-        )
-        if not subscription:
-            return Response(
-                {"error": "Subscription doesn't exist"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        unsubscribe_user(user_id, params["source_id"])
-        serializer = SubscriptionSerializer(subscription)
-        return Response(data=serializer.data, status=status.HTTP_200_OK)
+        try:
+            params = request.query_params
+            serilized_data = delete_subscription(user_id, params["source_id"])
+        except ForumV2RequestError as e:
+            return Response(data={"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(data=serilized_data, status=status.HTTP_200_OK)
 
 
 class UserSubscriptionAPIView(APIView):
@@ -128,13 +92,13 @@ class UserSubscriptionAPIView(APIView):
             HTTP_400_BAD_REQUEST: If the user does not exist.
         """
         params = request.GET.dict()
-        validations = validate_params(params, user_id)
-        if validations:
-            return validations
-
-        thread_ids = find_subscribed_threads(user_id, params["course_id"])
-        threads = get_threads(params, user_id, ThreadSerializer, thread_ids)
-        return Response(data=threads, status=status.HTTP_200_OK)
+        try:
+            serilized_data = get_user_subscriptions(
+                user_id, params["course_id"], params
+            )
+        except ForumV2RequestError as e:
+            return Response(data={"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(data=serilized_data, status=status.HTTP_200_OK)
 
 
 class ThreadSubscriptionAPIView(APIView):
@@ -158,32 +122,7 @@ class ThreadSubscriptionAPIView(APIView):
         Returns:
             Response: A paginated Response object with the subscription data.
         """
-        query = {}
-        response = {
-            "collection": [],
-            "subscriptions_count": 0,
-            "page": request.GET.get("page", 1),
-            "num_pages": 0,
-        }
-        query["source_id"] = thread_id
-        query["source_type"] = "CommentThread"
-        subscriptions_list = list(Subscriptions().find(query))
-
-        paginator = self.pagination_class()
-        paginated_subscriptions: dict[str, Any] | None = paginator.paginate_queryset(
-            subscriptions_list,
-            request,
-        )
-
-        if not paginated_subscriptions:
-            return Response(response, status=status.HTTP_200_OK)
-
-        subscriptions = SubscriptionSerializer(paginated_subscriptions, many=True)
-        subscriptions_count = len(subscriptions.data)
-        response["collection"] = subscriptions.data
-        response["subscriptions_count"] = subscriptions_count
-        response["page"] = request.GET.get("page", 1)
-        response["num_pages"] = max(
-            1, subscriptions_count // int(request.GET.get("per_page", 20))
-        )
-        return Response(response, status=status.HTTP_200_OK)
+        page = int(request.GET.get("page", 1))
+        per_page = int(request.GET.get("per_page", 20))
+        subscriptions_data = get_thread_subscriptions(thread_id, page, per_page)
+        return Response(subscriptions_data, status=status.HTTP_200_OK)

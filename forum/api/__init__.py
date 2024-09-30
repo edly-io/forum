@@ -2,6 +2,7 @@
 Native Python APIs.
 """
 
+from .commentables import get_commentables_stats
 from .comments import (
     create_child_comment,
     create_parent_comment,
@@ -9,7 +10,6 @@ from .comments import (
     get_parent_comment,
     update_comment,
 )
-from .commentables import get_commentables_stats
 from .pins import pin_thread, unpin_thread
 from .users import get_user
 

@@ -6,8 +6,6 @@ from typing import Any, Optional, Union
 
 from bson import ObjectId
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework import status
-from rest_framework.response import Response
 
 from forum.backends.mongodb import (
     Comment,
@@ -826,9 +824,7 @@ def delete_subscriptions_of_a_thread(thread_id: str) -> None:
         )
 
 
-def validate_params(
-    params: dict[str, Any], user_id: Optional[str] = None
-) -> Response | None:
+def validate_params(params: dict[str, Any], user_id: Optional[str] = None) -> None:
     """
     Validate the request parameters.
 
@@ -860,26 +856,15 @@ def validate_params(
 
     for key in params:
         if key not in valid_params:
-            return Response(
-                {"error": f"Invalid parameter: {key}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            raise ValueError(f"Invalid parameter: {key}")
 
     if "course_id" not in params:
-        return Response(
-            {"error": "Missing required parameter: course_id"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        raise ValueError("Missing required parameter: course_id")
 
     if user_id:
         user = Users().get(user_id)
         if not user:
-            return Response(
-                {"error": "User doesn't exist"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-    return None
+            raise ValueError("User doesn't exist")
 
 
 def get_threads(

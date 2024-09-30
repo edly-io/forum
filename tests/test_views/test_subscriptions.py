@@ -116,7 +116,7 @@ def test_unsubscribe_thread(api_client: APIClient) -> None:
     response = api_client.delete(
         f"/api/v2/users/{user_id}/subscriptions?source_id={comment_thread_id}"
     )
-    assert response.status_code == 404
+    assert response.status_code == 400
 
 
 def test_get_subscribed_threads_with_pagination(api_client: APIClient) -> None:

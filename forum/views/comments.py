@@ -106,13 +106,13 @@ class CommentsAPIView(APIView):
                 request_data.get("body"),
                 request_data.get("course_id"),
                 request_data.get("user_id"),
-                str_to_bool(request_data.get("anonymous", False)),
-                str_to_bool(request_data.get("anonymous_to_peers", False)),
-                str_to_bool(request_data.get("endorsed", False)),
-                str_to_bool(request_data.get("closed", False)),
-                request_data.get("editing_user_id", False),
-                request_data.get("edit_reason_code", False),
-                request_data.get("endorsement_user_id", False),
+                str_to_bool(request_data.get("anonymous")),
+                str_to_bool(request_data.get("anonymous_to_peers")),
+                str_to_bool(request_data.get("endorsed")),
+                str_to_bool(request_data.get("closed")),
+                request_data.get("editing_user_id"),
+                request_data.get("edit_reason_code"),
+                request_data.get("endorsement_user_id"),
             )
         except ForumV2RequestError:
             return Response(
