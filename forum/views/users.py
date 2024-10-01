@@ -177,6 +177,12 @@ class UserActiveThreadsAPIView(APIView):
         """User active threads."""
         params: dict[str, Any] = request.GET.dict()
         course_id = params.pop("course_id", None)
+        if page := params.get("page"):
+            params["page"] = int(page)
+        if per_page := params.get("per_page"):
+            params["per_page"] = int(per_page)
+        if raw_query := params.get("raw_query"):
+            params["raw_query"] = str_to_bool(raw_query)
         serialized_data = get_user_active_threads(user_id, course_id, **params)
         return Response(serialized_data)
 
