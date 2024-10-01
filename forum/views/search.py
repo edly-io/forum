@@ -75,7 +75,7 @@ class SearchThreadsView(APIView):
         params["group_ids"] = get_group_ids_from_params(data)
 
         params["commentable_id"] = data.get("commentable_id")
-        params["commentable_ids"] = data.get("commebtable_ids")
+        params["commentable_ids"] = data.get("commentable_ids")
 
         return params
 

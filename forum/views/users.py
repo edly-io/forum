@@ -168,7 +168,6 @@ class UserReadAPIView(APIView):
         return Response(serialized_data, status=status.HTTP_200_OK)
 
 
-# TODO: No tests for this view
 class UserActiveThreadsAPIView(APIView):
     """User active threads api."""
 
@@ -182,7 +181,6 @@ class UserActiveThreadsAPIView(APIView):
         return Response(serialized_data)
 
 
-# TODO: No tests for this view
 class UserCourseStatsAPIView(APIView):
     """User Course stats API."""
 
@@ -190,19 +188,17 @@ class UserCourseStatsAPIView(APIView):
 
     def get(self, request: Request, course_id: str) -> Response:
         """Get user course stats."""
-        params = request.GET.dict()
-        usernames_list = params.pop("usernames_list", None)
-        page = params.pop("page")
-        per_page = params.pop("per_page")
-        sort_by = params.pop("sort_by")
-        with_timestamps = str_to_bool(params.get("with_timestamps", False))
+        params: dict[str, Any] = request.GET.dict()
+        if page := params.get("page"):
+            params["page"] = int(page)
+        if per_page := params.get("per_page"):
+            params["per_page"] = int(per_page)
+        if with_timestamps := params.get("with_timestamps"):
+            params["with_timestamps"] = str_to_bool(with_timestamps)
+
         response = get_user_course_stats(
             course_id,
-            usernames_list,
-            int(page),
-            int(per_page),
-            sort_by,
-            with_timestamps,
+            **params,
         )
         return Response(response, status=status.HTTP_200_OK)
 

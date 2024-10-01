@@ -356,23 +356,23 @@ def _get_stats_for_usernames(
 
 def get_user_course_stats(
     course_id: str,
-    usernames_list: Optional[str] = None,
+    usernames: Optional[str] = None,
     page: int = FORUM_DEFAULT_PAGE,
     per_page: int = FORUM_DEFAULT_PER_PAGE,
-    sort_by: str = "",
+    sort_key: str = "",
     with_timestamps: bool = False,
 ) -> dict[str, Any]:
     """Get user course stats."""
 
-    sort_criterion = _get_sort_criterion(sort_by)
+    sort_criterion = _get_sort_criterion(sort_key)
     exclude_from_stats = ["_id", "course_id"]
     if not with_timestamps:
         exclude_from_stats.append("last_activity_at")
 
-    usernames = usernames_list.split(",") if usernames_list else None
+    usernames_list = usernames.split(",") if usernames else None
     data = []
 
-    if not usernames:
+    if not usernames_list:
         paginated_stats = _get_paginated_stats(
             course_id, page, per_page, sort_criterion
         )
@@ -387,7 +387,7 @@ def get_user_course_stats(
                 for user_stats in paginated_stats["data"]
             ]
     else:
-        stats_query = _get_stats_for_usernames(course_id, usernames)
+        stats_query = _get_stats_for_usernames(course_id, usernames_list)
         total_count = len(stats_query)
         num_pages = 1
         data = [

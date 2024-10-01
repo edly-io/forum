@@ -188,7 +188,7 @@ def delete_thread(thread_id: str) -> dict[str, Any]:
 
     result = CommentThread().delete(thread_id)
     delete_subscriptions_of_a_thread(thread_id)
-    if result:
+    if result and not (thread["anonymous"] or thread["anonymous_to_peers"]):
         update_stats_for_course(thread["author_id"], thread["course_id"], threads=-1)
 
     return serialized_data
@@ -315,7 +315,8 @@ def create_thread(
     if not thread:
         raise ForumV2RequestError(f"Failed to create thread with data: {data}")
 
-    update_stats_for_course(thread["author_id"], thread["course_id"], threads=1)
+    if not (anonymous or anonymous_to_peers):
+        update_stats_for_course(thread["author_id"], thread["course_id"], threads=1)
 
     try:
         return prepare_thread_api_response(

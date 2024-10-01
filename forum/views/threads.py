@@ -16,7 +16,7 @@ from forum.api.threads import (
     get_user_threads,
     update_thread,
 )
-from forum.utils import ForumV2RequestError
+from forum.utils import ForumV2RequestError, str_to_bool
 
 log = logging.getLogger(__name__)
 
@@ -119,7 +119,12 @@ class CreateThreadAPIView(APIView):
         """
 
         try:
-            serialized_data = create_thread(**request.data)
+            params = request.data
+            if params.get("anonymous"):
+                params["anonymous"] = str_to_bool(params["anonymous"])
+            if params.get("anonymous_to_peers"):
+                params["anonymous_to_peers"] = str_to_bool(params["anonymous_to_peers"])
+            serialized_data = create_thread(**params)
             return Response(serialized_data, status=status.HTTP_200_OK)
         except (TypeError, ForumV2RequestError) as error:
             return Response(
