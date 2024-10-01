@@ -11,7 +11,7 @@ from .comments import (
     update_comment,
 )
 from .pins import pin_thread, unpin_thread
-from .users import get_user
+from .users import get_user, get_user_active_threads
 
 __all__ = [
     "create_child_comment",
@@ -23,4 +23,5 @@ __all__ = [
     "pin_thread",
     "unpin_thread",
     "update_comment",
+    "get_user_active_threads",
 ]

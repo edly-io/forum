@@ -364,10 +364,11 @@ def get_abuse_flagged_count(thread_ids: list[str]) -> dict[str, int]:
     Returns:
         dict[str, int]: A dictionary mapping thread IDs to their corresponding abuse-flagged comment count.
     """
+    obj_thread_ids = [ObjectId(thread_id) for thread_id in thread_ids]
     pipeline: list[dict[str, Any]] = [
         {
             "$match": {
-                "comment_thread_id": {"$in": thread_ids},
+                "comment_thread_id": {"$in": obj_thread_ids},
                 "abuse_flaggers": {"$ne": []},
             }
         },
@@ -464,9 +465,10 @@ def get_endorsed(thread_ids: list[str]) -> dict[str, bool]:
     Returns:
         dict[str, bool]: A dictionary mapping thread IDs to their endorsed status (True if endorsed, False otherwise).
     """
+    obj_thread_ids = [ObjectId(thread_id) for thread_id in thread_ids]
     endorsed_comments = Comment().find(
         {
-            "comment_thread_id": {"$in": thread_ids},
+            "comment_thread_id": {"$in": obj_thread_ids},
             "endorsed": True,
         }
     )

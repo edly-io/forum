@@ -194,12 +194,12 @@ def get_user_active_threads(
     sort_key: Optional[str] = "user_activity",
     page: Optional[int] = FORUM_DEFAULT_PAGE,
     per_page: Optional[int] = FORUM_DEFAULT_PER_PAGE,
+    group_id: Optional[list[int]] = None,
 ) -> dict[str, Any]:
     """Get user active threads."""
     raw_query = bool(sort_key == "user_activity")
     if not course_id:
         return {}
-
     active_contents = list(
         Contents().get_list(
             author_id=user_id,
@@ -228,11 +228,12 @@ def get_user_active_threads(
             for content in active_contents
         )
     )
+
     params: dict[str, Any] = {
         "comment_thread_ids": active_thread_ids,
         "user_id": user_id,
         "course_id": course_id,
-        "group_ids": [],
+        "group_ids": [group_id] if group_id else [],
         "author_id": author_id,
         "thread_type": thread_type,
         "filter_flagged": flagged,
@@ -246,7 +247,6 @@ def get_user_active_threads(
         "context": "course",
         "raw_query": raw_query,
     }
-
     data = handle_threads_query(**params)
 
     if collections := data.get("collection"):
@@ -254,7 +254,7 @@ def get_user_active_threads(
             collections,
             many=True,
             context={
-                "count_flagged": True,
+                "count_flagged": count_flagged,
                 "include_endorsed": True,
                 "include_read_state": True,
             },
