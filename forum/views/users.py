@@ -177,13 +177,25 @@ class UserActiveThreadsAPIView(APIView):
         """User active threads."""
         params: dict[str, Any] = request.GET.dict()
         course_id = params.pop("course_id", None)
+
         if page := params.get("page"):
             params["page"] = int(page)
         if per_page := params.get("per_page"):
             params["per_page"] = int(per_page)
-        if raw_query := params.get("raw_query"):
-            params["raw_query"] = str_to_bool(raw_query)
-        serialized_data = get_user_active_threads(user_id, course_id, **params)
+        if flagged := params.get("flagged"):
+            params["flagged"] = str_to_bool(flagged)
+        if unread := params.get("unread"):
+            params["unread"] = str_to_bool(unread)
+        if unanswered := params.get("unanswered"):
+            params["unanswered"] = str_to_bool(unanswered)
+        if unresponded := params.get("unresponded"):
+            params["unresponded"] = str_to_bool(unresponded)
+        if count_flagged := params.get("count_flagged"):
+            params["count_flagged"] = str_to_bool(count_flagged)
+        try:
+            serialized_data = get_user_active_threads(user_id, course_id, **params)
+        except ForumV2RequestError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serialized_data)
 
 

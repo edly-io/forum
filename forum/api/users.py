@@ -186,17 +186,17 @@ def get_user_active_threads(
     course_id: str,
     author_id: Optional[str] = None,
     thread_type: Optional[str] = None,
-    flagged: Optional[bool] = None,
-    unread: Optional[bool] = None,
-    unanswered: Optional[bool] = None,
-    unresponded: Optional[bool] = None,
-    count_flagged: Optional[bool] = None,
-    sort_key: Optional[str] = None,
+    flagged: Optional[bool] = False,
+    unread: Optional[bool] = False,
+    unanswered: Optional[bool] = False,
+    unresponded: Optional[bool] = False,
+    count_flagged: Optional[bool] = False,
+    sort_key: Optional[str] = "user_activity",
     page: Optional[int] = FORUM_DEFAULT_PAGE,
     per_page: Optional[int] = FORUM_DEFAULT_PER_PAGE,
-    raw_query: Optional[bool] = False,
 ) -> dict[str, Any]:
     """Get user active threads."""
+    raw_query = bool(sort_key == "user_activity")
     if not course_id:
         return {}
 
