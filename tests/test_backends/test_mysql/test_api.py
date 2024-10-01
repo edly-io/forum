@@ -3,13 +3,11 @@
 import pytest
 from django.contrib.auth import get_user_model
 
-from forum.backends.mysql.models import AbuseFlagger, CommentThread
-from forum.backends.mysql.api import (
-    flag_as_abuse,
-    un_flag_all_as_abuse,
-    un_flag_as_abuse,
+from forum.backends.mysql.models import (
+    AbuseFlagger,
+    CommentThread,
 )
-
+from forum.backends.mysql.api import MySQLBackend as backend
 
 User = get_user_model()
 
@@ -27,14 +25,14 @@ def test_flag_as_abuse() -> None:
         thread_type="discussion",
         context="course",
     )
-    flagged_comment_thread = flag_as_abuse(
+    flagged_comment_thread = backend.flag_as_abuse(
         str(flag_user.pk),
         str(comment_thread.pk),
-        comment_thread.type,
+        entity_type=comment_thread.type,
     )
 
     assert flagged_comment_thread["_id"] == str(comment_thread.pk)
-    assert flagged_comment_thread["abuse_flaggers"] == [flag_user.pk]
+    assert flagged_comment_thread["abuse_flaggers"] == [str(flag_user.pk)]
 
 
 @pytest.mark.django_db
@@ -51,10 +49,10 @@ def test_un_flag_as_abuse_success() -> None:
     )
     AbuseFlagger.objects.create(user=user, content=comment_thread)
     comment_thread.save()
-    un_flagged_entity = un_flag_as_abuse(
+    un_flagged_entity = backend.un_flag_as_abuse(
         user.pk,
         comment_thread.pk,
-        comment_thread.type,
+        entity_type=comment_thread.type,
     )
 
     assert user.pk not in comment_thread.abuse_flaggers
@@ -80,9 +78,9 @@ def test_un_flag_all_as_abuse_historical_flags_updated() -> None:
         context="course",
     )
     AbuseFlagger.objects.create(user=user, content=comment_thread)
-    un_flagged_comment_thread = un_flag_all_as_abuse(
+    un_flagged_comment_thread = backend.un_flag_all_as_abuse(
         comment_thread.pk,
-        comment_thread.type,
+        entity_type=comment_thread.type,
     )
 
     assert un_flagged_comment_thread["_id"] == str(comment_thread.pk)

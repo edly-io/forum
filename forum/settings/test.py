@@ -76,3 +76,5 @@ if FORUM_ENABLE_ELASTIC_SEARCH:
     ]
 else:
     FORUM_ELASTIC_SEARCH_CONFIG = [{}]
+
+USE_TZ = True
