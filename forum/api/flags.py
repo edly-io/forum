@@ -2,7 +2,7 @@
 This module contains the functions to update the flag status of a comment.
 """
 
-from typing import Any
+from typing import Any, Optional
 
 from forum.backends.mongodb.api import (
     flag_as_abuse,
@@ -18,7 +18,10 @@ from forum.utils import ForumV2RequestError
 
 
 def update_comment_flag(
-    user_id: str, comment_id: str, action: str, update_all: bool = False
+    comment_id: str,
+    action: str,
+    user_id: Optional[str] = None,
+    update_all: Optional[bool] = False,
 ) -> dict[str, Any]:
     """
     Update the flag status of a comment.
@@ -29,6 +32,8 @@ def update_comment_flag(
         action (str): The action to perform ("flag" or "unflag").
         update_all (bool, optional): Whether to update all flags. Defaults to False.
     """
+    if not user_id:
+        raise ForumV2RequestError("user_id not provided in params")
     user = Users().get(user_id)
     comment = Comment().get(comment_id)
     if not user or not comment:
@@ -59,7 +64,10 @@ def update_comment_flag(
 
 
 def update_thread_flag(
-    user_id: str, thread_id: str, action: str, update_all: bool = False
+    thread_id: str,
+    action: str,
+    user_id: Optional[str] = None,
+    update_all: Optional[bool] = False,
 ) -> dict[str, Any]:
     """
     Update the flag status of a thread.
@@ -70,6 +78,8 @@ def update_thread_flag(
         action (str): The action to perform ("flag" or "unflag").
         update_all (bool, optional): Whether to update all flags. Defaults to False.
     """
+    if not user_id:
+        raise ForumV2RequestError("user_id not provided in params")
     user = Users().get(user_id)
     thread = CommentThread().get(thread_id)
     if not user or not thread:

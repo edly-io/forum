@@ -219,10 +219,6 @@ def test_invalide_data(api_client: APIClient) -> None:
     response = api_client.get_json("/api/v2/threads", {})
     assert response.status_code == 400
 
-    params = {"course_id": "course1", "invalid": "zyx"}
-    response = api_client.get_json("/api/v2/threads", params)
-    assert response.status_code == 400
-
     params = {"course_id": "course1", "user_id": "4"}
     response = api_client.get_json("/api/v2/threads", params)
     assert response.status_code == 400

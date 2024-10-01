@@ -4,7 +4,9 @@ API for subscriptions.
 
 from typing import Any
 
-from django.test import RequestFactory
+from django.http import QueryDict
+from rest_framework.request import Request
+from rest_framework.test import APIRequestFactory
 
 from forum.backends.mongodb.api import (
     find_subscribed_threads,
@@ -65,13 +67,13 @@ def delete_subscription(user_id: str, source_id: str) -> dict[str, Any]:
 
 def get_user_subscriptions(
     user_id: str, course_id: str, query_params: dict[str, Any]
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     """
     Get a user's subscriptions.
     """
     validate_params(query_params, user_id)
     thread_ids = find_subscribed_threads(user_id, course_id)
-    threads = get_threads(query_params, user_id, ThreadSerializer, thread_ids)
+    threads = get_threads(query_params, ThreadSerializer, thread_ids, user_id)
     return threads
 
 
@@ -92,12 +94,16 @@ def get_thread_subscriptions(
     query = {"source_id": thread_id, "source_type": "CommentThread"}
     subscriptions_list = list(Subscriptions().find(query))
 
-    # Paginating the subscriptions list
-    request = RequestFactory().get("/")
-    request.query_params = {"page": page, "per_page": per_page}
-    request.GET = request.query_params
+    factory = APIRequestFactory()
+    query_params = QueryDict("", mutable=True)
+    query_params.update({"page": str(page), "per_page": str(per_page)})
+    request = factory.get("/", query_params)
+    drf_request = Request(request)
+
     paginator = ForumPagination()
-    paginated_subscriptions = paginator.paginate_queryset(subscriptions_list, request)
+    paginated_subscriptions = paginator.paginate_queryset(
+        subscriptions_list, drf_request
+    )
 
     subscriptions = SubscriptionSerializer(paginated_subscriptions, many=True)
     subscriptions_count = len(subscriptions.data)

@@ -29,7 +29,10 @@ log = logging.getLogger(__name__)
 
 
 def get_user(
-    user_id: str, course_id: str, group_ids: list[int], complete: bool = False
+    user_id: str,
+    group_ids: list[int],
+    course_id: Optional[str] = None,
+    complete: Optional[bool] = False,
 ) -> dict[str, Any]:
     """Get user data by user_id."""
     """
@@ -61,7 +64,7 @@ def update_user(
     default_sort_key: Optional[str] = None,
     course_id: Optional[str] = None,
     group_ids: Optional[list[int]] = None,
-    complete: bool = False,
+    complete: Optional[bool] = False,
 ) -> dict[str, Any]:
     """Update user."""
     user = Users().get(user_id)
@@ -73,12 +76,7 @@ def update_user(
         raise ForumV2RequestError(f"user already exists with username: {username}")
     else:
         user_id = find_or_create_user(user_id)
-    update_params = {}
-    if username:
-        update_params["username"] = username
-    if default_sort_key:
-        update_params["default_sort_key"] = default_sort_key
-    Users().update(user_id, **update_params)
+    Users().update(user_id, username=username, default_sort_key=default_sort_key)
     updated_user = Users().get(user_id)
     if not updated_user:
         raise ForumV2RequestError(f"user not found with id: {user_id}")
@@ -95,7 +93,7 @@ def update_user(
 def create_user(
     user_id: str,
     username: str,
-    default_sort_key: Optional[str] = "date",
+    default_sort_key: str = "date",
     course_id: Optional[str] = None,
     group_ids: Optional[list[int]] = None,
     complete: bool = False,
@@ -107,13 +105,9 @@ def create_user(
     if user_by_id or user_by_username:
         raise ForumV2RequestError(f"user already exists with id: {id}")
 
-    user_data = {
-        "external_id": user_id,
-        "username": username,
-    }
-    if default_sort_key:
-        user_data["default_sort_key"] = default_sort_key
-    Users().insert(**user_data)
+    Users().insert(
+        external_id=user_id, username=username, default_sort_key=default_sort_key
+    )
     user = Users().get(user_id)
     if not user:
         raise ForumV2RequestError(f"user not found with id: {user_id}")
@@ -201,7 +195,7 @@ def get_user_active_threads(
     page: Optional[int] = FORUM_DEFAULT_PAGE,
     per_page: Optional[int] = FORUM_DEFAULT_PER_PAGE,
     raw_query: Optional[bool] = False,
-) -> dict:
+) -> dict[str, Any]:
     """Get user active threads."""
     if not course_id:
         return {}
@@ -234,7 +228,7 @@ def get_user_active_threads(
             for content in active_contents
         )
     )
-    params = {
+    params: dict[str, Any] = {
         "comment_thread_ids": active_thread_ids,
         "user_id": user_id,
         "course_id": course_id,
@@ -367,7 +361,7 @@ def get_user_course_stats(
     per_page: int = FORUM_DEFAULT_PER_PAGE,
     sort_by: str = "",
     with_timestamps: bool = False,
-) -> dict:
+) -> dict[str, Any]:
     """Get user course stats."""
 
     sort_criterion = _get_sort_criterion(sort_by)
@@ -416,7 +410,7 @@ def get_user_course_stats(
     }
 
 
-def update_users_in_course(course_id: str) -> list[str]:
+def update_users_in_course(course_id: str) -> dict[str, int]:
     """Update all user stats in a course."""
     updated_users = update_all_users_in_course(course_id)
     return {"user_count": len(updated_users)}

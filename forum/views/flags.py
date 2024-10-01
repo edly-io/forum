@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from forum.api.flags import update_comment_flag, update_thread_flag
-from forum.utils import ForumV2RequestError
+from forum.utils import ForumV2RequestError, str_to_bool
 
 
 class CommentFlagAPIView(APIView):
@@ -32,11 +32,11 @@ class CommentFlagAPIView(APIView):
         Response: A response with the updated comment data.
         """
         request_data = request.data
-        update_all = request_data.get("all")
+        update_all = str_to_bool(request_data.get("all", False))
         user_id = request_data.get("user_id")
         try:
             serializer_data = update_comment_flag(
-                user_id, comment_id, action, update_all
+                comment_id, action, user_id, update_all
             )
             return Response(serializer_data, status=status.HTTP_200_OK)
         except ForumV2RequestError as e:
@@ -65,10 +65,10 @@ class ThreadFlagAPIView(APIView):
         Response: A response with the updated thread data.
         """
         request_data = request.data
-        update_all = request_data.get("all")
+        update_all = str_to_bool(request_data.get("all", False))
         user_id = request_data.get("user_id")
         try:
-            serializer_data = update_thread_flag(user_id, thread_id, action, update_all)
+            serializer_data = update_thread_flag(thread_id, action, user_id, update_all)
             return Response(serializer_data, status=status.HTTP_200_OK)
         except ForumV2RequestError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

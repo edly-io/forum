@@ -15,7 +15,12 @@ from forum.backends.mongodb import (
     Users,
 )
 from forum.constants import RETIRED_BODY, RETIRED_TITLE
-from forum.utils import get_group_ids_from_params, get_sort_criteria, make_aware
+from forum.utils import (
+    ForumV2RequestError,
+    get_group_ids_from_params,
+    get_sort_criteria,
+    make_aware,
+)
 
 
 def update_stats_for_course(user_id: str, course_id: str, **kwargs: Any) -> None:
@@ -856,22 +861,22 @@ def validate_params(params: dict[str, Any], user_id: Optional[str] = None) -> No
 
     for key in params:
         if key not in valid_params:
-            raise ValueError(f"Invalid parameter: {key}")
+            raise ForumV2RequestError(f"Invalid parameter: {key}")
 
     if "course_id" not in params:
-        raise ValueError("Missing required parameter: course_id")
+        raise ForumV2RequestError("Missing required parameter: course_id")
 
     if user_id:
         user = Users().get(user_id)
         if not user:
-            raise ValueError("User doesn't exist")
+            raise ForumV2RequestError("User doesn't exist")
 
 
 def get_threads(
     params: dict[str, Any],
-    user_id: str,
     serializer: Any,
     thread_ids: list[str],
+    user_id: str = "",
 ) -> dict[str, Any]:
     """get subscribed or all threads of a specific course for a specific user."""
     count_flagged = bool(params.get("count_flagged", False))

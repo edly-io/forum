@@ -36,7 +36,12 @@ def _get_thread_ids_from_indexes(
     thread_search = ThreadSearch()
 
     thread_ids = thread_search.get_thread_ids(
-        context, group_ids, text, commentable_id, commentable_ids, course_id
+        context,
+        group_ids,
+        text,
+        commentable_id=commentable_id,
+        commentable_ids=commentable_ids,
+        course_id=course_id,
     )
     if not thread_ids:
         corrected_text = thread_search.get_suggested_text(text, ["body", "title"])
@@ -45,9 +50,9 @@ def _get_thread_ids_from_indexes(
                 context,
                 group_ids,
                 corrected_text,
-                commentable_id,
-                commentable_ids,
-                course_id,
+                commentable_id=commentable_id,
+                commentable_ids=commentable_ids,
+                course_id=course_id,
             )
         if not thread_ids:
             corrected_text = None
@@ -57,49 +62,31 @@ def _get_thread_ids_from_indexes(
 
 def search_threads(
     text: str,
-    sort_key: Optional[str] = None,
-    context: Optional[str] = None,
-    user_id: Optional[str] = None,
-    course_id: Optional[str] = None,
-    group_ids: Optional[list[int]] = None,
-    author_id: Optional[str] = None,
-    thread_type: Optional[str] = None,
-    flagged: Optional[bool] = None,
-    unread: Optional[bool] = None,
-    unanswered: Optional[bool] = None,
-    unresponded: Optional[bool] = None,
-    count_flagged: Optional[bool] = None,
-    commentable_id: Optional[str] = None,
-    commentable_ids: Optional[str] = None,
+    sort_key: str,
+    context: str,
+    user_id: str,
+    course_id: str,
+    group_ids: list[int],
+    author_id: str,
+    thread_type: str,
+    flagged: bool,
+    unread: bool,
+    unanswered: bool,
+    unresponded: bool,
+    count_flagged: bool,
+    commentable_id: str,
+    commentable_ids: str,
     page: int = FORUM_DEFAULT_PAGE,
     per_page: int = FORUM_DEFAULT_PER_PAGE,
-) -> tuple[list[str], Optional[str]]:
+) -> dict[str, Any]:
     """
     Search for threads based on the provided data.
     """
-    data = {
-        "text": text,
-        "sort_key": sort_key,
-        "context": context,
-        "user_id": user_id,
-        "course_id": course_id,
-        "group_ids": group_ids,
-        "author_id": author_id,
-        "thread_type": thread_type,
-        "flagged": flagged,
-        "unread": unread,
-        "unanswered": unanswered,
-        "unresponded": unresponded,
-        "count_flagged": count_flagged,
-        "page": page,
-        "per_page": per_page,
-    }
-
     thread_ids, corrected_text = _get_thread_ids_from_indexes(
         context, group_ids, text, commentable_id, commentable_ids, course_id
     )
 
-    data: dict[str, Any] = handle_threads_query(
+    data = handle_threads_query(
         thread_ids,
         user_id,
         course_id,

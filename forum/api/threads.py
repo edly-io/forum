@@ -75,7 +75,7 @@ def prepare_thread_api_response(
     include_context: Optional[bool] = False,
     data_or_params: Optional[dict[str, Any]] = None,
     include_data_from_params: Optional[bool] = False,
-) -> dict[str, Any] | None:
+) -> dict[str, Any]:
     """Serialize thread data for the api response."""
     thread_data = get_thread_data(thread)
 
@@ -122,14 +122,7 @@ def prepare_thread_api_response(
 
 def get_thread(
     thread_id: str,
-    user_id: Optional[str] = None,
-    resp_skip: int = 0,
-    resp_limit: int = 100,
-    recursive: bool = False,
-    with_responses: bool = False,
-    mark_as_read: bool = False,
-    reverse_order: bool = False,
-    merge_question_type_responses: bool = False,
+    params: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """
     Get the thread for the given thread_id.
@@ -154,17 +147,6 @@ def get_thread(
         raise ForumV2RequestError(
             f"Thread does not exist with Id: {thread_id}"
         ) from exc
-
-    params = {
-        "user_id": user_id,
-        "resp_skip": resp_skip,
-        "resp_limit": resp_limit,
-        "recursive": recursive,
-        "with_responses": with_responses,
-        "mark_as_read": mark_as_read,
-        "reverse_order": reverse_order,
-        "merge_question_type_responses": merge_question_type_responses,
-    }
 
     try:
         return prepare_thread_api_response(
@@ -330,6 +312,9 @@ def create_thread(
 
     thread_id = CommentThread().insert(**thread_data)
     thread = CommentThread().get(thread_id)
+    if not thread:
+        raise ForumV2RequestError(f"Failed to create thread with data: {data}")
+
     update_stats_for_course(thread["author_id"], thread["course_id"], threads=1)
 
     try:
@@ -344,7 +329,7 @@ def create_thread(
 
 
 def get_user_threads(
-    course_id: str,
+    course_id: Optional[str] = None,
     author_id: Optional[str] = None,
     thread_type: Optional[str] = None,
     flagged: Optional[bool] = None,
@@ -353,12 +338,12 @@ def get_user_threads(
     unresponded: Optional[bool] = None,
     count_flagged: Optional[bool] = None,
     sort_key: Optional[str] = None,
-    page: Optional[int] = None,
-    per_page: Optional[int] = None,
+    page: Optional[str] = None,
+    per_page: Optional[str] = None,
     request_id: Optional[str] = None,
-    commentable_ids: Optional[list[str]] = None,
+    commentable_ids: Optional[str] = None,
     user_id: Optional[str] = None,
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     """
     Get the threads for the given thread_ids.
     """
@@ -372,17 +357,14 @@ def get_user_threads(
         "unresponded": unresponded,
         "count_flagged": count_flagged,
         "sort_key": sort_key,
-        "page": page,
-        "per_page": per_page,
+        "page": int(page) if page else None,
+        "per_page": int(per_page) if per_page else None,
         "request_id": request_id,
         "commentable_ids": commentable_ids,
         "user_id": user_id,
     }
     params = {k: v for k, v in params.items() if v is not None}
-    try:
-        validate_params(params)
-    except ValueError as e:
-        raise ForumV2RequestError(str(e)) from e
+    validate_params(params)
 
     thread_filter = {
         "_type": {"$in": [CommentThread.content_type]},
@@ -390,6 +372,6 @@ def get_user_threads(
     }
     filtered_threads = CommentThread().find(thread_filter)
     thread_ids = [thread["_id"] for thread in filtered_threads]
-    threads = get_threads(params, user_id, ThreadSerializer, thread_ids)
+    threads = get_threads(params, ThreadSerializer, thread_ids, user_id or "")
 
     return threads

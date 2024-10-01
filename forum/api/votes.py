@@ -70,7 +70,7 @@ def _prepare_thread_response(
     return serializer.data
 
 
-def update_thread_votes(thread_id: str, user_id: str, value: str) -> bool:
+def update_thread_votes(thread_id: str, user_id: str, value: str) -> dict[str, Any]:
     """
     Updates the votes for a thread.
 
@@ -101,7 +101,7 @@ def update_thread_votes(thread_id: str, user_id: str, value: str) -> bool:
     return _prepare_thread_response(thread, user)
 
 
-def delete_thread_vote(thread_id: str, user_id: str) -> bool:
+def delete_thread_vote(thread_id: str, user_id: str) -> dict[str, Any]:
     """
     Deletes the vote for a thread.
 
@@ -177,7 +177,7 @@ def _prepare_comment_response(
     return serializer.data
 
 
-def update_comment_votes(comment_id: str, user_id: str, value: str) -> bool:
+def update_comment_votes(comment_id: str, user_id: str, value: str) -> dict[str, Any]:
     """
     Updates the votes for a comment.
 
@@ -208,7 +208,7 @@ def update_comment_votes(comment_id: str, user_id: str, value: str) -> bool:
     return _prepare_comment_response(comment, user)
 
 
-def delete_comment_vote(comment_id: str, user_id: str) -> bool:
+def delete_comment_vote(comment_id: str, user_id: str) -> dict[str, Any]:
     """
     Deletes the vote for a comment.
 

@@ -91,7 +91,7 @@ class SearchThreadsView(APIView):
         """
 
         try:
-            params = self._validate_and_extract_params(request)
+            params: dict[str, Any] = self._validate_and_extract_params(request)
         except ValueError as error:
             return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
 

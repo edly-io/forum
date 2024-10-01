@@ -1,6 +1,7 @@
 """Forum Threads API Views."""
 
 import logging
+from typing import Any
 
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -43,7 +44,7 @@ class ThreadsAPIView(APIView):
         """
         try:
             params = request.query_params.dict()
-            data = get_thread(thread_id, **params)
+            data = get_thread(thread_id, params)
         except ForumV2RequestError as error:
             return Response(
                 {"error": str(error)},
@@ -150,7 +151,7 @@ class UserThreadsAPIView(APIView):
             HTTP_400_BAD_REQUEST: If the user does not exist.
         """
         try:
-            params = request.GET.dict()
+            params: dict[str, Any] = request.GET.dict()
             serialized_data = get_user_threads(**params)
             return Response(serialized_data, status=status.HTTP_200_OK)
         except (TypeError, ValueError, ForumV2RequestError) as error:

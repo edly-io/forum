@@ -21,7 +21,7 @@ from forum.api.users import (
     update_username,
     update_users_in_course,
 )
-from forum.utils import ForumV2RequestError
+from forum.utils import ForumV2RequestError, get_group_ids_from_params, str_to_bool
 
 log = logging.getLogger(__name__)
 
@@ -33,14 +33,14 @@ class UserAPIView(APIView):
 
     def get(self, request: Request, user_id: str) -> Response:
         """Get user data."""
-        params: dict[str, Any] = request.GET.dict()
-        course_id = params.get("course_id")
-        group_ids = params.get("group_ids")
-        complete = params.get("complete")
+        params = request.GET.dict()
+        course_id = params.get("course_id", "")
+        group_ids = get_group_ids_from_params(params)
+        complete = str_to_bool(params.get("complete", False))
 
         try:
             user_data: dict[str, Any] = get_user(
-                user_id, course_id, group_ids, complete
+                user_id, group_ids, course_id, complete
             )
         except ForumV2RequestError as e:
             return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
@@ -85,7 +85,7 @@ class UserCreateAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         try:
-            data = {
+            data: dict[str, Any] = {
                 "user_id": params.get("id"),
                 "username": params.get("username"),
                 "default_sort_key": params.get("default_sort_key"),
@@ -168,7 +168,7 @@ class UserReadAPIView(APIView):
         return Response(serialized_data, status=status.HTTP_200_OK)
 
 
-# # TODO: No tests for this view
+# TODO: No tests for this view
 class UserActiveThreadsAPIView(APIView):
     """User active threads api."""
 
@@ -176,7 +176,7 @@ class UserActiveThreadsAPIView(APIView):
 
     def get(self, request: Request, user_id: str) -> Response:
         """User active threads."""
-        params = request.GET.dict()
+        params: dict[str, Any] = request.GET.dict()
         course_id = params.pop("course_id", None)
         serialized_data = get_user_active_threads(user_id, course_id, **params)
         return Response(serialized_data)
@@ -195,9 +195,14 @@ class UserCourseStatsAPIView(APIView):
         page = params.pop("page")
         per_page = params.pop("per_page")
         sort_by = params.pop("sort_by")
-        with_timestamps = params.pop("with_timestamps")
+        with_timestamps = str_to_bool(params.get("with_timestamps", False))
         response = get_user_course_stats(
-            course_id, usernames_list, page, per_page, sort_by, with_timestamps
+            course_id,
+            usernames_list,
+            int(page),
+            int(per_page),
+            sort_by,
+            with_timestamps,
         )
         return Response(response, status=status.HTTP_200_OK)
 

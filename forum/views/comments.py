@@ -101,15 +101,23 @@ class CommentsAPIView(APIView):
         """
         try:
             request_data = request.data
+            if anonymous := request_data.get("anonymous"):
+                anonymous = str_to_bool(anonymous)
+            if anonymous_to_peers := request_data.get("anonymous_to_peers"):
+                anonymous_to_peers = str_to_bool(anonymous_to_peers)
+            if endorsed := request_data.get("endorsed"):
+                endorsed = str_to_bool(endorsed)
+            if closed := request_data.get("closed"):
+                closed = str_to_bool(closed)
             comment = update_comment(
                 comment_id,
                 request_data.get("body"),
                 request_data.get("course_id"),
                 request_data.get("user_id"),
-                str_to_bool(request_data.get("anonymous")),
-                str_to_bool(request_data.get("anonymous_to_peers")),
-                str_to_bool(request_data.get("endorsed")),
-                str_to_bool(request_data.get("closed")),
+                anonymous,
+                anonymous_to_peers,
+                endorsed,
+                closed,
                 request_data.get("editing_user_id"),
                 request_data.get("edit_reason_code"),
                 request_data.get("endorsement_user_id"),
