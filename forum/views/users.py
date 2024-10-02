@@ -192,6 +192,8 @@ class UserActiveThreadsAPIView(APIView):
             params["unresponded"] = str_to_bool(unresponded)
         if count_flagged := params.get("count_flagged"):
             params["count_flagged"] = str_to_bool(count_flagged)
+        if group_id := params.get("group_id"):
+            params["group_id"] = int(group_id)
         try:
             serialized_data = get_user_active_threads(user_id, course_id, **params)
         except ForumV2RequestError as e:

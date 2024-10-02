@@ -194,7 +194,7 @@ def get_user_active_threads(
     sort_key: Optional[str] = "user_activity",
     page: Optional[int] = FORUM_DEFAULT_PAGE,
     per_page: Optional[int] = FORUM_DEFAULT_PER_PAGE,
-    group_id: Optional[list[int]] = None,
+    group_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Get user active threads."""
     raw_query = bool(sort_key == "user_activity")
@@ -233,7 +233,7 @@ def get_user_active_threads(
         "comment_thread_ids": active_thread_ids,
         "user_id": user_id,
         "course_id": course_id,
-        "group_ids": [group_id] if group_id else [],
+        "group_ids": [int(group_id)] if group_id else [],
         "author_id": author_id,
         "thread_type": thread_type,
         "filter_flagged": flagged,

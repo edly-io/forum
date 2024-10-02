@@ -64,16 +64,14 @@ class ContentSerializer(serializers.Serializer[dict[str, Any]]):
     anonymous_to_peers = serializers.BooleanField(default=False)
     created_at = CustomDateTimeField(allow_null=True)
     updated_at = CustomDateTimeField(allow_null=True)
-    at_position_list = serializers.ListField(allow_null=True)
+    at_position_list = serializers.ListField(default=[])
     user_id = serializers.CharField(source="author_id")
     username = serializers.CharField(source="author_username")
     commentable_id = serializers.CharField(default="course")
     votes = VoteSummarySerializer()
-    abuse_flaggers = serializers.ListField(
-        child=serializers.CharField(), allow_null=True
-    )
+    abuse_flaggers = serializers.ListField(child=serializers.CharField(), default=[])
     historical_abuse_flaggers = serializers.ListField(
-        child=serializers.CharField(), allow_null=True
+        child=serializers.CharField(), default=[]
     )
     edit_history = EditHistorySerializer(default=[], many=True)
     closed = serializers.BooleanField(default=False)
