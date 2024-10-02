@@ -1,95 +1,24 @@
 """Forum Threads API Views."""
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
-from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
-from forum.backends.mongodb.api import (
-    delete_comments_of_a_thread,
-    delete_subscriptions_of_a_thread,
-    get_threads,
-    mark_as_read,
-    update_stats_for_course,
-    validate_object,
-    validate_params,
+from forum.api.threads import (
+    create_thread,
+    delete_thread,
+    get_thread,
+    get_user_threads,
+    update_thread,
 )
-from forum.backends.mongodb.threads import CommentThread
-from forum.backends.mongodb.users import Users
-from forum.serializers.thread import ThreadSerializer
-from forum.utils import get_int_value_from_collection, str_to_bool
+from forum.utils import ForumV2RequestError, str_to_bool
 
 log = logging.getLogger(__name__)
-
-
-def get_thread_data(thread: dict[str, Any]) -> dict[str, Any]:
-    """Prepare thread data for the api response."""
-    _type = str(thread.get("_type", "")).lower()
-    thread_data = {
-        **thread,
-        "id": str(thread.get("_id")),
-        "type": "thread" if _type == "commentthread" else _type,
-        "user_id": thread.get("author_id"),
-        "username": str(thread.get("author_username")),
-        "comments_count": thread["comment_count"],
-    }
-    return thread_data
-
-
-def prepare_thread_api_response(
-    thread: dict[str, Any],
-    include_context: Optional[bool] = False,
-    data_or_params: Optional[dict[str, Any]] = None,
-    include_data_from_params: Optional[bool] = False,
-) -> dict[str, Any] | None:
-    """Serialize thread data for the api response."""
-    thread_data = get_thread_data(thread)
-
-    context = {}
-    if include_context:
-        context = {
-            "include_endorsed": True,
-            "include_read_state": True,
-        }
-        if data_or_params:
-            if user_id := data_or_params.get("user_id"):
-                context["user_id"] = user_id
-
-            if include_data_from_params:
-                thread_data["resp_skip"] = get_int_value_from_collection(
-                    data_or_params, "resp_skip", 0
-                )
-                thread_data["resp_limit"] = get_int_value_from_collection(
-                    data_or_params, "resp_limit", 100
-                )
-                params = [
-                    "recursive",
-                    "with_responses",
-                    "mark_as_read",
-                    "reverse_order",
-                    "merge_question_type_responses",
-                ]
-                for param in params:
-                    if value := data_or_params.get(param):
-                        context[param] = str_to_bool(value)
-                if user_id and (user := Users().get(user_id)):
-                    mark_as_read(user, thread)
-
-    serializer = ThreadSerializer(
-        data=thread_data,
-        context=context,
-    )
-    if not serializer.is_valid(raise_exception=True):
-        log.error(f"validation error in thread API call: {serializer.errors}")
-        raise ValidationError(serializer.errors)
-
-    return serializer.data
 
 
 class ThreadsAPIView(APIView):
@@ -114,27 +43,18 @@ class ThreadsAPIView(APIView):
             Response: A Response object containing the serialized thread data or an error message.
         """
         try:
-            thread = validate_object(CommentThread, thread_id)
-        except ObjectDoesNotExist:
+            params = request.query_params.dict()
+            data = get_thread(thread_id, params)
+        except ForumV2RequestError as error:
             return Response(
-                {"error": "Thread does not exist"},
+                {"error": str(error)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        params = request.query_params
-        try:
-            serialized_data = prepare_thread_api_response(thread, True, params, True)
-            return Response(serialized_data)
-
-        except ValidationError as error:
-            return Response(
-                error.detail,
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        return Response(data, status=status.HTTP_200_OK)
 
     def delete(self, request: Request, thread_id: str) -> Response:
         """
-        Deletes a thread by it's ID.
+        Deletes a thread by its ID.
 
         Parameters:
             request (Request): The incoming request.
@@ -145,32 +65,13 @@ class ThreadsAPIView(APIView):
             The details of the thread that is deleted.
         """
         try:
-            thread = validate_object(CommentThread, thread_id)
-        except ObjectDoesNotExist:
+            serialized_data = delete_thread(thread_id)
+            return Response(serialized_data, status=status.HTTP_200_OK)
+        except ForumV2RequestError as error:
             return Response(
-                {"error": "thread does not exist"},
+                {"error": str(error)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        delete_comments_of_a_thread(thread_id)
-        thread = validate_object(CommentThread, thread_id)
-
-        try:
-            serialized_data = prepare_thread_api_response(thread)
-        except ValidationError as error:
-            return Response(
-                error.detail,
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        result = CommentThread().delete(thread_id)
-        delete_subscriptions_of_a_thread(thread_id)
-        if result:
-            if not (thread["anonymous"] or thread["anonymous_to_peers"]):
-                update_stats_for_course(
-                    thread["author_id"], thread["course_id"], threads=-1
-                )
-
-        return Response(serialized_data, status=status.HTTP_200_OK)
 
     def put(self, request: Request, thread_id: str) -> Response:
         """
@@ -184,69 +85,15 @@ class ThreadsAPIView(APIView):
         Response:
             The details of the thread that is updated.
         """
+
         try:
-            thread = validate_object(CommentThread, thread_id)
-        except ObjectDoesNotExist:
+            serialized_data = update_thread(thread_id, **request.data)
+            return Response(serialized_data, status=status.HTTP_200_OK)
+        except ForumV2RequestError as error:
             return Response(
-                {"error": "thread does not exist"},
+                {"error": str(error)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        data = request.data
-        update_thread_data: dict[str, Any] = self._get_update_thread_data(data)
-        if thread:
-            update_thread_data["edit_history"] = thread.get("edit_history", [])
-            update_thread_data["original_body"] = thread.get("body")
-        if update_thread_data.get("closed"):
-            for field_for_closing in ["close_reason_code", "closed_by_id"]:
-                if field_for_closing not in update_thread_data:
-                    return Response(
-                        {"error": f"{field_for_closing} is not provided"},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-
-        CommentThread().update(thread_id, **update_thread_data)
-        updated_thread = CommentThread().get(thread_id)
-        try:
-            if updated_thread:
-                serialized_data = prepare_thread_api_response(
-                    updated_thread,
-                    True,
-                    data,
-                )
-                return Response(serialized_data, status=status.HTTP_200_OK)
-        except ValidationError as error:
-            return Response(
-                error.detail,
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        return Response(
-            {"error": "Thread is not updated"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    def _get_update_thread_data(self, data: dict[str, Any]) -> dict[str, Any]:
-        """convert request data to a dict excluding empty data"""
-        fields = [
-            ("title", data.get("title")),
-            ("body", data.get("body")),
-            ("course_id", data.get("course_id")),
-            ("anonymous", str_to_bool(data.get("anonymous", "False"))),
-            (
-                "anonymous_to_peers",
-                str_to_bool(data.get("anonymous_to_peers", "False")),
-            ),
-            ("closed", str_to_bool(data.get("closed", "False"))),
-            ("commentable_id", data.get("commentable_id", "course")),
-            ("author_id", data.get("user_id")),
-            ("editing_user_id", data.get("editing_user_id")),
-            ("pinned", str_to_bool(data.get("pinned", "False"))),
-            ("thread_type", data.get("thread_type", "discussion")),
-            ("edit_reason_code", data.get("edit_reason_code")),
-            ("close_reason_code", data.get("close_reason_code")),
-            ("closed_by_id", data.get("closing_user_id")),
-        ]
-        return {field: value for field, value in fields if value is not None}
 
 
 class CreateThreadAPIView(APIView):
@@ -270,55 +117,20 @@ class CreateThreadAPIView(APIView):
         Response:
             The details of the thread that is created.
         """
-        data = request.data
+
         try:
-            self.validate_request_data(data)
-        except ValueError as error:
+            params = request.data
+            if params.get("anonymous"):
+                params["anonymous"] = str_to_bool(params["anonymous"])
+            if params.get("anonymous_to_peers"):
+                params["anonymous_to_peers"] = str_to_bool(params["anonymous_to_peers"])
+            serialized_data = create_thread(**params)
+            return Response(serialized_data, status=status.HTTP_200_OK)
+        except (TypeError, ForumV2RequestError) as error:
             return Response(
                 {"error": str(error)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        thread = self.create_thread(data)
-        if not (thread["anonymous"] or thread["anonymous_to_peers"]):
-            update_stats_for_course(thread["author_id"], thread["course_id"], threads=1)
-        try:
-            serialized_data = prepare_thread_api_response(thread, True, data)
-        except ValidationError as error:
-            return Response(
-                error.detail,
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        return Response(serialized_data, status=status.HTTP_200_OK)
-
-    def validate_request_data(self, data: dict[str, Any]) -> None:
-        """
-        Validates the request data if it exists or not.
-
-        Parameters:
-            data: request data to validate.
-        Response:
-            raise exception if some data does not exists.
-        """
-        fields_to_validate = ["title", "body", "course_id", "user_id"]
-        for field in fields_to_validate:
-            if field not in data or not data[field]:
-                raise ValueError(f"{field} is missing.")
-
-    def create_thread(self, data: dict[str, Any]) -> Any:
-        """handle thread creation and returns a thread."""
-        new_thread_id = CommentThread().insert(
-            title=data["title"],
-            body=data["body"],
-            course_id=data["course_id"],
-            anonymous=str_to_bool(data.get("anonymous", "False")),
-            anonymous_to_peers=str_to_bool(data.get("anonymous_to_peers", "False")),
-            author_id=data["user_id"],
-            commentable_id=data.get("commentable_id", "course"),
-            thread_type=data.get("thread_type", "discussion"),
-        )
-        return CommentThread().get(new_thread_id)
 
 
 class UserThreadsAPIView(APIView):
@@ -343,18 +155,12 @@ class UserThreadsAPIView(APIView):
         Raises:
             HTTP_400_BAD_REQUEST: If the user does not exist.
         """
-        params = request.GET.dict()
-        validations = validate_params(params)
-        if validations:
-            return validations
-
-        user_id = params.get("user_id", "")
-        course_id = params.get("course_id")
-        thread_filter = {
-            "_type": {"$in": [CommentThread.content_type]},
-            "course_id": {"$in": [course_id]},
-        }
-        filtered_threads = CommentThread().find(thread_filter)
-        thread_ids = [thread["_id"] for thread in filtered_threads]
-        threads = get_threads(params, user_id, ThreadSerializer, thread_ids)
-        return Response(data=threads, status=status.HTTP_200_OK)
+        try:
+            params: dict[str, Any] = request.GET.dict()
+            serialized_data = get_user_threads(**params)
+            return Response(serialized_data, status=status.HTTP_200_OK)
+        except (TypeError, ValueError, ForumV2RequestError) as error:
+            return Response(
+                {"error": str(error)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

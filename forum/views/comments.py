@@ -1,8 +1,5 @@
 """Forum Comments API Views."""
 
-from typing import Any, Optional
-
-from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -10,101 +7,14 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
-from forum.backends.mongodb import Comment, CommentThread, Users
-from forum.backends.mongodb.api import (
-    mark_as_read,
-    validate_object,
-    update_stats_for_course,
+from forum.api import (
+    create_parent_comment,
+    create_child_comment,
+    delete_comment,
+    get_parent_comment,
+    update_comment,
 )
-from forum.serializers.comment import CommentSerializer
-from forum.utils import str_to_bool
-
-
-def validate_comments_request_data(data: dict[str, Any]) -> None:
-    """
-    Validates the request data if it exists or not.
-
-    Parameters:
-        data: request data to validate.
-    Response:
-        raise exception if some data does not exists.
-    """
-    fields_to_validate = ["body", "course_id", "user_id"]
-    for field in fields_to_validate:
-        if field not in data or not data[field]:
-            raise ValueError(f"{field} is missing.")
-
-
-def get_thread_id(parent_comment_id: str) -> str:
-    """
-    The thread Id from the parent comment.
-    """
-    parent_comment = Comment().get(parent_comment_id)
-    if parent_comment:
-        return parent_comment["comment_thread_id"]
-    raise ValueError("Comment doesn't have the thread.")
-
-
-def create_comment(
-    data: dict[str, Any],
-    depth: int,
-    thread_id: str,
-    parent_id: Optional[str] = None,
-) -> Any:
-    """handle comment creation and returns a comment"""
-    author_id = data["user_id"]
-    course_id = data["course_id"]
-    new_comment_id = Comment().insert(
-        body=data["body"],
-        course_id=course_id,
-        anonymous=str_to_bool(data.get("anonymous", "False")),
-        anonymous_to_peers=str_to_bool(data.get("anonymous_to_peers", "False")),
-        author_id=author_id,
-        comment_thread_id=thread_id,
-        parent_id=parent_id,
-        depth=depth,
-    )
-    if parent_id:
-        update_stats_for_course(author_id, course_id, replies=1)
-    else:
-        update_stats_for_course(author_id, course_id, responses=1)
-    return Comment().get(new_comment_id)
-
-
-def prepare_comment_api_response(
-    comment: dict[str, Any],
-    exclude_fields: Optional[list[str]] = None,
-) -> dict[str, Any]:
-    """
-    Return serialized validated data.
-
-    Parameters:
-        comment: The comment details that needs to be serialized.
-        exclude_fields: Any fields that need to be excluded from response.
-
-    Response:
-        serialized validated data of the comment.
-    """
-    comment_data = {
-        **comment,
-        "id": str(comment.get("_id")),
-        "user_id": comment.get("author_id"),
-        "thread_id": str(comment.get("comment_thread_id")),
-        "username": comment.get("author_username"),
-        "parent_id": str(comment.get("parent_id")),
-        "type": str(comment.get("_type", "")).lower(),
-    }
-    if not exclude_fields:
-        exclude_fields = []
-    exclude_fields.append("children")
-    serializer = CommentSerializer(
-        data=comment_data,
-        exclude_fields=exclude_fields,
-    )
-    if not serializer.is_valid(raise_exception=True):
-        raise ValidationError(serializer.errors)
-
-    return serializer.data
+from forum.utils import ForumV2RequestError, str_to_bool
 
 
 class CommentsAPIView(APIView):
@@ -129,16 +39,12 @@ class CommentsAPIView(APIView):
             The details of the comment for the given comment_id.
         """
         try:
-            comment = validate_object(Comment, comment_id)
-        except ObjectDoesNotExist:
+            data = get_parent_comment(comment_id)
+        except ForumV2RequestError:
             return Response(
-                {"error": "Comment does not exist"},
+                {"error": f"Comment does not exist with Id: {comment_id}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        data = prepare_comment_api_response(
-            comment,
-            exclude_fields=["sk"],
-        )
         return Response(data, status=status.HTTP_200_OK)
 
     def post(self, request: Request, comment_id: str) -> Response:
@@ -160,44 +66,26 @@ class CommentsAPIView(APIView):
             The details of the comment that is created.
         """
         try:
-            parent_comment = validate_object(Comment, comment_id)
-        except ObjectDoesNotExist:
+            request_data = request.data
+            comment = create_child_comment(
+                comment_id,
+                request_data["body"],
+                request_data["user_id"],
+                request_data["course_id"],
+                str_to_bool(request_data.get("anonymous", False)),
+                str_to_bool(request_data.get("anonymous_to_peers", False)),
+            )
+        except ForumV2RequestError:
             return Response(
-                {"error": "Comment does not exist"},
+                {"error": f"Comment does not exist with Id: {comment_id}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        data = request.data
-        try:
-            validate_comments_request_data(data)
-            thread_id = get_thread_id(comment_id)
-        except ValueError as error:
+        except ValidationError as e:
             return Response(
-                {"error": str(error)},
+                {"error": e.detail},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        comment = create_comment(data, 1, thread_id, parent_id=comment_id)
-        user = Users().get(data["user_id"])
-        thread = CommentThread().get(parent_comment["comment_thread_id"])
-        if user and thread and comment:
-            mark_as_read(user, thread)
-        try:
-            if comment:
-                response_data = prepare_comment_api_response(
-                    comment,
-                    exclude_fields=["endorsement", "sk"],
-                )
-                return Response(response_data, status=status.HTTP_200_OK)
-        except ValidationError as error:
-            return Response(
-                error.detail,
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return Response(
-            {"error": "Comment is not created"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        return Response(comment, status=status.HTTP_200_OK)
 
     def put(self, request: Request, comment_id: str) -> Response:
         """
@@ -212,41 +100,39 @@ class CommentsAPIView(APIView):
             The details of the comment that is updated.
         """
         try:
-            comment = validate_object(Comment, comment_id)
-        except ObjectDoesNotExist:
+            request_data = request.data
+            if anonymous := request_data.get("anonymous"):
+                anonymous = str_to_bool(anonymous)
+            if anonymous_to_peers := request_data.get("anonymous_to_peers"):
+                anonymous_to_peers = str_to_bool(anonymous_to_peers)
+            if endorsed := request_data.get("endorsed"):
+                endorsed = str_to_bool(endorsed)
+            if closed := request_data.get("closed"):
+                closed = str_to_bool(closed)
+            comment = update_comment(
+                comment_id,
+                request_data.get("body"),
+                request_data.get("course_id"),
+                request_data.get("user_id"),
+                anonymous,
+                anonymous_to_peers,
+                endorsed,
+                closed,
+                request_data.get("editing_user_id"),
+                request_data.get("edit_reason_code"),
+                request_data.get("endorsement_user_id"),
+            )
+        except ForumV2RequestError:
             return Response(
-                {"error": "Comment does not exist"},
+                {"error": f"Comment does not exist with Id: {comment_id}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        data = request.data
-        update_comment_data: dict[str, Any] = self._get_update_comment_data(data)
-        if comment:
-            update_comment_data["edit_history"] = comment.get("edit_history", [])
-            update_comment_data["original_body"] = comment.get("body")
-
-        Comment().update(comment_id, **update_comment_data)
-        updated_comment = Comment().get(comment_id)
-        try:
-            if updated_comment:
-                response_data = prepare_comment_api_response(
-                    updated_comment,
-                    exclude_fields=(
-                        ["endorsement", "sk"]
-                        if updated_comment.get("parent_id")
-                        else ["sk"]
-                    ),
-                )
-                return Response(response_data, status=status.HTTP_200_OK)
-        except ValidationError as error:
+        except ValidationError as e:
             return Response(
-                error.detail,
+                {"error": e.detail},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        return Response(
-            {"error": "Comment is not updated"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        return Response(comment, status=status.HTTP_200_OK)
 
     def delete(self, request: Request, comment_id: str) -> Response:
         """
@@ -261,46 +147,13 @@ class CommentsAPIView(APIView):
             The details of the comment that is deleted.
         """
         try:
-            comment = validate_object(Comment, comment_id)
-        except ObjectDoesNotExist:
+            deleted_comment = delete_comment(comment_id)
+        except ForumV2RequestError:
             return Response(
-                {"error": "Comment does not exist"},
+                {"error": f"Comment does not exist with Id: {comment_id}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        data = prepare_comment_api_response(
-            comment,
-            exclude_fields=["endorsement", "sk"],
-        )
-        Comment().delete(comment_id)
-        author_id = comment["author_id"]
-        course_id = comment["course_id"]
-        parent_comment_id = data["parent_id"]
-        if parent_comment_id:
-            update_stats_for_course(author_id, course_id, replies=-1)
-        else:
-            update_stats_for_course(author_id, course_id, responses=-1)
-
-        return Response(data, status=status.HTTP_200_OK)
-
-    def _get_update_comment_data(self, data: dict[str, Any]) -> dict[str, Any]:
-        """convert request data to a dict excluding empty data"""
-
-        fields = [
-            ("body", data.get("body")),
-            ("course_id", data.get("course_id")),
-            ("anonymous", str_to_bool(data.get("anonymous", "False"))),
-            (
-                "anonymous_to_peers",
-                str_to_bool(data.get("anonymous_to_peers", "False")),
-            ),
-            ("closed", str_to_bool(data.get("closed", "False"))),
-            ("endorsed", str_to_bool(data.get("endorsed", "False"))),
-            ("author_id", data.get("user_id")),
-            ("editing_user_id", data.get("editing_user_id")),
-            ("edit_reason_code", data.get("edit_reason_code")),
-            ("endorsement_user_id", data.get("endorsement_user_id")),
-        ]
-        return {field: value for field, value in fields if value is not None}
+        return Response(deleted_comment, status=status.HTTP_200_OK)
 
 
 class CreateThreadCommentAPIView(APIView):
@@ -327,39 +180,28 @@ class CreateThreadCommentAPIView(APIView):
             The details of the comment that is created.
         """
         try:
-            thread = validate_object(CommentThread, thread_id)
-        except ObjectDoesNotExist:
+            request_data = request.data
+            comment = create_parent_comment(
+                thread_id,
+                request_data["body"],
+                request_data["user_id"],
+                request_data["course_id"],
+                str_to_bool(request_data.get("anonymous", False)),
+                str_to_bool(request_data.get("anonymous_to_peers", False)),
+            )
+        except ForumV2RequestError:
             return Response(
-                {"error": "Thread does not exist"},
+                {"error": f"Thread does not exist with Id: {thread_id}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        data = request.data
-        try:
-            validate_comments_request_data(data)
-        except ValueError as error:
+        except ValueError as e:
             return Response(
-                {"error": str(error)},
+                {"error": e},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        comment = create_comment(data, 0, thread_id)
-        user = Users().get(data["user_id"])
-        if user and comment:
-            mark_as_read(user, thread)
-        try:
-            if comment:
-                response_data = prepare_comment_api_response(
-                    comment,
-                    exclude_fields=["endorsement", "sk"],
-                )
-                return Response(response_data, status=status.HTTP_200_OK)
-        except ValidationError as error:
+        except ValidationError as e:
             return Response(
-                error.detail,
+                {"error": e.detail},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        return Response(
-            {"error": "Comment is not created"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        return Response(comment, status=status.HTTP_200_OK)

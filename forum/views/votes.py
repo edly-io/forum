@@ -2,22 +2,18 @@
 Vote Views
 """
 
-from typing import Any
-
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.backends.mongodb import Comment, CommentThread, Users
-from forum.backends.mongodb.api import (
-    downvote_content,
-    remove_vote,
-    upvote_content,
+from forum.api.votes import (
+    delete_comment_vote,
+    delete_thread_vote,
+    update_comment_votes,
+    update_thread_votes,
 )
-from forum.serializers.comment import CommentSerializer
-from forum.serializers.thread import ThreadSerializer
-from forum.serializers.votes import VotesInputSerializer
+from forum.utils import ForumV2RequestError
 
 
 class ThreadVoteView(APIView):
@@ -45,60 +41,6 @@ class ThreadVoteView(APIView):
         }
     """
 
-    def _get_thread_and_user(
-        self, thread_id: str, user_id: str
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
-        """
-        Fetches the thread and user based on provided IDs.
-
-        Args:
-            thread_id (str): The ID of the thread.
-            user_id (str): The ID of the user.
-
-        Returns:
-            tuple: The thread and user objects.
-
-        Raises:
-            ValueError: If the thread or user is not found.
-        """
-        thread = CommentThread().get(_id=thread_id)
-        if not thread:
-            raise ValueError("Thread not found")
-
-        user = Users().get(_id=user_id)
-        if not user:
-            raise ValueError("User not found")
-
-        return thread, user
-
-    def _prepare_response(
-        self, thread: dict[str, Any], user: dict[str, Any]
-    ) -> dict[str, Any]:
-        """
-        Prepares the serialized response data after voting.
-
-        Args:
-            thread (dict): The thread data.
-            user (dict): The user data.
-
-        Returns:
-            dict: The serialized response data.
-
-        Raises:
-            ValueError: If serialization fails.
-        """
-        context = {
-            "id": str(thread["_id"]),
-            **thread,
-            "user_id": user["_id"],
-            "username": user["username"],
-            "type": "thread",
-        }
-        serializer = ThreadSerializer(data=context)
-        if not serializer.is_valid():
-            raise ValueError(serializer.errors)
-        return serializer.data
-
     def put(self, request: Request, thread_id: str) -> Response:
         """
         Handles the upvote or downvote on a thread.
@@ -110,25 +52,14 @@ class ThreadVoteView(APIView):
         Returns:
             Response: The HTTP response with the result of the vote operation.
         """
-        vote_serializer = VotesInputSerializer(data=request.data)
-
-        if not vote_serializer.is_valid():
-            return Response(vote_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            thread, user = self._get_thread_and_user(thread_id, request.data["user_id"])
-        except ValueError as e:
+            thread_response = update_thread_votes(
+                thread_id, request.data["user_id"], request.data["value"]
+            )
+        except (ForumV2RequestError, KeyError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        if vote_serializer.data["value"] == "up":
-            is_updated = upvote_content(thread, user)
-        else:
-            is_updated = downvote_content(thread, user)
-
-        if is_updated:
-            thread = CommentThread().get(_id=thread_id) or {}
-
-        return Response(self._prepare_response(thread, user))
+        return Response(thread_response, status=status.HTTP_200_OK)
 
     def delete(self, request: Request, thread_id: str) -> Response:
         """
@@ -142,16 +73,12 @@ class ThreadVoteView(APIView):
             Response: The HTTP response with the result of the remove vote operation.
         """
         try:
-            thread, user = self._get_thread_and_user(
-                thread_id, request.query_params.get("user_id", "")
-            )
-        except ValueError as e:
+            user_id = request.query_params.get("user_id", "")
+            thread_response = delete_thread_vote(thread_id, user_id)
+        except (ForumV2RequestError, KeyError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        if remove_vote(thread, user):
-            thread = CommentThread().get(_id=thread_id) or {}
-
-        return Response(self._prepare_response(thread, user))
+        return Response(thread_response, status=status.HTTP_200_OK)
 
 
 class CommentVoteView(APIView):
@@ -179,61 +106,6 @@ class CommentVoteView(APIView):
         }
     """
 
-    def _get_comment_and_user(
-        self, comment_id: str, user_id: str
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
-        """
-        Fetches the comment and user based on provided IDs.
-
-        Args:
-            comment_id (str): The ID of the comment.
-            user_id (str): The ID of the user.
-
-        Returns:
-            tuple: The comment and user objects.
-
-        Raises:
-            ValueError: If the comment or user is not found.
-        """
-        comment = Comment().get(_id=comment_id)
-        if not comment:
-            raise ValueError("Comment not found")
-
-        user = Users().get(_id=user_id)
-        if not user:
-            raise ValueError("User not found")
-
-        return comment, user
-
-    def _prepare_response(
-        self, comment: dict[str, Any], user: dict[str, Any]
-    ) -> dict[str, Any]:
-        """
-        Prepares the serialized response data after voting.
-
-        Args:
-            comment (dict): The comment data.
-            user (dict): The user data.
-
-        Returns:
-            dict: The serialized response data.
-
-        Raises:
-            ValueError: If serialization fails.
-        """
-        context = {
-            "id": str(comment["_id"]),
-            **comment,
-            "user_id": user["_id"],
-            "username": user["username"],
-            "type": "comment",
-            "thread_id": str(comment.get("comment_thread_id", None)),
-        }
-        serializer = CommentSerializer(data=context)
-        if not serializer.is_valid():
-            raise ValueError(serializer.errors)
-        return serializer.data
-
     def put(self, request: Request, comment_id: str) -> Response:
         """
         Handles the upvote or downvote on a comment.
@@ -245,26 +117,14 @@ class CommentVoteView(APIView):
         Returns:
             Response: The HTTP response with the result of the vote operation.
         """
-        vote_serializer = VotesInputSerializer(data=request.data)
-        if not vote_serializer.is_valid():
-            return Response(vote_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            comment, user = self._get_comment_and_user(
-                comment_id, request.data.get("user_id", "")
+            comment_response = update_comment_votes(
+                comment_id, request.data["user_id"], request.data["value"]
             )
-        except ValueError as e:
+        except (ForumV2RequestError, KeyError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        if vote_serializer.data["value"] == "up":
-            is_updated = upvote_content(comment, user)
-        else:
-            is_updated = downvote_content(comment, user)
-
-        if is_updated:
-            comment = Comment().get(_id=comment_id) or {}
-
-        return Response(self._prepare_response(comment, user))
+        return Response(comment_response, status=status.HTTP_200_OK)
 
     def delete(self, request: Request, comment_id: str) -> Response:
         """
@@ -278,13 +138,9 @@ class CommentVoteView(APIView):
             Response: The HTTP response with the result of the remove vote operation.
         """
         try:
-            comment, user = self._get_comment_and_user(
-                comment_id, request.query_params.get("user_id", "")
-            )
-        except ValueError as e:
+            user_id = request.query_params.get("user_id", "")
+            comment_response = delete_comment_vote(comment_id, user_id)
+        except (ForumV2RequestError, KeyError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        if remove_vote(comment, user):
-            comment = Comment().get(_id=comment_id) or {}
-
-        return Response(self._prepare_response(comment, user))
+        return Response(comment_response, status=status.HTTP_200_OK)

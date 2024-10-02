@@ -12,19 +12,17 @@ class UserSerializer(serializers.Serializer[Any]):
     username = serializers.CharField()
     external_id = serializers.CharField()
     subscribed_thread_ids = serializers.ListField(
-        child=serializers.CharField(), allow_null=True
+        child=serializers.CharField(), default=[]
     )
     subscribed_commentable_ids = serializers.ListField(
-        child=serializers.CharField(), allow_null=True
+        child=serializers.CharField(), default=[]
     )
     subscribed_user_ids = serializers.ListField(
-        child=serializers.CharField(), allow_null=True
+        child=serializers.CharField(), default=[]
     )
-    follower_ids = serializers.ListField(child=serializers.CharField(), allow_null=True)
-    upvoted_ids = serializers.ListField(child=serializers.CharField(), allow_null=True)
-    downvoted_ids = serializers.ListField(
-        child=serializers.CharField(), allow_null=True
-    )
+    follower_ids = serializers.ListField(child=serializers.CharField(), default=[])
+    upvoted_ids = serializers.ListField(child=serializers.CharField(), default=[])
+    downvoted_ids = serializers.ListField(child=serializers.CharField(), default=[])
     default_sort_key = serializers.CharField(allow_null=True)
 
     def create(self, validated_data: dict[str, Any]) -> Any:

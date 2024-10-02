@@ -256,49 +256,64 @@ def create_threads_and_comments_for_filter_tests(
     return threads_ids, threads_comments
 
 
-# The test covers all the filters and making this modular leads to more complex structure.
-# pylint: disable=too-many-statements
-def test_filter_threads(api_client: APIClient) -> None:
-    """
-    Test various filtering options for threads, including course_id, context, flagged, unanswered, group_id,
-    commentable_id, and combinations of these filters. Asserts that the correct threads are returned for each filter.
-    """
+def assert_response_contains(
+    response: Response, expected_indexes: list[int], threads_ids: list[str]
+) -> None:
+    """Assert that the response contains the expected thread IDs."""
+    assert response.status_code == 200
+    threads = response.json()["collection"]
+    expected_ids = {threads_ids[i] for i in expected_indexes}
+    actual_ids = {thread["id"] for thread in threads}
+    assert actual_ids == expected_ids, f"Expected {expected_ids}, but got {actual_ids}"
+
+
+def test_filter_threads_by_course_id(api_client: APIClient) -> None:
+    """Test filtering threads by course_id."""
+    course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
+    course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
+
+    threads_ids, _ = create_threads_and_comments_for_filter_tests(
+        course_id_0, course_id_1
+    )
+    refresh_elastic_search_indices()
+
+    params = {"text": "text", "course_id": course_id_0}
+    response = perform_search_query(api_client, params)
+    assert_response_contains(
+        response, [i for i in range(30) if i % 2 == 0], threads_ids
+    )
+
+
+def test_filter_threads_by_context(api_client: APIClient) -> None:
+    """Test filtering threads by context."""
+    course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
+    course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
+
+    threads_ids, _ = create_threads_and_comments_for_filter_tests(
+        course_id_0, course_id_1
+    )
+    refresh_elastic_search_indices()
+
+    params = {"text": "text", "context": "standalone"}
+    response = perform_search_query(api_client, params)
+    assert_response_contains(response, list(range(30, 35)), threads_ids)
+
+
+def test_filter_threads_by_unread(api_client: APIClient) -> None:
+    """Test filtering threads by unread status."""
     course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
     course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
 
     user_id = Users().insert("1", username="user1", email="example@test.com")
-    threads_ids, threads_comments = create_threads_and_comments_for_filter_tests(
+    threads_ids, _ = create_threads_and_comments_for_filter_tests(
         course_id_0, course_id_1
     )
-
     refresh_elastic_search_indices()
 
-    # Test filtering by course_id
-    def assert_response_contains(
-        response: Response, expected_indexes: list[int]
-    ) -> None:
-        assert response.status_code == 200
-        threads = response.json()["collection"]
-        expected_ids = {threads_ids[i] for i in expected_indexes}
-        actual_ids = {thread["id"] for thread in threads}
-        assert (
-            actual_ids == expected_ids
-        ), f"Expected {expected_ids}, but got {actual_ids}"
-
-    # Test filtering by course_id
-    params = {"text": "text", "course_id": course_id_0}
-    response = perform_search_query(api_client, params)
-    assert_response_contains(response, [i for i in range(30) if i % 2 == 0])
-
-    # # Test filtering by context
-    params = {"text": "text", "context": "standalone"}
-    response = perform_search_query(api_client, params)
-    assert_response_contains(response, list(range(30, 35)))
-
-    # Test filtering with unread filter
     user = Users().get(_id=user_id) or {}
     thread = CommentThread().get(_id=threads_ids[0]) or {}
     mark_as_read(user, thread)
+
     params = {
         "text": "text",
         "course_id": course_id_0,
@@ -306,19 +321,41 @@ def test_filter_threads(api_client: APIClient) -> None:
         "unread": "True",
     }
     response = perform_search_query(api_client, params)
-    assert_response_contains(response, [i for i in range(1, 30) if i % 2 == 0])
+    assert_response_contains(
+        response, [i for i in range(1, 30) if i % 2 == 0], threads_ids
+    )
 
-    # Test filtering with flagged filter
+
+def test_filter_threads_by_flagged(api_client: APIClient) -> None:
+    """Test filtering threads by flagged status."""
+    course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
+    course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
+
+    threads_ids, _ = create_threads_and_comments_for_filter_tests(
+        course_id_0, course_id_1
+    )
+    refresh_elastic_search_indices()
+
     params = {"text": "text", "course_id": course_id_0, "flagged": "True"}
     response = perform_search_query(api_client, params)
-    assert_response_contains(response, [0])
+    assert_response_contains(response, [0], threads_ids)
 
-    # Test filtering with unanswered filter
+
+def test_filter_threads_by_unanswered(api_client: APIClient) -> None:
+    """Test filtering threads by unanswered status."""
+    course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
+    course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
+
+    threads_ids, threads_comments = create_threads_and_comments_for_filter_tests(
+        course_id_0, course_id_1
+    )
+    refresh_elastic_search_indices()
+
     params = {"text": "text", "course_id": course_id_0, "unanswered": "True"}
     response = perform_search_query(api_client, params)
-    assert_response_contains(response, [0, 2, 4])
+    assert_response_contains(response, [0, 2, 4], threads_ids)
 
-    # Test filtering with unanswered filter and group_id
+    # Test with group_id
     params = {
         "text": "text",
         "course_id": course_id_0,
@@ -326,7 +363,7 @@ def test_filter_threads(api_client: APIClient) -> None:
         "group_id": "2",
     }
     response = perform_search_query(api_client, params)
-    assert_response_contains(response, [0, 2])
+    assert_response_contains(response, [0, 2], threads_ids)
 
     params = {
         "text": "text",
@@ -335,36 +372,73 @@ def test_filter_threads(api_client: APIClient) -> None:
         "group_id": "4",
     }
     response = perform_search_query(api_client, params)
-    assert_response_contains(response, [0, 4])
+    assert_response_contains(response, [0, 4], threads_ids)
 
+    # Test after endorsing a comment
     comment = threads_comments[threads_ids[4]][0]
     Comment().update(comment_id=comment, endorsed=True)
     refresh_elastic_search_indices()
 
     response = perform_search_query(api_client, params)
-    assert_response_contains(response, [0])
+    assert_response_contains(response, [0], threads_ids)
 
-    # Test filtering by commentable_id
+
+def test_filter_threads_by_commentable_id(api_client: APIClient) -> None:
+    """Test filtering threads by commentable_id."""
+    course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
+    course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
+
+    threads_ids, _ = create_threads_and_comments_for_filter_tests(
+        course_id_0, course_id_1
+    )
+    refresh_elastic_search_indices()
+
     params = {"text": "text", "commentable_id": "commentable0"}
     response = perform_search_query(api_client, params)
-    assert_response_contains(response, [i for i in range(30) if i % 3 == 0])
+    assert_response_contains(
+        response, [i for i in range(30) if i % 3 == 0], threads_ids
+    )
 
-    # Test filtering by commentable_ids
     params = {"text": "text", "commentable_ids": "commentable0,commentable1"}
     response = perform_search_query(api_client, params)
-    assert_response_contains(response, [i for i in range(30) if i % 3 in [0, 1]])
+    assert_response_contains(
+        response, [i for i in range(30) if i % 3 in [0, 1]], threads_ids
+    )
 
-    # Test filtering by group_id
+
+def test_filter_threads_by_group_id(api_client: APIClient) -> None:
+    """Test filtering threads by group_id."""
+    course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
+    course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
+
+    threads_ids, _ = create_threads_and_comments_for_filter_tests(
+        course_id_0, course_id_1
+    )
+    refresh_elastic_search_indices()
+
     params = {"text": "text", "group_id": "1"}
     response = perform_search_query(api_client, params)
-    assert_response_contains(response, [i for i in range(30) if i % 5 in [0, 1]])
+    assert_response_contains(
+        response, [i for i in range(30) if i % 5 in [0, 1]], threads_ids
+    )
 
-    # Test filtering by group_ids
     params = {"text": "text", "group_ids": "1,2"}
     response = perform_search_query(api_client, params)
-    assert_response_contains(response, [i for i in range(30) if i % 5 in [0, 1, 2]])
+    assert_response_contains(
+        response, [i for i in range(30) if i % 5 in [0, 1, 2]], threads_ids
+    )
 
-    # Test filtering by all filters combined
+
+def test_filter_threads_combined(api_client: APIClient) -> None:
+    """Test filtering threads with multiple filters combined."""
+    course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
+    course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
+
+    threads_ids, _ = create_threads_and_comments_for_filter_tests(
+        course_id_0, course_id_1
+    )
+    refresh_elastic_search_indices()
+
     params = {
         "text": "text",
         "course_id": course_id_0,
@@ -372,7 +446,7 @@ def test_filter_threads(api_client: APIClient) -> None:
         "group_id": "1",
     }
     response = perform_search_query(api_client, params)
-    assert_response_contains(response, [0, 6])
+    assert_response_contains(response, [0, 6], threads_ids)
 
 
 def test_pagination(api_client: APIClient) -> None:

@@ -6,8 +6,6 @@ from typing import Any, Optional, Union
 
 from bson import ObjectId
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework import status
-from rest_framework.response import Response
 
 from forum.backends.mongodb import (
     Comment,
@@ -17,7 +15,12 @@ from forum.backends.mongodb import (
     Users,
 )
 from forum.constants import RETIRED_BODY, RETIRED_TITLE
-from forum.utils import get_group_ids_from_params, get_sort_criteria, make_aware
+from forum.utils import (
+    ForumV2RequestError,
+    get_group_ids_from_params,
+    get_sort_criteria,
+    make_aware,
+)
 
 
 def update_stats_for_course(user_id: str, course_id: str, **kwargs: Any) -> None:
@@ -414,6 +417,43 @@ def get_read_states(
     return read_states
 
 
+def get_filtered_thread_ids(
+    thread_ids: list[str], context: str, group_ids: list[str]
+) -> set[str]:
+    """
+    Filters thread IDs based on context and group ID criteria.
+
+    Args:
+        thread_ids (list[str]): List of thread IDs to filter.
+        context (str): The context to filter by.
+        group_ids (list[str]): List of group IDs for group-based filtering.
+
+    Returns:
+        set: A set of filtered thread IDs based on the context and group ID criteria.
+    """
+    context_query = {
+        "_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
+        "context": context,
+    }
+    context_threads = CommentThread().find(context_query)
+    context_thread_ids = {str(thread["_id"]) for thread in context_threads}
+
+    if not group_ids:
+        return context_thread_ids
+
+    group_query = {
+        "_id": {"$in": [ObjectId(tid) for tid in thread_ids]},
+        "$or": [
+            {"group_id": {"$in": group_ids}},
+            {"group_id": {"$exists": False}},
+        ],
+    }
+    group_threads = CommentThread().find(group_query)
+    group_thread_ids = {str(thread["_id"]) for thread in group_threads}
+
+    return context_thread_ids.union(group_thread_ids)
+
+
 def get_endorsed(thread_ids: list[str]) -> dict[str, bool]:
     """
     Retrieves endorsed status for each thread in the provided list of thread IDs.
@@ -794,9 +834,7 @@ def delete_subscriptions_of_a_thread(thread_id: str) -> None:
         )
 
 
-def validate_params(
-    params: dict[str, Any], user_id: Optional[str] = None
-) -> Response | None:
+def validate_params(params: dict[str, Any], user_id: Optional[str] = None) -> None:
     """
     Validate the request parameters.
 
@@ -828,33 +866,22 @@ def validate_params(
 
     for key in params:
         if key not in valid_params:
-            return Response(
-                {"error": f"Invalid parameter: {key}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            raise ForumV2RequestError(f"Invalid parameter: {key}")
 
     if "course_id" not in params:
-        return Response(
-            {"error": "Missing required parameter: course_id"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        raise ForumV2RequestError("Missing required parameter: course_id")
 
     if user_id:
         user = Users().get(user_id)
         if not user:
-            return Response(
-                {"error": "User doesn't exist"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-    return None
+            raise ForumV2RequestError("User doesn't exist")
 
 
 def get_threads(
     params: dict[str, Any],
-    user_id: str,
     serializer: Any,
     thread_ids: list[str],
+    user_id: str = "",
 ) -> dict[str, Any]:
     """get subscribed or all threads of a specific course for a specific user."""
     count_flagged = bool(params.get("count_flagged", False))
@@ -1268,3 +1295,118 @@ def find_or_create_user(user_id: str) -> str:
         return user["external_id"]
     user_id = Users().insert(user_id)
     return user_id
+
+
+def create_comment(
+    body: str,
+    user_id: str,
+    course_id: str,
+    anonymous: bool,
+    anonymous_to_peers: bool,
+    depth: int,
+    thread_id: str,
+    parent_id: Optional[str] = None,
+) -> Any:
+    """
+    handle comment creation and returns a comment.
+
+    Parameters:
+        body: The content of the comment.
+        course_id: The Id of the respective course.
+        user_id: The requesting user id.
+        anonymous: anonymous flag(True or False).
+        anonymous_to_peers: anonymous to peers flag(True or False).
+        depth: It's value is 0 for parent comment and 1 for child comment.
+        thread_id (Optional): Id of the Thread where this comment will belong.
+        parent_id (Optional): Id of the parent comment. It will be given
+                                if creating a child comment.
+    Response:
+        The details of the comment that is created.
+    """
+    new_comment_id = Comment().insert(
+        body=body,
+        author_id=user_id,
+        course_id=course_id,
+        anonymous=anonymous,
+        anonymous_to_peers=anonymous_to_peers,
+        depth=depth,
+        comment_thread_id=thread_id,
+        parent_id=parent_id,
+    )
+    if parent_id:
+        update_stats_for_course(user_id, course_id, replies=1)
+    else:
+        update_stats_for_course(user_id, course_id, responses=1)
+    return Comment().get(new_comment_id)
+
+
+def get_user_by_id(user_id: str) -> dict[str, Any] | None:
+    """Get user by it's id."""
+    return Users().get(user_id)
+
+
+def get_thread_by_id(comment_thread_id: str) -> dict[str, Any] | None:
+    """Get thread by it's id."""
+    return CommentThread().get(comment_thread_id)
+
+
+def update_comment_and_get_updated_comment(
+    comment_id: str,
+    body: Optional[str] = None,
+    course_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    anonymous: Optional[bool] = False,
+    anonymous_to_peers: Optional[bool] = False,
+    endorsed: Optional[bool] = False,
+    closed: Optional[bool] = False,
+    editing_user_id: Optional[str] = None,
+    edit_reason_code: Optional[str] = None,
+    endorsement_user_id: Optional[str] = None,
+) -> dict[str, Any] | None:
+    """
+    Update an existing child/parent comment.
+
+    Parameters:
+        comment_id: The ID of the comment to be edited.
+        body (Optional[str]): The content of the comment.
+        course_id (Optional[str]): The Id of the respective course.
+        user_id (Optional[str]): The requesting user id.
+        anonymous (Optional[bool]): anonymous flag(True or False).
+        anonymous_to_peers (Optional[bool]): anonymous to peers flag(True or False).
+        endorsed (Optional[bool]): Flag indicating if the comment is endorsed by any user.
+        closed (Optional[bool]): Flag indicating if the comment thread is closed.
+        editing_user_id (Optional[str]): The ID of the user editing the comment.
+        edit_reason_code (Optional[str]): The reason for editing the comment, typically represented by a code.
+        endorsement_user_id (Optional[str]): The ID of the user endorsing the comment.
+    Response:
+        The details of the comment that is updated.
+    """
+    Comment().update(
+        comment_id,
+        body=body,
+        course_id=course_id,
+        author_id=user_id,
+        anonymous=anonymous,
+        anonymous_to_peers=anonymous_to_peers,
+        endorsed=endorsed,
+        closed=closed,
+        editing_user_id=editing_user_id,
+        edit_reason_code=edit_reason_code,
+        endorsement_user_id=endorsement_user_id,
+    )
+    return Comment().get(comment_id)
+
+
+def delete_comment_by_id(comment_id: str) -> None:
+    """Delete a comment by it's Id."""
+    Comment().delete(comment_id)
+
+
+def get_thread_id_by_comment_id(parent_comment_id: str) -> str:
+    """
+    The thread Id from the parent comment.
+    """
+    parent_comment = Comment().get(parent_comment_id)
+    if parent_comment:
+        return parent_comment["comment_thread_id"]
+    raise ValueError("Comment doesn't have the thread.")

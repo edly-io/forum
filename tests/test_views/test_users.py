@@ -1,8 +1,8 @@
 """Tests for Users apis."""
 
-from forum.constants import RETIRED_BODY, RETIRED_TITLE
 from forum.backends.mongodb import Comment, CommentThread, Contents, Users
 from forum.backends.mongodb.api import subscribe_user, upvote_content
+from forum.constants import RETIRED_BODY, RETIRED_TITLE
 from test_utils.client import APIClient
 
 
@@ -299,7 +299,7 @@ def test_attempts_to_replace_username_of_non_existent_user(
     response = api_client.post_json(
         "/api/v2/users/1234/replace_username", data={"new_username": new_username}
     )
-    assert response.status_code == 404
+    assert response.status_code == 400
 
 
 def test_attempts_to_replace_username_and_username_on_content(
@@ -367,7 +367,7 @@ def test_attempts_to_retire_non_existent_user(api_client: APIClient) -> None:
         f"/api/v2/users/{user_id}/retire",
         data={"retired_username": retired_username},
     )
-    assert response.status_code == 404
+    assert response.status_code == 400
 
 
 def test_retire_user(api_client: APIClient) -> None:

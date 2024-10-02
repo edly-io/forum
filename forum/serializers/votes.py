@@ -24,8 +24,8 @@ class VotesSerializer(serializers.Serializer[dict[str, Any]]):
         point (int): The point value of the content.
     """
 
-    up = serializers.ListField(child=serializers.CharField())
-    down = serializers.ListField(child=serializers.CharField())
+    up = serializers.ListField(child=serializers.CharField(), default=[])
+    down = serializers.ListField(child=serializers.CharField(), default=[])
     up_count = serializers.IntegerField()
     down_count = serializers.IntegerField()
     count = serializers.IntegerField()

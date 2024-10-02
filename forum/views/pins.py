@@ -1,5 +1,6 @@
 """Forum Pin/Unpin thread API Views."""
 
+import logging
 from typing import Any
 
 from rest_framework import status
@@ -8,8 +9,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.backends.mongodb.api import handle_pin_unpin_thread_request
-from forum.serializers.thread import ThreadSerializer
+from forum.api import pin_thread, unpin_thread
+from forum.utils import ForumV2RequestError
+
+log = logging.getLogger(__name__)
 
 
 class PinThreadAPIView(APIView):
@@ -32,10 +35,10 @@ class PinThreadAPIView(APIView):
             A response with the updated thread data.
         """
         try:
-            thread_data: dict[str, Any] = handle_pin_unpin_thread_request(
-                request.data.get("user_id", ""), thread_id, "pin", ThreadSerializer
+            thread_data: dict[str, Any] = pin_thread(
+                request.data.get("user_id", ""), thread_id
             )
-        except ValueError as e:
+        except ForumV2RequestError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(thread_data, status=status.HTTP_200_OK)
@@ -61,13 +64,10 @@ class UnpinThreadAPIView(APIView):
             A response with the updated thread data.
         """
         try:
-            thread_data: dict[str, Any] = handle_pin_unpin_thread_request(
-                request.data.get("user_id", ""),
-                thread_id,
-                "unpin",
-                ThreadSerializer,
+            thread_data: dict[str, Any] = unpin_thread(
+                request.data.get("user_id", ""), thread_id
             )
-        except ValueError as e:
+        except ForumV2RequestError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(thread_data, status=status.HTTP_200_OK)

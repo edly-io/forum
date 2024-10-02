@@ -6,7 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.backends.mongodb.api import get_commentables_counts_based_on_type
+from forum.api import get_commentables_stats
 
 
 class CommentablesCountAPIView(APIView):
@@ -28,7 +28,7 @@ class CommentablesCountAPIView(APIView):
         Response:
             The threads count for the given course_id based on thread_type.
         """
-        commentable_counts = get_commentables_counts_based_on_type(course_id)
+        commentable_counts = get_commentables_stats(course_id)
         return Response(
             commentable_counts,
             status=status.HTTP_200_OK,
