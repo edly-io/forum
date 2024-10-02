@@ -4,6 +4,7 @@ Serializer for the comment data.
 
 from typing import Any
 
+from bson import ObjectId
 from rest_framework import serializers
 
 from forum.backends.mongodb import Comment, CommentThread
@@ -72,7 +73,7 @@ class CommentSerializer(ContentSerializer):
 
         children = list(
             Comment().get_list(
-                parent_id=obj["_id"],
+                parent_id=ObjectId(obj["_id"]),
                 depth=1,
                 sort=self.context.get("sort", -1),
             )

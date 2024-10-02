@@ -100,12 +100,11 @@ class Comment(BaseContents):
         """
         date = datetime.now()
         comment_data = {
-            "_id": str(ObjectId()),
             "votes": self.get_votes_dict(up=[], down=[]),
             "visible": visible,
             "abuse_flaggers": abuse_flaggers or [],
             "historical_abuse_flaggers": historical_abuse_flaggers or [],
-            "parent_ids": [parent_id] if parent_id else [],
+            "parent_ids": [ObjectId(parent_id)] if parent_id else [],
             "at_position_list": [],
             "body": body,
             "course_id": course_id,
@@ -114,7 +113,7 @@ class Comment(BaseContents):
             "anonymous": anonymous,
             "anonymous_to_peers": anonymous_to_peers,
             "author_id": author_id,
-            "comment_thread_id": comment_thread_id,
+            "comment_thread_id": ObjectId(comment_thread_id),
             "child_count": 0,
             "depth": depth,
             "author_username": author_username or self.get_author_username(author_id),
@@ -122,7 +121,7 @@ class Comment(BaseContents):
             "updated_at": date,
         }
         if parent_id:
-            comment_data["parent_id"] = parent_id
+            comment_data["parent_id"] = ObjectId(parent_id)
 
         comment_data["endorsement"] = None
 
@@ -148,7 +147,7 @@ class Comment(BaseContents):
         course_id: Optional[str] = None,
         anonymous: Optional[bool] = None,
         anonymous_to_peers: Optional[bool] = None,
-        comment_thread_id: Optional[str] = None,
+        comment_thread_id: Optional[ObjectId] = None,
         at_position_list: Optional[list[str]] = None,
         visible: Optional[bool] = None,
         author_id: Optional[str] = None,
@@ -169,12 +168,12 @@ class Comment(BaseContents):
         Updates a comment document in the database.
 
         Args:
-            comment_id (str): The ID of the comment to update.
+            comment_id (ObjectId): The ID of the comment to update.
             body (Optional[str], optional): The body content of the comment.
             course_id (Optional[str], optional): The ID of the course the comment is associated with.
             anonymous (Optional[bool], optional): Whether the comment is posted anonymously.
             anonymous_to_peers (Optional[bool], optional): Whether the comment is anonymous to peers.
-            comment_thread_id (Optional[str], optional): The ID of the parent comment thread.
+            comment_thread_id (Optional[ObjectId], optional): The ID of the parent comment thread.
             at_position_list (Optional[list[str]], optional): A list of positions for @mentions.
             visible (Optional[bool], optional): Whether the comment is visible.
             author_id (Optional[str], optional): The ID of the author who created the comment.
@@ -238,7 +237,7 @@ class Comment(BaseContents):
 
         update_data["updated_at"] = datetime.now()
         result = self._collection.update_one(
-            {"_id": str(comment_id)},
+            {"_id": ObjectId(comment_id)},
             {"$set": update_data},
         )
 
@@ -268,7 +267,7 @@ class Comment(BaseContents):
         if not parent_comment_id:
             child_comments_deleted_count = self.delete_child_comments(_id)
 
-        result = self._collection.delete_one({"_id": _id})
+        result = self._collection.delete_one({"_id": ObjectId(_id)})
         if parent_comment_id:
             self.update_child_count_in_parent_comment(parent_comment_id, -1)
 
@@ -301,7 +300,7 @@ class Comment(BaseContents):
         Returns:
             The number of child comments deleted.
         """
-        child_comments_to_delete = self.find({"parent_id": _id})
+        child_comments_to_delete = self.find({"parent_id": ObjectId(_id)})
         child_comment_ids_to_delete = [
             child_comment.get("_id") for child_comment in child_comments_to_delete
         ]
