@@ -975,6 +975,7 @@ def user_to_hash(
     hash_data = {}
     hash_data["username"] = user["username"]
     hash_data["external_id"] = user["external_id"]
+    hash_data["id"] = user["external_id"]
 
     comment_model = Comment()
     thread_model = CommentThread()
