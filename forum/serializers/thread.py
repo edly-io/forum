@@ -94,6 +94,7 @@ class ThreadSerializer(ContentSerializer):
         self.count_flagged = self.context_data.pop("count_flagged", False)
         self.include_endorsed = self.context_data.pop("include_endorsed", False)
         self.include_read_state = self.context_data.pop("include_read_state", False)
+        self.merge_question_type_responses = self.context_data.pop("merge_question_type_responses", False)
 
         # Customize fields based on context
         if not self.with_responses:
@@ -270,6 +271,7 @@ class ThreadSerializer(ContentSerializer):
                 or self.context_data.get("recursive") is True
             )
             and data.get("thread_type") == "question"
+            and not self.merge_question_type_responses
         ):
             children = data.pop("children")
             data["non_endorsed_responses"] = []

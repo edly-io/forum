@@ -11,6 +11,7 @@ from rest_framework.serializers import ValidationError
 from forum.backends.mongodb.api import (
     delete_comments_of_a_thread,
     delete_subscriptions_of_a_thread,
+    get_course_id_by_thread_id,
     get_threads,
 )
 from forum.backends.mongodb.api import mark_as_read as mark_thread_as_read
@@ -21,6 +22,7 @@ from forum.backends.mongodb.api import (
 )
 from forum.backends.mongodb.threads import CommentThread
 from forum.backends.mongodb.users import Users
+from forum.backends.mysql import api
 from forum.serializers.thread import ThreadSerializer
 from forum.utils import ForumV2RequestError, get_int_value_from_collection, str_to_bool
 
@@ -376,3 +378,15 @@ def get_user_threads(
     threads = get_threads(params, ThreadSerializer, thread_ids, user_id or "")
 
     return threads
+
+
+def get_course_id_by_thread(thread_id: str) -> str:
+    """
+    Return course_id for the matching thread.
+    It searches for thread_id both in mongodb and mysql.
+    """
+    return (
+        get_course_id_by_thread_id(thread_id)
+        or api.get_course_id_by_thread_id(thread_id)
+        or None
+    )

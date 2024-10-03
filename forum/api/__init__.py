@@ -7,6 +7,7 @@ from .comments import (
     create_child_comment,
     create_parent_comment,
     delete_comment,
+    get_course_id_by_comment,
     get_parent_comment,
     update_comment,
 )
@@ -25,6 +26,7 @@ from .subscriptions import (
 from .threads import (
     create_thread,
     delete_thread,
+    get_course_id_by_thread,
     get_thread,
     get_user_threads,
     update_thread,
@@ -59,6 +61,8 @@ __all__ = [
     "delete_thread",
     "delete_thread_vote",
     "get_commentables_stats",
+    "get_course_id_by_comment",
+    "get_course_id_by_thread",
     "get_parent_comment",
     "get_thread",
     "get_thread_subscriptions",

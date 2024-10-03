@@ -11,6 +11,7 @@ from rest_framework.serializers import ValidationError
 from forum.backends.mongodb.api import (
     create_comment,
     delete_comment_by_id,
+    get_course_id_by_comment_id,
     get_thread_by_id,
     get_thread_id_by_comment_id,
     get_user_by_id,
@@ -21,6 +22,7 @@ from forum.backends.mongodb.api import (
 )
 from forum.backends.mongodb.comments import Comment
 from forum.backends.mongodb.threads import CommentThread
+from forum.backends.mongodb import api
 from forum.serializers.comment import CommentSerializer
 from forum.utils import ForumV2RequestError
 
@@ -294,3 +296,15 @@ def create_parent_comment(
         )
     except ValidationError as error:
         raise error
+
+
+def get_course_id_by_comment(comment_id: str) -> str:
+    """
+    Return course_id for the matching comment.
+    It searches for comment_id both in mongodb and mysql.
+    """
+    return (
+        get_course_id_by_comment_id(comment_id)
+        or api.get_course_id_by_comment_id(comment_id)
+        or None
+    )
