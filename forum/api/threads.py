@@ -44,6 +44,7 @@ def _get_thread_data_from_request_data(data: dict[str, Any]) -> dict[str, Any]:
         "close_reason_code",
         "endorsed",
         "pinned",
+        "group_id",
     ]
     result = {field: data.get(field) for field in fields if data.get(field) is not None}
 
@@ -284,6 +285,7 @@ def create_thread(
     anonymous_to_peers: bool = False,
     commentable_id: str = "course",
     thread_type: str = "discussion",
+    group_id: Optional[int] = None,
 ) -> dict[str, Any]:
     """
     Create a new thread.
@@ -297,6 +299,7 @@ def create_thread(
         closed: Whether the thread is closed.
         commentable_id: The ID of the commentable.
         user_id: The ID of the user.
+        group_id: The ID of the group.
     Response:
         The details of the thread that is created.
     """
@@ -309,6 +312,7 @@ def create_thread(
         "anonymous_to_peers": anonymous_to_peers,
         "commentable_id": commentable_id,
         "thread_type": thread_type,
+        "group_id": group_id,
     }
     thread_data: dict[str, Any] = _get_thread_data_from_request_data(data)
 
