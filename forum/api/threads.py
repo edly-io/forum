@@ -384,7 +384,7 @@ def get_user_threads(
     return threads
 
 
-def get_course_id_by_thread(thread_id: str) -> str:
+def get_course_id_by_thread(thread_id: str) -> str | None:
     """
     Return course_id for the matching thread.
     It searches for thread_id both in mongodb and mysql.

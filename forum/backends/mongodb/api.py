@@ -1413,17 +1413,21 @@ def get_thread_id_by_comment_id(parent_comment_id: str) -> str:
     raise ValueError("Comment doesn't have the thread.")
 
 
-def get_course_id_by_thread_id(thread_id: str) -> str:
+def get_course_id_by_thread_id(thread_id: str) -> str | None:
     """
     Return course_id for the matching thread.
     """
     thread = CommentThread().get(thread_id)
-    return thread.get("course_id")
+    if thread:
+        return thread.get("course_id")
+    return None
 
 
-def get_course_id_by_comment_id(comment_id: str) -> str:
+def get_course_id_by_comment_id(comment_id: str) -> str | None:
     """
     Return course_id for the matching comment.
     """
     comment = Comment().get(comment_id)
-    return comment.get("course_id")
+    if comment:
+        return comment.get("course_id")
+    return None

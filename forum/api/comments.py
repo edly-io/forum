@@ -298,7 +298,7 @@ def create_parent_comment(
         raise error
 
 
-def get_course_id_by_comment(comment_id: str) -> str:
+def get_course_id_by_comment(comment_id: str) -> str | None:
     """
     Return course_id for the matching comment.
     It searches for comment_id both in mongodb and mysql.
