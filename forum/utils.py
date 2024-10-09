@@ -184,6 +184,35 @@ def get_group_ids_from_params(params: dict[str, Any]) -> list[int]:
     return group_ids
 
 
+def get_commentable_ids_from_params(params: dict[str, Any]) -> list[str]:
+    """
+    Extract commentable IDs from the provided parameters.
+
+    Args:
+        params (dict): A dictionary containing the parameters.
+
+    Returns:
+        list: A list of commentable IDs.
+
+    Raises:
+        ValueError: If both `commentable_id` and `commentable_ids` are specified in the parameters.
+    """
+    if "commentable_id" in params and "commentable_ids" in params:
+        raise ValueError("Cannot specify both commentable_id and commentable_ids")
+
+    commentable_id = params.get("commentable_id")
+    if commentable_id:
+        return [commentable_id]
+
+    commentable_ids = params.get("commentable_ids", [])
+    if isinstance(commentable_ids, str):
+        return commentable_ids.split(",")
+    elif isinstance(commentable_ids, list):
+        return commentable_ids
+
+    return []
+
+
 def get_sort_criteria(sort_key: str) -> Sequence[tuple[str, int]]:
     """
     Generate sorting criteria based on the provided key.

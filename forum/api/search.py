@@ -14,8 +14,7 @@ def _get_thread_ids_from_indexes(
     context: str,
     group_ids: list[int],
     text: str,
-    commentable_id: Optional[str] = None,
-    commentable_ids: Optional[str] = None,
+    commentable_ids: Optional[list[str]] = None,
     course_id: Optional[str] = None,
 ) -> tuple[list[str], Optional[str]]:
     """
@@ -39,7 +38,6 @@ def _get_thread_ids_from_indexes(
         context,
         group_ids,
         text,
-        commentable_id=commentable_id,
         commentable_ids=commentable_ids,
         course_id=course_id,
     )
@@ -50,7 +48,6 @@ def _get_thread_ids_from_indexes(
                 context,
                 group_ids,
                 corrected_text,
-                commentable_id=commentable_id,
                 commentable_ids=commentable_ids,
                 course_id=course_id,
             )
@@ -62,28 +59,30 @@ def _get_thread_ids_from_indexes(
 
 def search_threads(
     text: str,
-    sort_key: str,
-    context: str,
     user_id: str,
     course_id: str,
-    group_ids: list[int],
-    author_id: str,
-    thread_type: str,
-    flagged: bool,
-    unread: bool,
-    unanswered: bool,
-    unresponded: bool,
-    count_flagged: bool,
-    commentable_id: str,
-    commentable_ids: str,
+    group_ids: Optional[list[int]] = None,
+    commentable_ids: Optional[list[str]] = None,
+    author_id: Optional[str] = None,
+    thread_type: Optional[str] = None,
+    sort_key: str = "date",
+    context: str = "course",
+    flagged: bool = False,
+    unread: bool = False,
+    unanswered: bool = False,
+    unresponded: bool = False,
+    count_flagged: bool = False,
     page: int = FORUM_DEFAULT_PAGE,
     per_page: int = FORUM_DEFAULT_PER_PAGE,
 ) -> dict[str, Any]:
     """
     Search for threads based on the provided data.
     """
+    group_ids = group_ids or []
+    commentable_ids = commentable_ids or []
+
     thread_ids, corrected_text = _get_thread_ids_from_indexes(
-        context, group_ids, text, commentable_id, commentable_ids, course_id
+        context, group_ids, text, commentable_ids, course_id
     )
 
     data = handle_threads_query(

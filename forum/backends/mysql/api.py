@@ -1113,3 +1113,23 @@ def find_or_create_user(user_id: str) -> str:
     """Find or create user."""
     user, _ = ForumUser.objects.get_or_create(user__pk=user_id)
     return user.pk
+
+
+def get_course_id_by_thread_id(thread_id: str) -> str | None:
+    """
+    Return course_id for the matching thread.
+    """
+    thread = CommentThread.objects.filter(id=thread_id).first()
+    if thread:
+        return thread.course_id
+    return None
+
+
+def get_course_id_by_comment_id(comment_id: str) -> str | None:
+    """
+    Return course_id for the matching comment.
+    """
+    comment = Comment.objects.filter(id=comment_id).first()
+    if comment:
+        return comment.course_id
+    return None

@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 
 from forum.api.search import search_threads
 from forum.constants import FORUM_DEFAULT_PAGE, FORUM_DEFAULT_PER_PAGE
-from forum.utils import get_group_ids_from_params
+from forum.utils import get_commentable_ids_from_params, get_group_ids_from_params
 
 
 class SearchThreadsView(APIView):
@@ -74,8 +74,7 @@ class SearchThreadsView(APIView):
         # Group IDs extraction
         params["group_ids"] = get_group_ids_from_params(data)
 
-        params["commentable_id"] = data.get("commentable_id")
-        params["commentable_ids"] = data.get("commentable_ids")
+        params["commentable_ids"] = get_commentable_ids_from_params(data)
 
         return params
 
