@@ -19,6 +19,9 @@ from forum.utils import validate_upvote_or_downvote
 class ForumUser(models.Model):
     """Forum user model."""
 
+    class Meta:
+        app_label = "forum"
+
     user: models.OneToOneField[User, User] = models.OneToOneField(
         User, related_name="forum", on_delete=models.CASCADE
     )
