@@ -76,6 +76,7 @@ class CourseStat(models.Model):
         }
 
     class Meta:
+        app_label = "forum"
         unique_together = ("user", "course_id")
 
 
@@ -169,6 +170,7 @@ class Content(models.Model):
         return votes
 
     class Meta:
+        app_label = "forum"
         abstract = True
 
 
@@ -262,6 +264,7 @@ class CommentThread(Content):
         }
 
     class Meta:
+        app_label = "forum"
         indexes = [
             models.Index(fields=["context"]),
             models.Index(fields=["author"]),
@@ -349,6 +352,7 @@ class Comment(Content):
         return cls.objects.get(pk=int(comment_id))
 
     class Meta:
+        app_label = "forum"
         indexes = [
             models.Index(fields=["author", "course_id"]),
             models.Index(fields=["comment_thread", "author", "created_at"]),
@@ -397,6 +401,7 @@ class EditHistory(models.Model):
     content: GenericForeignKey = GenericForeignKey("content_type", "content_object_id")
 
     class Meta:
+        app_label = "forum"
         indexes = [
             models.Index(fields=["editor"]),
             models.Index(fields=["content_type", "content_object_id"]),
@@ -422,6 +427,7 @@ class AbuseFlagger(models.Model):
     )
 
     class Meta:
+        app_label = "forum"
         unique_together = ("user", "content_type", "content_object_id")
         indexes = [
             models.Index(fields=["content_type", "content_object_id"]),
@@ -447,6 +453,7 @@ class HistoricalAbuseFlagger(models.Model):
     )
 
     class Meta:
+        app_label = "forum"
         unique_together = ("user", "content_type", "content_object_id")
         indexes = [
             models.Index(fields=["content_type", "content_object_id"]),
@@ -479,6 +486,7 @@ class ReadState(models.Model):
         }
 
     class Meta:
+        app_label = "forum"
         unique_together = ("course_id", "user")
         indexes = [
             models.Index(fields=["user", "course_id"]),
@@ -497,6 +505,7 @@ class LastReadTime(models.Model):
     timestamp: models.DateTimeField[datetime, datetime] = models.DateTimeField()
 
     class Meta:
+        app_label = "forum"
         unique_together = ("read_state", "timestamp")
         indexes = [
             models.Index(fields=["read_state", "timestamp"]),
@@ -522,6 +531,7 @@ class UserVote(models.Model):
     )
 
     class Meta:
+        app_label = "forum"
         unique_together = ("user", "content_type", "content_object_id")
         indexes = [
             models.Index(fields=["vote"]),
@@ -564,6 +574,7 @@ class Subscription(models.Model):
         }
 
     class Meta:
+        app_label = "forum"
         unique_together = ("subscriber", "source_content_type", "source_object_id")
         indexes = [
             models.Index(fields=["subscriber"]),
