@@ -2,22 +2,13 @@
 API for subscriptions.
 """
 
-from typing import Any
+from typing import Any, Optional
 
 from django.http import QueryDict
 from rest_framework.request import Request
 from rest_framework.test import APIRequestFactory
 
-from forum.backends.mongodb.api import (
-    find_subscribed_threads,
-    get_threads,
-    subscribe_user,
-    unsubscribe_user,
-    validate_params,
-)
-from forum.backends.mongodb.subscriptions import Subscriptions
-from forum.backends.mongodb.threads import CommentThread
-from forum.backends.mongodb.users import Users
+from forum.backend import get_backend
 from forum.pagination import ForumPagination
 from forum.serializers.subscriptions import SubscriptionSerializer
 from forum.serializers.thread import ThreadSerializer
@@ -25,42 +16,50 @@ from forum.utils import ForumV2RequestError
 
 
 def validate_user_and_thread(
-    user_id: str, source_id: str
+    user_id: str, source_id: str, course_id: Optional[str] = None
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     Validate if user and thread exist.
     """
-    user = Users().get(user_id)
-    thread = CommentThread().get(source_id)
+    backend = get_backend(course_id)()
+    user = backend.get_user(user_id)
+    thread = backend.get_thread(source_id)
     if not (user and thread):
         raise ForumV2RequestError("User / Thread doesn't exist")
     return user, thread
 
 
-def create_subscription(user_id: str, source_id: str) -> dict[str, Any]:
+def create_subscription(
+    user_id: str, source_id: str, course_id: Optional[str] = None
+) -> dict[str, Any]:
     """
     Create a subscription for a user.
     """
-    _, thread = validate_user_and_thread(user_id, source_id)
-    subscription = subscribe_user(user_id, source_id, thread["_type"])
+    backend = get_backend(course_id)()
+    _, _ = validate_user_and_thread(user_id, source_id)
+    subscription = backend.subscribe_user(
+        user_id, source_id, source_type="CommentThread"
+    )
     serializer = SubscriptionSerializer(subscription)
     return serializer.data
 
 
-def delete_subscription(user_id: str, source_id: str) -> dict[str, Any]:
+def delete_subscription(
+    user_id: str, source_id: str, course_id: Optional[str] = None
+) -> dict[str, Any]:
     """
     Delete a subscription for a user.
     """
+    backend = get_backend(course_id)()
     _, _ = validate_user_and_thread(user_id, source_id)
 
-    subscription = Subscriptions().get_subscription(
-        user_id,
-        source_id,
+    subscription = backend.get_subscription(
+        user_id, source_id, source_type="CommentThread"
     )
     if not subscription:
         raise ForumV2RequestError("Subscription doesn't exist")
 
-    unsubscribe_user(user_id, source_id)
+    backend.unsubscribe_user(user_id, source_id, source_type="CommentThread")
     serializer = SubscriptionSerializer(subscription)
     return serializer.data
 
@@ -71,14 +70,15 @@ def get_user_subscriptions(
     """
     Get a user's subscriptions.
     """
-    validate_params(query_params, user_id)
-    thread_ids = find_subscribed_threads(user_id, course_id)
-    threads = get_threads(query_params, ThreadSerializer, thread_ids, user_id)
+    backend = get_backend(course_id)()
+    backend.validate_params(query_params, user_id)
+    thread_ids = backend.find_subscribed_threads(user_id, course_id)
+    threads = backend.get_threads(query_params, user_id, ThreadSerializer, thread_ids)
     return threads
 
 
 def get_thread_subscriptions(
-    thread_id: str, page: int = 1, per_page: int = 20
+    thread_id: str, page: int = 1, per_page: int = 20, course_id: Optional[str] = None
 ) -> dict[str, Any]:
     """
     Retrieve subscriptions to a specific thread.
@@ -91,8 +91,9 @@ def get_thread_subscriptions(
     Returns:
         dict: A dictionary containing the paginated subscription data.
     """
+    backend = get_backend(course_id)()
     query = {"source_id": thread_id, "source_type": "CommentThread"}
-    subscriptions_list = list(Subscriptions().find(query))
+    subscriptions_list = list(backend.get_subscriptions(query))
 
     factory = APIRequestFactory()
     query_params = QueryDict("", mutable=True)

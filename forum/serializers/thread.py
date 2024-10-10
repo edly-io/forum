@@ -4,18 +4,9 @@ Serializer for the thread data.
 
 from typing import Any, Optional
 
-from bson import ObjectId
-from pymongo import ASCENDING, DESCENDING
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
 
-from forum.backends.mongodb import Comment
-from forum.backends.mongodb.api import (
-    get_abuse_flagged_count,
-    get_endorsed,
-    get_read_states,
-    get_username_from_id,
-)
 from forum.serializers.comment import CommentSerializer
 from forum.serializers.contents import ContentSerializer
 from forum.serializers.custom_datetime import CustomDateTimeField
@@ -57,7 +48,7 @@ class ThreadSerializer(ContentSerializer):
     thread_type = serializers.CharField()
     title = serializers.CharField()
     context = serializers.CharField()  # type: ignore
-    last_activity_at = CustomDateTimeField()
+    last_activity_at = CustomDateTimeField(allow_null=True, default=None)
     closed_by_id = serializers.CharField(allow_null=True, default=None)
     closed_by = serializers.SerializerMethodField()
     close_reason_code = serializers.CharField(allow_null=True, default=None)
@@ -90,6 +81,7 @@ class ThreadSerializer(ContentSerializer):
                 - 'include_read_state' (bool): Whether to include read state information.
         """
         self.context_data = kwargs.get("context", {})
+        self.backend = kwargs.pop("backend")
         self.with_responses = self.context_data.pop("with_responses", False)
         self.count_flagged = self.context_data.pop("count_flagged", False)
         self.include_endorsed = self.context_data.pop("include_endorsed", False)
@@ -133,9 +125,9 @@ class ThreadSerializer(ContentSerializer):
             user_id = self.context_data.get("user_id", None)
             course_id = obj["course_id"]
             thread_key = obj["_id"]
-            is_read, _ = get_read_states([obj], user_id, course_id).get(
-                thread_key, (False, obj["comment_count"])
-            )
+            is_read, _ = self.backend.get_read_states(
+                [obj["_id"]], user_id, course_id
+            ).get(thread_key, (False, obj["comment_count"]))
             return is_read
         return None
 
@@ -155,9 +147,9 @@ class ThreadSerializer(ContentSerializer):
             user_id = self.context_data.get("user_id", None)
             course_id = obj["course_id"]
             thread_key = obj["_id"]
-            _, unread_count = get_read_states([obj], user_id, course_id).get(
-                thread_key, (False, obj["comment_count"])
-            )
+            _, unread_count = self.backend.get_read_states(
+                [obj["_id"]], user_id, course_id
+            ).get(thread_key, (False, obj["comment_count"]))
             return unread_count
         return None
 
@@ -175,7 +167,7 @@ class ThreadSerializer(ContentSerializer):
             if isinstance(obj, dict) and obj.get("endorsed") is not None:
                 return obj.get("endorsed", True)
             thread_key = obj["_id"]
-            return get_endorsed([thread_key]).get(thread_key, False)
+            return self.backend.get_endorsed([thread_key]).get(thread_key, False)
         return None
 
     def get_abuse_flagged_count(self, obj: dict[str, Any]) -> int:
@@ -192,7 +184,7 @@ class ThreadSerializer(ContentSerializer):
             if isinstance(obj, dict) and obj.get("abuse_flagged_count") is not None:
                 return obj.get("abuse_flagged_count", 0)
             thread_key = obj["_id"]
-            return get_abuse_flagged_count([thread_key]).get(thread_key, 0)
+            return self.backend.get_abuse_flagged_count([thread_key]).get(thread_key, 0)
         return 0
 
     def get_children(self, obj: dict[str, Any]) -> Optional[Any]:
@@ -206,18 +198,12 @@ class ThreadSerializer(ContentSerializer):
             Optional[Any]: The responses or children related to the thread, or None if not included.
         """
         if self.with_responses:
-            sorting_order = (
-                DESCENDING
-                if self.context_data.get("reverse_order", True)
-                else ASCENDING
-            )
-            children = list(
-                Comment().get_list(
-                    comment_thread_id=ObjectId(obj["_id"]),
-                    depth=0,
-                    parent_id=None,
-                    sort=sorting_order,
-                )
+            sorting_order = -1 if self.context_data.get("reverse_order", True) else 1
+            children = self.backend.get_comments(
+                comment_thread_id=obj["_id"],
+                depth=0,
+                parent_id=None,
+                sort=sorting_order,
             )
             children_data = prepare_comment_data_for_get_children(children)
             serializer = CommentSerializer(
@@ -228,6 +214,7 @@ class ThreadSerializer(ContentSerializer):
                     "sort": sorting_order,
                 },
                 exclude_fields=["sk"],
+                backend=self.backend,
             )
             if not serializer.is_valid(raise_exception=True):
                 raise ValidationError(serializer.errors)
@@ -299,5 +286,5 @@ class ThreadSerializer(ContentSerializer):
     def get_closed_by(self, obj: dict[str, Any]) -> Optional[str]:
         """Retrieve the username of the person who closed the object."""
         if closed_by_id := obj.get("closed_by_id"):
-            return get_username_from_id(closed_by_id)
+            return self.backend.get_username_from_id(closed_by_id)
         return None

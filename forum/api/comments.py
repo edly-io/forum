@@ -8,21 +8,7 @@ from typing import Any, Optional
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.serializers import ValidationError
 
-from forum.backends.mongodb.api import (
-    create_comment,
-    delete_comment_by_id,
-    get_course_id_by_comment_id,
-    get_thread_by_id,
-    get_thread_id_by_comment_id,
-    get_user_by_id,
-    mark_as_read,
-    update_comment_and_get_updated_comment,
-    update_stats_for_course,
-    validate_object,
-)
-from forum.backends.mongodb.comments import Comment
-from forum.backends.mongodb.threads import CommentThread
-from forum.backends.mongodb import api
+from forum.backend import get_backend
 from forum.serializers.comment import CommentSerializer
 from forum.utils import ForumV2RequestError
 
@@ -31,6 +17,7 @@ log = logging.getLogger(__name__)
 
 def prepare_comment_api_response(
     comment: dict[str, Any],
+    backend: Any,
     exclude_fields: Optional[list[str]] = None,
 ) -> dict[str, Any]:
     """
@@ -58,6 +45,7 @@ def prepare_comment_api_response(
     serializer = CommentSerializer(
         data=comment_data,
         exclude_fields=exclude_fields,
+        backend=backend,
     )
     if not serializer.is_valid(raise_exception=True):
         raise ValidationError(serializer.errors)
@@ -65,7 +53,9 @@ def prepare_comment_api_response(
     return serializer.data
 
 
-def get_parent_comment(comment_id: str) -> dict[str, Any]:
+def get_parent_comment(
+    comment_id: str, course_id: Optional[str] = None
+) -> dict[str, Any]:
     """
     Get a parent comment.
 
@@ -76,8 +66,9 @@ def get_parent_comment(comment_id: str) -> dict[str, Any]:
     Response:
         The details of the comment for the given comment_id.
     """
+    backend = get_backend(course_id)()
     try:
-        comment = validate_object(Comment, comment_id)
+        comment = backend.validate_object("Comment", comment_id)
     except ObjectDoesNotExist as exc:
         log.error("Forumv2RequestError for get parent comment request.")
         raise ForumV2RequestError(
@@ -85,6 +76,7 @@ def get_parent_comment(comment_id: str) -> dict[str, Any]:
         ) from exc
     return prepare_comment_api_response(
         comment,
+        backend,
         exclude_fields=["sk"],
     )
 
@@ -110,35 +102,40 @@ def create_child_comment(
     Response:
         The details of the comment that is created.
     """
+    backend = get_backend(course_id)()
     try:
-        parent_comment = validate_object(Comment, parent_comment_id)
+        parent_comment = backend.validate_object("Comment", parent_comment_id)
     except ObjectDoesNotExist as exc:
         log.error("Forumv2RequestError for create child comment request.")
         raise ForumV2RequestError(
             f"Comment does not exists with Id: {parent_comment_id}"
         ) from exc
 
-    comment = create_comment(
-        body,
-        user_id,
-        course_id,
-        anonymous,
-        anonymous_to_peers,
-        1,
-        get_thread_id_by_comment_id(parent_comment_id),
-        parent_id=parent_comment_id,
+    comment_id = backend.create_comment(
+        {
+            "body": body,
+            "author_id": user_id,
+            "course_id": course_id,
+            "anonymous": anonymous,
+            "anonymous_to_peers": anonymous_to_peers,
+            "depth": 1,
+            "comment_thread_id": backend.get_thread_id_by_comment_id(parent_comment_id),
+            "parent_id": parent_comment_id,
+        }
     )
+    comment = backend.get_comment(comment_id)
     if not comment:
         log.error("Forumv2RequestError for create child comment request.")
         raise ForumV2RequestError("comment is not created")
 
-    user = get_user_by_id(user_id)
-    thread = get_thread_by_id(parent_comment["comment_thread_id"])
+    user = backend.get_user(user_id)
+    thread = backend.get_thread(parent_comment["comment_thread_id"])
     if user and thread and comment:
-        mark_as_read(user, thread)
+        backend.mark_as_read(user_id, parent_comment["comment_thread_id"])
     try:
         comment_data = prepare_comment_api_response(
             comment,
+            backend,
             exclude_fields=["endorsement", "sk"],
         )
         return comment_data
@@ -158,6 +155,7 @@ def update_comment(
     editing_user_id: Optional[str] = None,
     edit_reason_code: Optional[str] = None,
     endorsement_user_id: Optional[str] = None,
+    course_key: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Update an existing child/parent comment.
@@ -177,15 +175,16 @@ def update_comment(
     Response:
         The details of the comment that is updated.
     """
+    backend = get_backend(course_key)()
     try:
-        validate_object(Comment, comment_id)
+        backend.validate_object("Comment", comment_id)
     except ObjectDoesNotExist as exc:
         log.error("Forumv2RequestError for update comment request.")
         raise ForumV2RequestError(
             f"Comment does not exists with Id: {comment_id}"
         ) from exc
 
-    updated_comment = update_comment_and_get_updated_comment(
+    updated_comment = backend.update_comment_and_get_updated_comment(
         comment_id,
         body,
         course_id,
@@ -204,6 +203,7 @@ def update_comment(
     try:
         return prepare_comment_api_response(
             updated_comment,
+            backend,
             exclude_fields=(
                 ["endorsement", "sk"] if updated_comment.get("parent_id") else ["sk"]
             ),
@@ -212,7 +212,7 @@ def update_comment(
         raise error
 
 
-def delete_comment(comment_id: str) -> dict[str, Any]:
+def delete_comment(comment_id: str, course_id: Optional[str] = None) -> dict[str, Any]:
     """
     Delete a comment.
 
@@ -223,8 +223,9 @@ def delete_comment(comment_id: str) -> dict[str, Any]:
     Response:
         The details of the comment that is deleted.
     """
+    backend = get_backend(course_id)()
     try:
-        comment = validate_object(Comment, comment_id)
+        comment = backend.validate_object("Comment", comment_id)
     except ObjectDoesNotExist as exc:
         log.error("Forumv2RequestError for delete comment request.")
         raise ForumV2RequestError(
@@ -232,16 +233,17 @@ def delete_comment(comment_id: str) -> dict[str, Any]:
         ) from exc
     data = prepare_comment_api_response(
         comment,
+        backend,
         exclude_fields=["endorsement", "sk"],
     )
-    delete_comment_by_id(comment_id)
+    backend.delete_comment(comment_id)
     author_id = comment["author_id"]
-    course_id = comment["course_id"]
+    comment_course_id = comment["course_id"]
     parent_comment_id = data["parent_id"]
     if parent_comment_id:
-        update_stats_for_course(author_id, course_id, replies=-1)
+        backend.update_stats_for_course(author_id, comment_course_id, replies=-1)
     else:
-        update_stats_for_course(author_id, course_id, responses=-1)
+        backend.update_stats_for_course(author_id, comment_course_id, responses=-1)
     return data
 
 
@@ -266,32 +268,37 @@ def create_parent_comment(
     Response:
         The details of the comment that is created.
     """
+    backend = get_backend(course_id)()
     try:
-        thread = validate_object(CommentThread, thread_id)
+        backend.validate_object("CommentThread", thread_id)
     except ObjectDoesNotExist as exc:
         log.error("Forumv2RequestError for create parent comment request.")
         raise ForumV2RequestError(
             f"Thread does not exists with Id: {thread_id}"
         ) from exc
 
-    comment = create_comment(
-        body,
-        user_id,
-        course_id,
-        anonymous,
-        anonymous_to_peers,
-        0,
-        thread_id=thread_id,
+    comment_id = backend.create_comment(
+        {
+            "body": body,
+            "author_id": user_id,
+            "course_id": course_id,
+            "anonymous": anonymous,
+            "anonymous_to_peers": anonymous_to_peers,
+            "depth": 0,
+            "comment_thread_id": thread_id,
+        }
     )
-    if not comment:
+    if not comment_id:
         log.error("Forumv2RequestError for create parent comment request.")
         raise ForumV2RequestError("comment is not created")
-    user = get_user_by_id(user_id)
+    comment = backend.get_comment(comment_id) or {}
+    user = backend.get_user(user_id)
     if user and comment:
-        mark_as_read(user, thread)
+        backend.mark_as_read(user_id, thread_id)
     try:
         return prepare_comment_api_response(
             comment,
+            backend,
             exclude_fields=["endorsement", "sk"],
         )
     except ValidationError as error:
@@ -303,8 +310,12 @@ def get_course_id_by_comment(comment_id: str) -> str | None:
     Return course_id for the matching comment.
     It searches for comment_id both in mongodb and mysql.
     """
+    #  pylint: disable=C0415
+    from forum.backends.mongodb.api import MongoBackend
+    from forum.backends.mysql.api import MySQLBackend
+
     return (
-        get_course_id_by_comment_id(comment_id)
-        or api.get_course_id_by_comment_id(comment_id)
+        MongoBackend.get_course_id_by_comment_id(comment_id)
+        or MySQLBackend.get_course_id_by_comment_id(comment_id)
         or None
     )

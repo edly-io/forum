@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 from requests import Response
 
 from forum.backends.mongodb import Comment, CommentThread, Users
-from forum.backends.mongodb.api import mark_as_read
+from forum.backends.mongodb.api import MongoBackend as backend
 from forum.search.backend import get_search_backend
 from test_utils.client import APIClient
 
@@ -309,10 +309,7 @@ def test_filter_threads_by_unread(api_client: APIClient) -> None:
         course_id_0, course_id_1
     )
     refresh_elastic_search_indices()
-
-    user = Users().get(_id=user_id) or {}
-    thread = CommentThread().get(_id=threads_ids[0]) or {}
-    mark_as_read(user, thread)
+    backend.mark_as_read(user_id, threads_ids[0])
 
     params = {
         "text": "text",

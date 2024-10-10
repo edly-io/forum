@@ -23,7 +23,7 @@ class Users(MongoBaseModel):
         external_id: str,
         username: Optional[str] = None,
         email: Optional[str] = None,
-        default_sort_key: str = "date",
+        default_sort_key: Optional[str] = "date",
         read_states: Optional[list[dict[str, Any]]] = None,
         course_stats: Optional[list[dict[str, Any]]] = None,
     ) -> str:

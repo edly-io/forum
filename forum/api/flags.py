@@ -4,14 +4,7 @@ This module contains the functions to update the flag status of a comment.
 
 from typing import Any, Optional
 
-from forum.backends.mongodb.api import (
-    flag_as_abuse,
-    un_flag_all_as_abuse,
-    un_flag_as_abuse,
-)
-from forum.backends.mongodb.comments import Comment
-from forum.backends.mongodb.threads import CommentThread
-from forum.backends.mongodb.users import Users
+from forum.backend import get_backend
 from forum.serializers.comment import CommentSerializer
 from forum.serializers.thread import ThreadSerializer
 from forum.utils import ForumV2RequestError
@@ -22,6 +15,7 @@ def update_comment_flag(
     action: str,
     user_id: Optional[str] = None,
     update_all: Optional[bool] = False,
+    course_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Update the flag status of a comment.
@@ -32,20 +26,30 @@ def update_comment_flag(
         action (str): The action to perform ("flag" or "unflag").
         update_all (bool, optional): Whether to update all flags. Defaults to False.
     """
+    backend = get_backend(course_id)()
     if not user_id:
         raise ForumV2RequestError("user_id not provided in params")
-    user = Users().get(user_id)
-    comment = Comment().get(comment_id)
+    user = backend.get_user(user_id)
+    try:
+        comment = backend.get_comment(comment_id)
+    except ValueError as exc:
+        raise ForumV2RequestError("User / Comment doesn't exist") from exc
     if not user or not comment:
         raise ForumV2RequestError("User / Comment doesn't exist")
 
     if action == "flag":
-        updated_comment = flag_as_abuse(user, comment)
+        updated_comment = backend.flag_as_abuse(
+            user_id, comment_id, entity_type="Comment"
+        )
     elif action == "unflag":
         if update_all:
-            updated_comment = un_flag_all_as_abuse(comment)
+            updated_comment = backend.un_flag_all_as_abuse(
+                comment_id, entity_type="Comment"
+            )
         else:
-            updated_comment = un_flag_as_abuse(user, comment)
+            updated_comment = backend.un_flag_as_abuse(
+                user_id, comment_id, entity_type="Comment"
+            )
     else:
         raise ForumV2RequestError("Invalid action")
 
@@ -53,14 +57,14 @@ def update_comment_flag(
         raise ForumV2RequestError("Failed to update comment")
 
     context = {
-        "id": str(updated_comment["_id"]),
+        "id": updated_comment["_id"],
         **updated_comment,
         "user_id": user["_id"],
         "username": user["username"],
         "type": "comment",
-        "thread_id": str(updated_comment.get("comment_thread_id", None)),
+        "comment_thread_id": str(updated_comment.get("comment_thread_id", None)),
     }
-    return CommentSerializer(context).data
+    return CommentSerializer(context, backend=backend).data
 
 
 def update_thread_flag(
@@ -68,6 +72,7 @@ def update_thread_flag(
     action: str,
     user_id: Optional[str] = None,
     update_all: Optional[bool] = False,
+    course_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Update the flag status of a thread.
@@ -78,20 +83,27 @@ def update_thread_flag(
         action (str): The action to perform ("flag" or "unflag").
         update_all (bool, optional): Whether to update all flags. Defaults to False.
     """
+    backend = get_backend(course_id)()
     if not user_id:
         raise ForumV2RequestError("user_id not provided in params")
-    user = Users().get(user_id)
-    thread = CommentThread().get(thread_id)
+    user = backend.get_user(user_id)
+    thread = backend.get_thread(thread_id)
     if not user or not thread:
         raise ForumV2RequestError("User / Thread doesn't exist")
 
     if action == "flag":
-        updated_thread = flag_as_abuse(user, thread)
+        updated_thread = backend.flag_as_abuse(
+            user_id, thread_id, entity_type="CommentThread"
+        )
     elif action == "unflag":
         if update_all:
-            updated_thread = un_flag_all_as_abuse(thread)
+            updated_thread = backend.un_flag_all_as_abuse(
+                thread_id, entity_type="CommentThread"
+            )
         else:
-            updated_thread = un_flag_as_abuse(user, thread)
+            updated_thread = backend.un_flag_as_abuse(
+                user_id, thread_id, entity_type="CommentThread"
+            )
     else:
         raise ForumV2RequestError("Invalid action")
 
@@ -106,4 +118,4 @@ def update_thread_flag(
         "type": "thread",
         "thread_id": str(updated_thread.get("comment_thread_id", None)),
     }
-    return ThreadSerializer(context).data
+    return ThreadSerializer(context, backend=backend).data

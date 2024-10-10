@@ -8,21 +8,8 @@ from typing import Any, Optional
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.serializers import ValidationError
 
-from forum.backends.mongodb.api import (
-    delete_comments_of_a_thread,
-    delete_subscriptions_of_a_thread,
-    get_course_id_by_thread_id,
-    get_threads,
-)
-from forum.backends.mongodb.api import mark_as_read as mark_thread_as_read
-from forum.backends.mongodb.api import (
-    update_stats_for_course,
-    validate_object,
-    validate_params,
-)
-from forum.backends.mongodb.threads import CommentThread
-from forum.backends.mongodb.users import Users
-from forum.backends.mysql import api
+from forum.api.users import mark_thread_as_read
+from forum.backend import get_backend
 from forum.serializers.thread import ThreadSerializer
 from forum.utils import ForumV2RequestError, get_int_value_from_collection, str_to_bool
 
@@ -65,7 +52,7 @@ def get_thread_data(thread: dict[str, Any]) -> dict[str, Any]:
     thread_data = {
         **thread,
         "id": str(thread.get("_id")),
-        "type": "thread" if _type == "commentthread" else _type,
+        "type": "thread" if _type.lower() == "commentthread" else _type,
         "user_id": thread.get("author_id"),
         "username": str(thread.get("author_username")),
         "comments_count": thread["comment_count"],
@@ -75,6 +62,7 @@ def get_thread_data(thread: dict[str, Any]) -> dict[str, Any]:
 
 def prepare_thread_api_response(
     thread: dict[str, Any],
+    backend: Any,
     include_context: Optional[bool] = False,
     data_or_params: Optional[dict[str, Any]] = None,
     include_data_from_params: Optional[bool] = False,
@@ -109,12 +97,13 @@ def prepare_thread_api_response(
                 for param in params:
                     if value := data_or_params.get(param):
                         context[param] = str_to_bool(value)
-                if user_id and (user := Users().get(user_id)):
-                    mark_thread_as_read(user, thread)
+                if user_id and backend.get_user(user_id):
+                    mark_thread_as_read(user_id, thread["_id"])
 
     serializer = ThreadSerializer(
         data=thread_data,
         context=context,
+        backend=backend,
     )
     if not serializer.is_valid(raise_exception=True):
         log.error(f"validation error in thread API call: {serializer.errors}")
@@ -126,6 +115,7 @@ def prepare_thread_api_response(
 def get_thread(
     thread_id: str,
     params: Optional[dict[str, Any]] = None,
+    course_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Get the thread for the given thread_id.
@@ -143,8 +133,9 @@ def get_thread(
     Response:
         The details of the thread for the given thread_id.
     """
+    backend = get_backend(course_id)()
     try:
-        thread = validate_object(CommentThread, thread_id)
+        thread = backend.validate_object("CommentThread", thread_id)
     except ObjectDoesNotExist as exc:
         log.error("Forumv2RequestError for get thread request.")
         raise ForumV2RequestError(
@@ -154,6 +145,7 @@ def get_thread(
     try:
         return prepare_thread_api_response(
             thread,
+            backend,
             True,
             params,
             True,
@@ -163,7 +155,7 @@ def get_thread(
         raise ForumV2RequestError("Failed to prepare thread API response") from error
 
 
-def delete_thread(thread_id: str) -> dict[str, Any]:
+def delete_thread(thread_id: str, course_id: Optional[str] = None) -> dict[str, Any]:
     """
     Delete the thread for the given thread_id.
 
@@ -172,27 +164,30 @@ def delete_thread(thread_id: str) -> dict[str, Any]:
     Response:
         The details of the thread that is deleted.
     """
+    backend = get_backend(course_id)()
     try:
-        thread = validate_object(CommentThread, thread_id)
+        thread = backend.validate_object("CommentThread", thread_id)
     except ObjectDoesNotExist as exc:
         log.error("Forumv2RequestError for delete thread request.")
         raise ForumV2RequestError(
             f"Thread does not exist with Id: {thread_id}"
         ) from exc
 
-    delete_comments_of_a_thread(thread_id)
-    thread = validate_object(CommentThread, thread_id)
+    backend.delete_comments_of_a_thread(thread_id)
+    thread = backend.validate_object("CommentThread", thread_id)
 
     try:
-        serialized_data = prepare_thread_api_response(thread)
+        serialized_data = prepare_thread_api_response(thread, backend)
     except ValidationError as error:
         log.error(f"Validation error in get_thread: {error}")
         raise ForumV2RequestError("Failed to prepare thread API response") from error
 
-    result = CommentThread().delete(thread_id)
-    delete_subscriptions_of_a_thread(thread_id)
+    backend.delete_subscriptions_of_a_thread(thread_id)
+    result = backend.delete_thread(thread_id)
     if result and not (thread["anonymous"] or thread["anonymous_to_peers"]):
-        update_stats_for_course(thread["author_id"], thread["course_id"], threads=-1)
+        backend.update_stats_for_course(
+            thread["author_id"], thread["course_id"], threads=-1
+        )
 
     return serialized_data
 
@@ -214,6 +209,7 @@ def update_thread(
     close_reason_code: Optional[str] = None,
     closing_user_id: Optional[str] = None,
     endorsed: Optional[bool] = None,
+    course_key: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Update the thread for the given thread_id.
@@ -224,8 +220,9 @@ def update_thread(
     Response:
         The details of the thread that is updated.
     """
+    backend = get_backend(course_key)()
     try:
-        thread = validate_object(CommentThread, thread_id)
+        thread = backend.validate_object("CommentThread", thread_id)
     except ObjectDoesNotExist as exc:
         log.error("Forumv2RequestError for update thread request.")
         raise ForumV2RequestError(
@@ -262,12 +259,13 @@ def update_thread(
             raise ForumV2RequestError(
                 f"Missing required fields: {', '.join(missing_fields)}"
             )
-    CommentThread().update(thread_id, **update_thread_data)
-    thread = CommentThread().get(thread_id)
+    backend.update_thread(thread_id, **update_thread_data)
+    thread = backend.get_thread(thread_id)
 
     try:
         return prepare_thread_api_response(
             thread,
+            backend,
             True,
             data,
         )
@@ -303,6 +301,7 @@ def create_thread(
     Response:
         The details of the thread that is created.
     """
+    backend = get_backend(course_id)()
     data = {
         "title": title,
         "body": body,
@@ -316,17 +315,20 @@ def create_thread(
     }
     thread_data: dict[str, Any] = _get_thread_data_from_request_data(data)
 
-    thread_id = CommentThread().insert(**thread_data)
-    thread = CommentThread().get(thread_id)
+    thread_id = backend.create_thread(thread_data)
+    thread = backend.get_thread(thread_id)
     if not thread:
         raise ForumV2RequestError(f"Failed to create thread with data: {data}")
 
     if not (anonymous or anonymous_to_peers):
-        update_stats_for_course(thread["author_id"], thread["course_id"], threads=1)
+        backend.update_stats_for_course(
+            thread["author_id"], thread["course_id"], threads=1
+        )
 
     try:
         return prepare_thread_api_response(
             thread,
+            backend,
             True,
             data,
         )
@@ -336,7 +338,7 @@ def create_thread(
 
 
 def get_user_threads(
-    course_id: Optional[str] = None,
+    course_id: str,
     author_id: Optional[str] = None,
     thread_type: Optional[str] = None,
     flagged: Optional[bool] = None,
@@ -354,6 +356,7 @@ def get_user_threads(
     """
     Get the threads for the given thread_ids.
     """
+    backend = get_backend(course_id)()
     params = {
         "course_id": course_id,
         "author_id": author_id,
@@ -371,15 +374,12 @@ def get_user_threads(
         "user_id": user_id,
     }
     params = {k: v for k, v in params.items() if v is not None}
-    validate_params(params)
+    backend.validate_params(params)
 
-    thread_filter = {
-        "_type": {"$in": [CommentThread.content_type]},
-        "course_id": {"$in": [course_id]},
-    }
-    filtered_threads = CommentThread().find(thread_filter)
+    thread_filter = backend.get_user_thread_filter(course_id)
+    filtered_threads = backend.get_filtered_threads(thread_filter)
     thread_ids = [thread["_id"] for thread in filtered_threads]
-    threads = get_threads(params, ThreadSerializer, thread_ids, user_id or "")
+    threads = backend.get_threads(params, user_id or "", ThreadSerializer, thread_ids)
 
     return threads
 
@@ -389,8 +389,12 @@ def get_course_id_by_thread(thread_id: str) -> str | None:
     Return course_id for the matching thread.
     It searches for thread_id both in mongodb and mysql.
     """
+    #  pylint: disable=C0415
+    from forum.backends.mongodb.api import MongoBackend
+    from forum.backends.mysql.api import MySQLBackend
+
     return (
-        get_course_id_by_thread_id(thread_id)
-        or api.get_course_id_by_thread_id(thread_id)
+        MongoBackend.get_course_id_by_thread_id(thread_id)
+        or MySQLBackend.get_course_id_by_thread_id(thread_id)
         or None
     )

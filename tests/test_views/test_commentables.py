@@ -3,46 +3,56 @@
 import random
 import uuid
 
-from forum.backends.mongodb import CommentThread
+import pytest
+
+from forum.backend import get_backend
 from test_utils.client import APIClient
+
+pytestmark = pytest.mark.django_db
+backend = get_backend()()
 
 
 def test_get_commentables_counts_api(api_client: APIClient) -> None:
     """
     Test retrieving counts of discussion and question threads for multiple commentables within a course.
     """
+    username = "test_user"
+    user_id = backend.find_or_create_user("1", username=username)
     course_id = "abcd"
     id_map = {}
-
     for _ in range(5):
         commentable_id = str(uuid.uuid4())
         question_count = random.randint(5, 15)
         discussion_count = random.randint(5, 15)
 
         for _ in range(question_count):
-            CommentThread().insert(
-                title="Question Thread",
-                body="This is a question thread.",
-                course_id=course_id,
-                commentable_id=commentable_id,
-                thread_type="question",
-                author_id="test_user_id",
-                author_username="test_user",
-                abuse_flaggers=[],
-                historical_abuse_flaggers=[],
+            backend.create_thread(
+                {
+                    "title": "Question Thread",
+                    "body": "This is a question thread.",
+                    "course_id": course_id,
+                    "commentable_id": commentable_id,
+                    "thread_type": "question",
+                    "author_id": user_id,
+                    "author_username": username,
+                    "abuse_flaggers": [],
+                    "historical_abuse_flaggers": [],
+                }
             )
 
         for _ in range(discussion_count):
-            CommentThread().insert(
-                title="Discussion Thread",
-                body="This is a discussion thread.",
-                course_id=course_id,
-                commentable_id=commentable_id,
-                thread_type="discussion",
-                author_id="test_user_id",
-                author_username="test_user",
-                abuse_flaggers=[],
-                historical_abuse_flaggers=[],
+            backend.create_thread(
+                {
+                    "title": "Discussion Thread",
+                    "body": "This is a discussion thread.",
+                    "course_id": course_id,
+                    "commentable_id": commentable_id,
+                    "thread_type": "discussion",
+                    "author_id": user_id,
+                    "author_username": username,
+                    "abuse_flaggers": [],
+                    "historical_abuse_flaggers": [],
+                }
             )
 
         id_map[commentable_id] = {

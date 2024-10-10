@@ -88,7 +88,7 @@ class UserCreateAPIView(APIView):
             data: dict[str, Any] = {
                 "user_id": params.get("id"),
                 "username": params.get("username"),
-                "default_sort_key": params.get("default_sort_key"),
+                "default_sort_key": params.get("default_sort_key", "date"),
                 "course_id": params.get("course_id"),
                 "group_ids": params.get("group_ids"),
                 "complete": params.get("complete"),

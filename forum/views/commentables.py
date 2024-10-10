@@ -6,7 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from forum.api import get_commentables_stats
+from forum.api.commentables import get_commentables_stats
 
 
 class CommentablesCountAPIView(APIView):

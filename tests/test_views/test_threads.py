@@ -2,8 +2,13 @@
 
 from typing import Optional
 
-from forum.backends.mongodb import Comment, CommentThread, Subscriptions, Users
+import pytest
+
+from forum.backend import get_backend
 from test_utils.client import APIClient
+
+pytestmark = pytest.mark.django_db
+backend = get_backend()()
 
 
 def setup_models(
@@ -22,17 +27,19 @@ def setup_models(
     user_id = user_id or "1"
     username = username or "user1"
     course_id = course_id or "course1"
-    Users().insert(user_id, username=username, email="email1")
-    comment_thread_id = CommentThread().insert(
-        title="Thread 1",
-        body="Thread 1",
-        course_id=course_id,
-        commentable_id="CommentThread",
-        author_id=user_id,
-        author_username=username,
-        abuse_flaggers=[],
-        historical_abuse_flaggers=[],
-        thread_type=thread_type or "discussion",
+    backend.find_or_create_user(user_id, username=username)
+    comment_thread_id = backend.create_thread(
+        {
+            "title": "Thread 1",
+            "body": "Thread 1",
+            "course_id": course_id,
+            "commentable_id": "CommentThread",
+            "author_id": user_id,
+            "author_username": username,
+            "abuse_flaggers": [],
+            "historical_abuse_flaggers": [],
+            "thread_type": thread_type or "discussion",
+        }
     )
     return user_id, comment_thread_id
 
@@ -42,19 +49,24 @@ def create_comments_in_a_thread(thread_id: str) -> tuple[str, str]:
     user_id = "1"
     username = "user1"
     course_id = "course1"
-    comment_id_1 = Comment().insert(
-        body="Comment 1",
-        course_id=course_id,
-        author_id=user_id,
-        comment_thread_id=thread_id,
-        author_username=username,
+    comment_id_1 = backend.create_comment(
+        {
+            "body": "Comment 1",
+            "course_id": course_id,
+            "author_id": user_id,
+            "comment_thread_id": thread_id,
+            "author_username": username,
+        }
     )
-    comment_id_2 = Comment().insert(
-        body="Comment 2",
-        course_id=course_id,
-        author_id=user_id,
-        comment_thread_id=thread_id,
-        author_username=username,
+
+    comment_id_2 = backend.create_comment(
+        {
+            "body": "Comment 2",
+            "course_id": course_id,
+            "author_id": user_id,
+            "comment_thread_id": thread_id,
+            "author_username": username,
+        }
     )
     return comment_id_1, comment_id_2
 
@@ -75,7 +87,7 @@ def test_update_thread(api_client: APIClient) -> None:
     )
     assert response.status_code == 200
     updated_thread = response.json()
-    updated_thread_from_db = CommentThread().get(updated_thread["id"])
+    updated_thread_from_db = backend.get_thread(updated_thread["id"])
     assert updated_thread_from_db is not None
     assert updated_thread_from_db["body"] == "new thread body"
     assert updated_thread_from_db["title"] == "new thread title"
@@ -97,7 +109,7 @@ def test_update_thread_without_user_id(api_client: APIClient) -> None:
     )
     assert response.status_code == 200
     updated_thread = response.json()
-    updated_thread_from_db = CommentThread().get(updated_thread["id"])
+    updated_thread_from_db = backend.get_thread(updated_thread["id"])
     assert updated_thread_from_db is not None
     assert updated_thread_from_db["body"] == "new thread body"
     assert updated_thread_from_db["title"] == "new thread title"
@@ -118,7 +130,7 @@ def test_update_close_reason(api_client: APIClient) -> None:
     )
     assert response.status_code == 200
     updated_thread = response.json()
-    updated_thread_from_db = CommentThread().get(updated_thread["id"])
+    updated_thread_from_db = backend.get_thread(updated_thread["id"])
     assert updated_thread_from_db is not None
     assert updated_thread_from_db["closed"]
     assert updated_thread_from_db["close_reason_code"] == "test_code"
@@ -147,7 +159,7 @@ def test_closing_and_reopening_thread_clears_reason_code(api_client: APIClient) 
     )
     assert response.status_code == 200
     updated_thread = response.json()
-    updated_thread_from_db = CommentThread().get(updated_thread["id"])
+    updated_thread_from_db = backend.get_thread(updated_thread["id"])
     assert updated_thread_from_db is not None
     assert not updated_thread_from_db["closed"]
     assert updated_thread_from_db["close_reason_code"] is None
@@ -156,7 +168,7 @@ def test_closing_and_reopening_thread_clears_reason_code(api_client: APIClient) 
 
 def test_update_thread_not_exist(api_client: APIClient) -> None:
     """Test thread does not exists through update thread API."""
-    wrong_thread_id = "66cd75eba3a68c001d51927b"
+    wrong_thread_id = backend.generate_id()
     response = api_client.put_json(
         f"/api/v2/threads/{wrong_thread_id}",
         data={
@@ -182,7 +194,7 @@ def test_unicode_data(api_client: APIClient) -> None:
         )
         assert response.status_code == 200
         updated_thread = response.json()
-        updated_thread_from_db = CommentThread().get(updated_thread["id"])
+        updated_thread_from_db = backend.get_thread(updated_thread["id"])
         assert updated_thread_from_db is not None
         assert updated_thread_from_db["body"] == text
         assert updated_thread_from_db["title"] == text
@@ -192,28 +204,25 @@ def test_delete_thread(api_client: APIClient) -> None:
     """Test delete a thread."""
     user_id, thread_id = setup_models()
     comment_id_1, comment_id_2 = create_comments_in_a_thread(thread_id)
-    thread_from_db = CommentThread().get(thread_id)
+    thread_from_db = backend.get_thread(thread_id)
     assert thread_from_db is not None
     assert thread_from_db["comment_count"] == 2
     response = api_client.delete_json(f"/api/v2/threads/{thread_id}")
     assert response.status_code == 200
-    assert CommentThread().get(thread_id) is None
-    assert Comment().get(comment_id_1) is None
-    assert Comment().get(comment_id_2) is None
-    assert (
-        Subscriptions().get_subscription(subscriber_id=user_id, source_id=thread_id)
-        is None
-    )
+    assert backend.get_thread(thread_id) is None
+    assert backend.get_comment(comment_id_1) is None
+    assert backend.get_comment(comment_id_2) is None
+    assert backend.get_subscription(subscriber_id=user_id, source_id=thread_id) is None
 
 
 def test_delete_thread_not_exist(api_client: APIClient) -> None:
     """Test thread does not exists through delete thread API."""
-    wrong_thread_id = "66cd75eba3a68c001d51927b"
+    wrong_thread_id = backend.generate_id()
     response = api_client.delete_json(f"/api/v2/threads/{wrong_thread_id}")
     assert response.status_code == 400
 
 
-def test_invalide_data(api_client: APIClient) -> None:
+def test_invalid_data(api_client: APIClient) -> None:
     """Test invalid data"""
     setup_models()
     response = api_client.get_json("/api/v2/threads", {})
@@ -240,16 +249,18 @@ def test_filter_by_course(api_client: APIClient) -> None:
 def test_filter_exclude_standalone(api_client: APIClient) -> None:
     """Test filter exclude standalone threads through get thread API."""
     setup_models()
-    CommentThread().insert(
-        title="Thread 2",
-        body="Thread 2",
-        course_id="course1",
-        commentable_id="CommentThread",
-        author_id="1",
-        author_username="user1",
-        abuse_flaggers=[],
-        historical_abuse_flaggers=[],
-        context="standalone",
+    backend.create_thread(
+        {
+            "title": "Thread 2",
+            "body": "Thread 2",
+            "course_id": "course1",
+            "commentable_id": "CommentThread",
+            "author_id": "1",
+            "author_username": "user1",
+            "abuse_flaggers": [],
+            "historical_abuse_flaggers": [],
+            "context": "standalone",
+        }
     )
     params = {"course_id": "course1"}
     response = api_client.get_json("/api/v2/threads", params)
@@ -269,7 +280,7 @@ def test_api_with_count_flagged(api_client: APIClient) -> None:
     comment_id_1, comment_id_2 = create_comments_in_a_thread(thread_id)
 
     # Mark Comment 1 as abused
-    Comment().update(comment_id_1, abuse_flaggers=["1"])
+    backend.update_comment(comment_id_1, abuse_flaggers=["1"])
 
     params = {"course_id": "course1", "count_flagged": "true"}
     response = api_client.get_json("/api/v2/threads", params)
@@ -280,7 +291,7 @@ def test_api_with_count_flagged(api_client: APIClient) -> None:
     assert results[0]["abuse_flagged_count"] == 1
 
     # Mark Comment 2 as abused
-    Comment().update(comment_id_2, abuse_flaggers=["1"])
+    backend.update_comment(comment_id_2, abuse_flaggers=["1"])
 
     params = {"course_id": "course1", "count_flagged": "true"}
     response = api_client.get_json("/api/v2/threads", params)
@@ -353,29 +364,33 @@ def test_anonymous_threads(api_client: APIClient) -> None:
     course_id = "course-1"
     author_id = "1"
     author_username = "author-1"
-    Users().insert(author_id, username=author_username, email="author@example.com")
+    backend.find_or_create_user(author_id, username=author_username)
 
-    CommentThread().insert(
-        title="Thread 1",
-        body="Thread 1",
-        course_id=course_id,
-        commentable_id="CommentThread",
-        author_id=author_id,
-        author_username=author_username,
+    backend.create_thread(
+        {
+            "title": "Thread 1",
+            "body": "Thread 1",
+            "course_id": course_id,
+            "commentable_id": "CommentThread",
+            "author_id": author_id,
+            "author_username": author_username,
+        }
     )
 
-    CommentThread().insert(
-        title="Thread 2",
-        body="Thread 2",
-        course_id=course_id,
-        commentable_id="CommentThread",
-        author_id=author_id,
-        author_username=author_username,
-        anonymous=True,
-        anonymous_to_peers=True,
+    backend.create_thread(
+        {
+            "title": "Thread 2",
+            "body": "Thread 2",
+            "course_id": course_id,
+            "commentable_id": "CommentThread",
+            "author_id": author_id,
+            "author_username": author_username,
+            "anonymous": True,
+            "anonymous_to_peers": True,
+        }
     )
 
-    user_id = Users().insert("2", username="anonymus-user", email="email2")
+    user_id = backend.find_or_create_user("2", username="anonymus-user")
 
     params = {"course_id": course_id, "author_id": author_id, "user_id": user_id}
     response = api_client.get_json("/api/v2/threads", params)
@@ -409,16 +424,20 @@ def test_filter_by_post_type(api_client: APIClient) -> None:
     """Test filter threads by thread_type through get thread API."""
     setup_models()
     setup_models("2", "user2", "course1")
-    CommentThread().insert(
-        title="Thread 3",
-        body="Thread 3",
-        course_id="course1",
-        commentable_id="CommentThread",
-        author_id="3",
-        author_username="user3",
-        abuse_flaggers=[],
-        historical_abuse_flaggers=[],
-        thread_type="question",
+    username_3 = "user3"
+    user_id_3 = backend.find_or_create_user("3", username_3)
+    backend.create_thread(
+        {
+            "title": "Thread 3",
+            "body": "Thread 3",
+            "course_id": "course1",
+            "commentable_id": "CommentThread",
+            "author_id": user_id_3,
+            "author_username": username_3,
+            "abuse_flaggers": [],
+            "historical_abuse_flaggers": [],
+            "thread_type": "question",
+        }
     )
     params = {"course_id": "course1", "thread_type": "discussion"}
     response = api_client.get_json("/api/v2/threads", params)
@@ -443,16 +462,20 @@ def test_filter_unanswered_questions(api_client: APIClient) -> None:
     username = "user1"
     user_id_1, thread1 = setup_models("1", "user1", thread_type="question")
     user_id_2, thread2 = setup_models("2", "user2", thread_type="question")
-    CommentThread().insert(
-        title="Thread 3",
-        body="Thread 3",
-        course_id=course_id,
-        commentable_id="CommentThread",
-        author_id=user_id_1,
-        author_username=username,
-        abuse_flaggers=[],
-        historical_abuse_flaggers=[],
-        thread_type="question",
+    username_3 = "user3"
+    user_id_3 = backend.find_or_create_user("3", username_3)
+    backend.create_thread(
+        {
+            "title": "Thread 3",
+            "body": "Thread 3",
+            "course_id": "course1",
+            "commentable_id": "CommentThread",
+            "author_id": user_id_3,
+            "author_username": username_3,
+            "abuse_flaggers": [],
+            "historical_abuse_flaggers": [],
+            "thread_type": "question",
+        }
     )
 
     params = {"course_id": "course1", "unanswered": True}
@@ -461,23 +484,28 @@ def test_filter_unanswered_questions(api_client: APIClient) -> None:
     results = response.json()["collection"]
     assert len(results) == 3
 
-    comment_id_1 = Comment().insert(
-        body="<p>Thread 1 Comment</p>",
-        course_id=course_id,
-        author_id=user_id_1,
-        comment_thread_id=thread1,
-        author_username=username,
-    )
-    comment_id_2 = Comment().insert(
-        body="<p>Thread 2 Comment</p>",
-        course_id=course_id,
-        author_id=user_id_2,
-        comment_thread_id=thread2,
-        author_username=username,
+    comment_id_1 = backend.create_comment(
+        {
+            "body": "<p>Thread 1 Comment</p>",
+            "course_id": course_id,
+            "author_id": user_id_1,
+            "comment_thread_id": thread1,
+            "author_username": username,
+        }
     )
 
-    Comment().update(comment_id=comment_id_1, endorsed=True)
-    Comment().update(comment_id=comment_id_2, endorsed=True)
+    comment_id_2 = backend.create_comment(
+        {
+            "body": "<p>Thread 2 Comment</p>",
+            "course_id": course_id,
+            "author_id": user_id_2,
+            "comment_thread_id": thread2,
+            "author_username": username,
+        }
+    )
+
+    backend.update_comment(comment_id=comment_id_1, endorsed=True)
+    backend.update_comment(comment_id=comment_id_2, endorsed=True)
 
     # api_client.put_json(
     #     f"/api/v2/threads/{thread1}",
@@ -525,14 +553,16 @@ def test_get_thread(api_client: APIClient) -> None:
 def test_computes_endorsed_correctly(api_client: APIClient) -> None:
     """Test computes endorsed correctly through get thread API."""
     _, thread_id = setup_models()
-    comment_id = Comment().insert(
-        body="Comment 1",
-        course_id="course1",
-        author_id="1",
-        comment_thread_id=thread_id,
-        author_username="user1",
+    comment_id = backend.create_comment(
+        {
+            "body": "Comment 1",
+            "course_id": "course1",
+            "author_id": "1",
+            "comment_thread_id": thread_id,
+            "author_username": "user1",
+        }
     )
-    Comment().update(comment_id=comment_id, endorsed=True)
+    backend.update_comment(comment_id=comment_id, endorsed=True)
     response = api_client.get_json(
         f"/api/v2/threads/{thread_id}",
         params={
@@ -554,12 +584,14 @@ def test_computes_endorsed_correctly(api_client: APIClient) -> None:
 def test_no_children_for_informational_request(api_client: APIClient) -> None:
     """Test no children returned from get thread by thread_id API"""
     _, thread_id = setup_models()
-    Comment().insert(
-        body="Comment 1",
-        course_id="course1",
-        author_id="1",
-        comment_thread_id=thread_id,
-        author_username="user1",
+    backend.create_comment(
+        {
+            "body": "Comment 1",
+            "course_id": "course1",
+            "author_id": "1",
+            "comment_thread_id": thread_id,
+            "author_username": "user1",
+        }
     )
     response = api_client.get_json(
         f"/api/v2/threads/{thread_id}",
@@ -632,19 +664,21 @@ def test_endorement_is_none_after_unanswering_a_comment_in_question(
     when that question was initialy marked as answered.
     """
     user_id, thread_id = setup_models(thread_type="question")
-    comment_id = Comment().insert(
-        body="Comment 1",
-        course_id="course1",
-        author_id=user_id,
-        comment_thread_id=thread_id,
-        author_username="user1",
+    comment_id = backend.create_comment(
+        {
+            "body": "Comment 1",
+            "course_id": "course1",
+            "author_id": user_id,
+            "comment_thread_id": thread_id,
+            "author_username": "user1",
+        }
     )
     response = api_client.put_json(
         f"/api/v2/comments/{comment_id}",
         data={"endorsed": "True", "endorsement_user_id": user_id},
     )
     assert response.status_code == 200
-    comment = Comment().get(comment_id)
+    comment = backend.get_comment(comment_id)
     assert comment is not None
     assert comment["endorsed"] is True
     assert comment["endorsement"]["user_id"] == user_id
@@ -680,19 +714,24 @@ def test_response_for_thread_type_question(api_client: APIClient) -> None:
     It varies according to queryparams.
     """
     user_id, thread_id = setup_models(thread_type="question")
-    comment_id1 = Comment().insert(
-        body="Comment 1",
-        course_id="course1",
-        author_id=user_id,
-        comment_thread_id=thread_id,
-        author_username="user1",
+    comment_id1 = backend.create_comment(
+        {
+            "body": "Comment 1",
+            "course_id": "course1",
+            "author_id": user_id,
+            "comment_thread_id": thread_id,
+            "author_username": "user1",
+        }
     )
-    comment_id2 = Comment().insert(
-        body="Comment 2",
-        course_id="course1",
-        author_id=user_id,
-        comment_thread_id=thread_id,
-        author_username="user1",
+
+    comment_id2 = backend.create_comment(
+        {
+            "body": "Comment 2",
+            "course_id": "course1",
+            "author_id": user_id,
+            "comment_thread_id": thread_id,
+            "author_username": "user1",
+        }
     )
     response = api_client.put_json(
         f"/api/v2/comments/{comment_id1}",

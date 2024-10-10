@@ -10,6 +10,7 @@ class UserSerializer(serializers.Serializer[Any]):
 
     id = serializers.CharField(allow_null=True)
     username = serializers.CharField()
+    email = serializers.CharField(allow_null=True)
     external_id = serializers.CharField()
     subscribed_thread_ids = serializers.ListField(
         child=serializers.CharField(), default=[]
