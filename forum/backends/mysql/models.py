@@ -39,6 +39,7 @@ class ForumUser(models.Model):
             "default_sort_key": self.default_sort_key,
             "external_id": self.user.pk,
             "username": self.user.username,
+            "email": self.user.email,
             "course_stats": [stat.to_dict() for stat in course_stats],
             "read_states": [state.to_dict() for state in read_states],
         }
@@ -158,7 +159,7 @@ class Content(models.Model):
             "count": 0,
             "point": 0,
         }
-        for vote in self.votes.all():
+        for vote in self.votes:
             if vote.vote == 1:
                 votes["up"].append(vote.user.pk)
                 votes["up_count"] += 1
@@ -168,6 +169,10 @@ class Content(models.Model):
             votes["point"] = votes["up_count"] - votes["down_count"]
             votes["count"] = votes["count"]
         return votes
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a dictionary representation of the content."""
+        raise NotImplementedError
 
     class Meta:
         app_label = "forum"
@@ -198,9 +203,6 @@ class CommentThread(Content):
     pinned: models.BooleanField[Optional[bool], bool] = models.BooleanField(
         null=True, blank=True
     )
-    comment_count: models.PositiveIntegerField[int, int] = models.PositiveIntegerField(
-        default=0
-    )
     last_activity_at: models.DateTimeField[Optional[datetime], datetime] = (
         models.DateTimeField(null=True, blank=True)
     )
@@ -214,6 +216,17 @@ class CommentThread(Content):
         blank=True,
         on_delete=models.SET_NULL,
     )
+    commentable_id: models.CharField[str, str] = models.CharField(
+        max_length=255,
+        default=None,
+        blank=True,
+        null=True,
+    )
+
+    @property
+    def comment_count(self) -> int:
+        """Return the number of comments in the thread."""
+        return Comment.objects.filter(comment_thread=self).count()
 
     @classmethod
     def get(cls, thread_id: str) -> CommentThread:
@@ -241,18 +254,25 @@ class CommentThread(Content):
             "_id": str(self.pk),
             "votes": self.get_votes,
             "visible": self.visible,
-            "abuse_flaggers": self.abuse_flaggers,
-            "historical_abuse_flaggers": self.historical_abuse_flaggers,
+            "abuse_flaggers": [str(flagger) for flagger in self.abuse_flaggers],
+            "historical_abuse_flaggers": [
+                str(flagger) for flagger in self.historical_abuse_flaggers
+            ],
             "thread_type": self.thread_type,
+            "_type": "CommentThread",
+            "commentable_id": self.commentable_id,
             "context": self.context,
             "comment_count": self.comment_count,
             "at_position_list": [],
+            "pinned": self.pinned if self.pinned else False,
             "title": self.title,
             "body": self.body,
             "course_id": self.course_id,
             "anonymous": self.anonymous,
             "anonymous_to_peers": self.anonymous_to_peers,
             "closed": self.closed,
+            "closed_by_id": str(self.closed_by.pk) if self.closed_by else None,
+            "close_reason_code": self.close_reason_code,
             "author_id": self.author.pk,
             "author_username": self.author.username,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -297,11 +317,53 @@ class Comment(Content):
     parent: models.ForeignKey[Comment, Comment] = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True
     )
+    depth: models.PositiveIntegerField[int, int] = models.PositiveIntegerField(
+        default=0
+    )
+
+    def get_sort_key(self) -> str:
+        """Get the sort key for the comment"""
+        if self.parent:
+            return f"{self.parent.pk}-{self.pk}"
+        return str(self.pk)
+
+    @staticmethod
+    def get_list(**kwargs: Any) -> list[dict[str, Any]]:
+        """
+        Retrieves a list of all comments in the database based on provided filters.
+
+        Args:
+            kwargs: The filter arguments.
+
+        Returns:
+            A list of comments.
+        """
+        sort = kwargs.pop("sort", None)
+        comments = Comment.objects.filter(**kwargs)
+        if sort:
+            if sort == 1:
+                result = sorted(
+                    comments, key=lambda x: (x.sort_key is None, x.sort_key or "")
+                )
+            elif sort == -1:
+                result = sorted(
+                    comments,
+                    key=lambda x: (x.sort_key is None, x.sort_key or ""),
+                    reverse=True,
+                )
+        return [content.to_dict() for content in result]
+
+    def get_parent_ids(self) -> list[str]:
+        """Return a list of all parent IDs of a comment."""
+        parent_ids = []
+        current_comment = self
+        while current_comment.parent:
+            parent_ids.append(str(current_comment.parent.pk))
+            current_comment = current_comment.parent
+        return parent_ids
 
     def to_dict(self) -> dict[str, Any]:
         """Return a dictionary representation of the model."""
-        abuse_flaggers = self.abuse_flaggers
-        historical_abuse_flaggers = self.historical_abuse_flaggers
         edit_history = []
         for edit in self.edit_history.all():
             edit_history.append(
@@ -316,18 +378,22 @@ class Comment(Content):
                     ),
                 }
             )
+
         endorsement = {
             "user_id": self.endorsement.get("user_id") if self.endorsement else None,
             "time": self.endorsement.get("time") if self.endorsement else None,
         }
 
-        return {
+        data = {
             "_id": str(self.pk),
             "votes": self.get_votes,
             "visible": self.visible,
-            "abuse_flaggers": abuse_flaggers,
-            "historical_abuse_flaggers": historical_abuse_flaggers,
-            "parent_ids": [],
+            "abuse_flaggers": [str(flagger) for flagger in self.abuse_flaggers],
+            "historical_abuse_flaggers": [
+                str(flagger) for flagger in self.historical_abuse_flaggers
+            ],
+            "parent_ids": self.get_parent_ids(),
+            "parent_id": str(self.parent.pk) if self.parent else "None",
             "at_position_list": [],
             "body": self.body,
             "course_id": self.course_id,
@@ -342,9 +408,12 @@ class Comment(Content):
             "sk": str(self.pk),
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "edit_history": edit_history,
-            "endorsement": endorsement,
+            "endorsement": endorsement if self.endorsement else None,
         }
+        if edit_history:
+            data["edit_history"] = edit_history
+
+        return data
 
     @classmethod
     def get(cls, comment_id: str) -> Comment:

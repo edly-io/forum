@@ -25,3 +25,5 @@ def plugin_settings(settings: Any) -> None:
     settings.FEATURES["ENABLE_DISCUSSION_SERVICE"] = True
     # URL prefix must match the regex in the url_config of the plugin app
     settings.COMMENTS_SERVICE_URL = "http://localhost:8000/forum"
+
+    settings.USE_TZ = True

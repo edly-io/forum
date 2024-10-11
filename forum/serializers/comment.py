@@ -4,10 +4,8 @@ Serializer for the comment data.
 
 from typing import Any
 
-from bson import ObjectId
 from rest_framework import serializers
 
-from forum.backends.mongodb import Comment, CommentThread
 from forum.serializers.contents import ContentSerializer
 from forum.serializers.custom_datetime import CustomDateTimeField
 from forum.utils import prepare_comment_data_for_get_children
@@ -61,6 +59,7 @@ class CommentSerializer(ContentSerializer):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         exclude_fields = kwargs.pop("exclude_fields", None)
+        self.backend = kwargs.pop("backend")
         super().__init__(*args, **kwargs)
         if exclude_fields:
             for field in exclude_fields:
@@ -71,12 +70,10 @@ class CommentSerializer(ContentSerializer):
         if not self.context.get("recursive", False):
             return []
 
-        children = list(
-            Comment().get_list(
-                parent_id=ObjectId(obj["_id"]),
-                depth=1,
-                sort=self.context.get("sort", -1),
-            )
+        children = self.backend.get_comments(
+            parent_id=obj["_id"],
+            depth=1,
+            sort=self.context.get("sort", -1),
         )
         children_data = prepare_comment_data_for_get_children(children)
         serializer = CommentSerializer(
@@ -84,6 +81,7 @@ class CommentSerializer(ContentSerializer):
             many=True,
             context={"recursive": False},
             exclude_fields=["sk"],
+            backend=self.backend,
         )
         return list(serializer.data)
 
@@ -93,8 +91,8 @@ class CommentSerializer(ContentSerializer):
         if comment["parent_id"] == "None":
             comment["parent_id"] = None
 
-        thread = CommentThread().get(comment["thread_id"])
-        comment_from_db = Comment().get(comment["id"])
+        thread = self.backend.get_thread(comment["thread_id"])
+        comment_from_db = self.backend.get_comment(comment["id"])
         if (
             not comment["endorsed"]
             and comment_from_db

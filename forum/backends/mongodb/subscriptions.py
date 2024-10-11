@@ -74,7 +74,9 @@ class Subscriptions(MongoBaseModel):
         subscription = self._collection.find_one(filter_query)
         return subscription
 
-    def delete_subscription(self, subscriber_id: str, source_id: str) -> int:
+    def delete_subscription(
+        self, subscriber_id: str, source_id: str, source_type: Optional[str] = ""
+    ) -> int:
         """
         Deletes a subscription from the MongoDB collection.
 
@@ -90,5 +92,8 @@ class Subscriptions(MongoBaseModel):
             "subscriber_id": subscriber_id,
             "source_id": source_id,
         }
+        if source_type:
+            filter_query["source_type"] = source_type
+
         result = self._collection.delete_one(filter_query)
         return result.deleted_count

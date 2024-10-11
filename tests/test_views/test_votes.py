@@ -4,8 +4,11 @@ from typing import Any
 
 import pytest
 
-from forum.backends.mongodb import Comment, CommentThread, Users
+from forum.backend import get_backend
 from test_utils.client import APIClient
+
+pytestmark = pytest.mark.django_db
+backend = get_backend()()
 
 
 @pytest.fixture(name="user")
@@ -19,8 +22,8 @@ def get_user() -> dict[str, Any]:
         dict[str, Any]: The created user, represented as a dictionary.
     """
     user_id = "1"
-    Users().insert(user_id, username="testuser", email="testuser@example.com")
-    return Users().get(_id=user_id) or {}
+    backend.find_or_create_user(user_id, username="testuser")
+    return backend.get_user(user_id) or {}
 
 
 @pytest.fixture(name="thread")
@@ -37,17 +40,19 @@ def get_thread(user: dict[str, Any]) -> dict[str, Any]:
     Returns:
         dict[str, Any]: The created thread, represented as a dictionary.
     """
-    thread_id = CommentThread().insert(
-        title="Test Thread",
-        body="This is a test thread.",
-        author_id=user["_id"],
-        course_id="course-v1:Test+Course+2024_S2",
-        commentable_id="commentable_id",
-        author_username="testuser",
+    thread_id = backend.create_thread(
+        {
+            "title": "Test Thread",
+            "body": "This is a test thread.",
+            "author_id": user["_id"],
+            "course_id": "course-v1:Test+Course+2024_S2",
+            "commentable_id": "commentable_id",
+            "author_username": "testuser",
+        }
     )
-    votes = Comment().get_votes_dict(up=["2", "3"], down=["4", "5"])
-    CommentThread().update_votes(content_id=thread_id, votes=votes)
-    return CommentThread().get(_id=thread_id) or {}
+    votes = backend.get_votes_dict(up=["2", "3"], down=["4", "5"])
+    backend.update_thread(thread_id, votes=votes)
+    return backend.get_thread(thread_id) or {}
 
 
 @pytest.fixture(name="comment")
@@ -65,16 +70,18 @@ def get_comment(user: dict[str, Any], thread: dict[str, Any]) -> dict[str, Any]:
     Returns:
         dict[str, Any]: The created comment, represented as a dictionary.
     """
-    comment_id = Comment().insert(
-        body="This is a test comment.",
-        course_id="course-v1:Test+Course+2024_S2",
-        comment_thread_id=thread["_id"],
-        author_id=user["_id"],
-        author_username="testuser",
+    comment_id = backend.create_comment(
+        {
+            "body": "This is a test comment.",
+            "course_id": "course-v1:Test+Course+2024_S2",
+            "comment_thread_id": thread["_id"],
+            "author_id": user["_id"],
+            "author_username": "testuser",
+        }
     )
-    votes = Comment().get_votes_dict(up=["2", "3"], down=["4", "5"])
-    Comment().update_votes(content_id=comment_id, votes=votes)
-    return Comment().get(_id=comment_id) or {}
+    votes = backend.get_votes_dict(up=["2", "3"], down=["4", "5"])
+    backend.update_comment(comment_id, votes=votes)
+    return backend.get_comment(comment_id) or {}
 
 
 def test_upvote_thread_api(
@@ -110,7 +117,7 @@ def test_upvote_thread_api(
     assert response_data is not None
     assert response_data["votes"]["up_count"] == prev_up_count + 1
 
-    thread_data = CommentThread().get(_id=thread_id) or {}
+    thread_data = backend.get_thread(thread_id) or {}
     assert thread_data["votes"]["up_count"] == prev_up_count + 1
 
 
@@ -151,7 +158,7 @@ def test_vote_thread_api(
         data={"user_id": user_id, "value": "down"},
     )
 
-    thread_data = CommentThread().get(_id=thread_id) or {}
+    thread_data = backend.get_thread(thread_id) or {}
     assert thread_data["votes"]["up_count"] == prev_up_count
     assert thread_data["votes"]["down_count"] == prev_down_count + 1
 
@@ -195,7 +202,7 @@ def test_downvote_thread_api(
     assert response_data is not None
     assert response_data["votes"]["down_count"] == prev_down_count + 1
 
-    thread_data = CommentThread().get(_id=thread_id)
+    thread_data = backend.get_thread(thread_id)
     assert thread_data is not None
     assert thread_data["votes"]["down_count"] == prev_down_count + 1
 
@@ -235,7 +242,7 @@ def test_remove_vote_thread_api(
     assert response_data["votes"]["up_count"] == prev_up_count
     assert response_data["votes"]["down_count"] == prev_down_count
 
-    thread_data = CommentThread().get(_id=thread_id) or {}
+    thread_data = backend.get_thread(thread_id) or {}
     assert thread_data is not None
     assert thread_data["votes"]["up_count"] == prev_up_count
     assert thread_data["votes"]["down_count"] == prev_down_count
@@ -254,7 +261,7 @@ def test_remove_vote_thread_api(
     assert response_data["votes"]["up_count"] == prev_up_count
     assert response_data["votes"]["down_count"] == prev_down_count
 
-    thread_data = CommentThread().get(_id=thread_id) or {}
+    thread_data = backend.get_thread(thread_id) or {}
     assert thread_data is not None
     assert thread_data["votes"]["up_count"] == prev_up_count
     assert thread_data["votes"]["down_count"] == prev_down_count
@@ -288,7 +295,7 @@ def test_upvote_comment_api(
     assert response_data is not None
     assert response_data["votes"]["up_count"] == prev_up_count + 1
 
-    comment_data = Comment().get(_id=comment_id)
+    comment_data = backend.get_comment(comment_id)
     assert comment_data is not None
     assert comment_data["votes"]["up_count"] == prev_up_count + 1
 
@@ -321,7 +328,7 @@ def test_downvote_comment_api(
     assert response_data is not None
     assert response_data["votes"]["down_count"] == prev_down_count + 1
 
-    comment_data = Comment().get(_id=comment_id)
+    comment_data = backend.get_comment(comment_id)
     assert comment_data is not None
     assert comment_data["votes"]["down_count"] == prev_down_count + 1
 
@@ -361,7 +368,7 @@ def test_remove_vote_comment_api(
     assert response_data["votes"]["up_count"] == prev_up_count
     assert response_data["votes"]["down_count"] == prev_down_count
 
-    comment_data = Comment().get(_id=comment_id)
+    comment_data = backend.get_comment(comment_id)
     assert comment_data is not None
     assert comment_data["votes"]["up_count"] == prev_up_count
     assert comment_data["votes"]["down_count"] == prev_down_count

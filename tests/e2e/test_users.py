@@ -11,7 +11,7 @@ import pytest
 from faker import Faker
 
 from forum.backends.mongodb import Comment, CommentThread, Users
-from forum.backends.mongodb.api import build_course_stats
+from forum.backends.mongodb.api import MongoBackend as backend
 from test_utils.client import APIClient
 
 fake = Faker()
@@ -145,7 +145,7 @@ def build_structure_and_response(
 
     if build_initial_stats:
         for author in authors:
-            build_course_stats(author["_id"], course_id)
+            backend.build_course_stats(author["_id"], course_id)
 
     return expected_data
 

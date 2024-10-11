@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from bson import ObjectId
+from pymongo.cursor import Cursor
 
 from forum.backends.mongodb.base_model import MongoBaseModel
 
@@ -110,7 +111,7 @@ class BaseContents(MongoBaseModel):
         query = {**query, "_type": self.content_type}
         return super().override_query(query)
 
-    def get_list(self, **kwargs: Any) -> Any:
+    def get_list(self, **kwargs: Any) -> Cursor[dict[str, Any]]:
         """
         Retrieves a list of all content documents in the database based on provided filters.
 
