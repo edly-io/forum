@@ -32,6 +32,7 @@ def _get_thread_data_from_request_data(data: dict[str, Any]) -> dict[str, Any]:
         "endorsed",
         "pinned",
         "group_id",
+        "context",
     ]
     result = {field: data.get(field) for field in fields if data.get(field) is not None}
 
@@ -284,6 +285,7 @@ def create_thread(
     commentable_id: str = "course",
     thread_type: str = "discussion",
     group_id: Optional[int] = None,
+    context: str = "course",
 ) -> dict[str, Any]:
     """
     Create a new thread.
@@ -312,6 +314,7 @@ def create_thread(
         "commentable_id": commentable_id,
         "thread_type": thread_type,
         "group_id": group_id,
+        "context": context,
     }
     thread_data: dict[str, Any] = _get_thread_data_from_request_data(data)
 
