@@ -6,17 +6,26 @@ from forum.backends.mongodb.api import MongoBackend
 from forum.backends.mysql.api import MySQLBackend
 
 
+def is_mysql_backend_enabled(course_id: str | None) -> bool:
+    """
+    Return True if mysql backend is enabled for the course.
+    """
+    try:
+        from forum.toggles import ENABLE_MYSQL_BACKEND  # pylint: disable=C0415
+    except ImportError:
+        return True
+
+    return ENABLE_MYSQL_BACKEND.is_enabled(course_id)
+
+
 def get_backend(
-    course_id: Optional[str] = "",
+    course_id: Optional[str] = None,
 ) -> Callable[[], MongoBackend | MySQLBackend]:
     """Return a factory function that lazily loads the backend API based on course_id."""
 
     def _get_backend() -> MongoBackend | MySQLBackend:
-        if not course_id:
-            # Lazy loading MongoBackend
-            return MongoBackend()
-        # TODO: add condition for course waffle flag.
-        # Lazy loading MySQLBackend
-        return MySQLBackend()
+        if is_mysql_backend_enabled(course_id):
+            return MySQLBackend()
+        return MongoBackend()
 
     return _get_backend

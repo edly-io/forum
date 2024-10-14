@@ -1,17 +1,16 @@
 """Test threads api endpoints."""
 
-from typing import Optional
+from typing import Any, Optional
 
 import pytest
 
-from forum.backend import get_backend
 from test_utils.client import APIClient
 
 pytestmark = pytest.mark.django_db
-backend = get_backend()()
 
 
 def setup_models(
+    backend: Any,
     user_id: Optional[str] = None,
     username: Optional[str] = None,
     course_id: Optional[str] = None,
@@ -44,7 +43,7 @@ def setup_models(
     return user_id, comment_thread_id
 
 
-def create_comments_in_a_thread(thread_id: str) -> tuple[str, str]:
+def create_comments_in_a_thread(backend: Any, thread_id: str) -> tuple[str, str]:
     """create comments in a thread."""
     user_id = "1"
     username = "user1"
@@ -71,9 +70,10 @@ def create_comments_in_a_thread(thread_id: str) -> tuple[str, str]:
     return comment_id_1, comment_id_2
 
 
-def test_update_thread(api_client: APIClient) -> None:
+def test_update_thread(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test updaing a thread."""
-    user_id, thread_id = setup_models()
+    backend = patched_get_backend
+    user_id, thread_id = setup_models(backend=backend)
     response = api_client.put_json(
         f"/api/v2/threads/{thread_id}",
         data={
@@ -95,9 +95,12 @@ def test_update_thread(api_client: APIClient) -> None:
     assert updated_thread_from_db["thread_type"] == "question"
 
 
-def test_update_thread_without_user_id(api_client: APIClient) -> None:
+def test_update_thread_without_user_id(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test updaing a thread without user id."""
-    _, thread_id = setup_models()
+    backend = patched_get_backend
+    _, thread_id = setup_models(backend=backend)
     response = api_client.put_json(
         f"/api/v2/threads/{thread_id}",
         data={
@@ -117,9 +120,10 @@ def test_update_thread_without_user_id(api_client: APIClient) -> None:
     assert updated_thread_from_db["thread_type"] == "question"
 
 
-def test_update_close_reason(api_client: APIClient) -> None:
+def test_update_close_reason(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test close a thread through update thread API."""
-    user_id, thread_id = setup_models()
+    backend = patched_get_backend
+    user_id, thread_id = setup_models(backend=backend)
     response = api_client.put_json(
         f"/api/v2/threads/{thread_id}",
         data={
@@ -137,9 +141,12 @@ def test_update_close_reason(api_client: APIClient) -> None:
     assert updated_thread_from_db["closed_by_id"] == user_id
 
 
-def test_closing_and_reopening_thread_clears_reason_code(api_client: APIClient) -> None:
+def test_closing_and_reopening_thread_clears_reason_code(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test close a thread and reopen a thread through update thread API."""
-    user_id, thread_id = setup_models()
+    backend = patched_get_backend
+    user_id, thread_id = setup_models(backend=backend)
     response = api_client.put_json(
         f"/api/v2/threads/{thread_id}",
         data={
@@ -166,8 +173,11 @@ def test_closing_and_reopening_thread_clears_reason_code(api_client: APIClient) 
     assert updated_thread_from_db["closed_by_id"] is None
 
 
-def test_update_thread_not_exist(api_client: APIClient) -> None:
+def test_update_thread_not_exist(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test thread does not exists through update thread API."""
+    backend = patched_get_backend
     wrong_thread_id = backend.generate_id()
     response = api_client.put_json(
         f"/api/v2/threads/{wrong_thread_id}",
@@ -179,9 +189,10 @@ def test_update_thread_not_exist(api_client: APIClient) -> None:
     assert response.status_code == 400
 
 
-def test_unicode_data(api_client: APIClient) -> None:
+def test_unicode_data(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test data through update thread API."""
-    user_id, thread_id = setup_models()
+    backend = patched_get_backend
+    user_id, thread_id = setup_models(backend=backend)
     texts = ["测试", "テスト", "test"]
     for text in texts:
         response = api_client.put_json(
@@ -200,10 +211,11 @@ def test_unicode_data(api_client: APIClient) -> None:
         assert updated_thread_from_db["title"] == text
 
 
-def test_delete_thread(api_client: APIClient) -> None:
+def test_delete_thread(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test delete a thread."""
-    user_id, thread_id = setup_models()
-    comment_id_1, comment_id_2 = create_comments_in_a_thread(thread_id)
+    backend = patched_get_backend
+    user_id, thread_id = setup_models(backend=backend)
+    comment_id_1, comment_id_2 = create_comments_in_a_thread(backend, thread_id)
     thread_from_db = backend.get_thread(thread_id)
     assert thread_from_db is not None
     assert thread_from_db["comment_count"] == 2
@@ -215,16 +227,19 @@ def test_delete_thread(api_client: APIClient) -> None:
     assert backend.get_subscription(subscriber_id=user_id, source_id=thread_id) is None
 
 
-def test_delete_thread_not_exist(api_client: APIClient) -> None:
+def test_delete_thread_not_exist(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test thread does not exists through delete thread API."""
+    backend = patched_get_backend
     wrong_thread_id = backend.generate_id()
     response = api_client.delete_json(f"/api/v2/threads/{wrong_thread_id}")
     assert response.status_code == 400
 
 
-def test_invalid_data(api_client: APIClient) -> None:
+def test_invalid_data(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test invalid data"""
-    setup_models()
+    setup_models(patched_get_backend)
     response = api_client.get_json("/api/v2/threads", {})
     assert response.status_code == 400
 
@@ -233,9 +248,9 @@ def test_invalid_data(api_client: APIClient) -> None:
     assert response.status_code == 400
 
 
-def test_filter_by_course(api_client: APIClient) -> None:
+def test_filter_by_course(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test filter threads by course id through get thread API."""
-    setup_models()
+    setup_models(patched_get_backend)
     params = {"course_id": "course1"}
     response = api_client.get_json("/api/v2/threads", params)
     assert response.status_code == 200
@@ -246,9 +261,12 @@ def test_filter_by_course(api_client: APIClient) -> None:
         assert res["course_id"] == "course1"
 
 
-def test_filter_exclude_standalone(api_client: APIClient) -> None:
+def test_filter_exclude_standalone(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test filter exclude standalone threads through get thread API."""
-    setup_models()
+    backend = patched_get_backend
+    setup_models(backend=backend)
     backend.create_thread(
         {
             "title": "Thread 2",
@@ -273,11 +291,13 @@ def test_filter_exclude_standalone(api_client: APIClient) -> None:
         assert res["context"] == "course"
 
 
-def test_api_with_count_flagged(api_client: APIClient) -> None:
+def test_api_with_count_flagged(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test thread API with count flagged."""
-
-    _, thread_id = setup_models()
-    comment_id_1, comment_id_2 = create_comments_in_a_thread(thread_id)
+    backend = patched_get_backend
+    _, thread_id = setup_models(backend)
+    comment_id_1, comment_id_2 = create_comments_in_a_thread(backend, thread_id)
 
     # Mark Comment 1 as abused
     backend.update_comment(comment_id_1, abuse_flaggers=["1"])
@@ -302,9 +322,10 @@ def test_api_with_count_flagged(api_client: APIClient) -> None:
     assert results[0]["abuse_flagged_count"] == 2
 
 
-def test_no_matching_course_id(api_client: APIClient) -> None:
+def test_no_matching_course_id(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test no matching course id through get thread API."""
-    setup_models()
+    backend = patched_get_backend
+    setup_models(backend)
     wrong_course_id = "abc"
     params = {"course_id": wrong_course_id}
     response = api_client.get_json("/api/v2/threads", params)
@@ -313,9 +334,10 @@ def test_no_matching_course_id(api_client: APIClient) -> None:
     assert len(results) == 0
 
 
-def test_filter_flagged_posts(api_client: APIClient) -> None:
+def test_filter_flagged_posts(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test filter flagged posts through get thread API."""
-    user_id, thread_id = setup_models()
+    backend = patched_get_backend
+    user_id, thread_id = setup_models(backend)
     tests_flags = [(True, "1"), (False, "0")]
     for flagged, abuse_flaggers in tests_flags:
         action = "flag" if flagged else "unflag"
@@ -333,10 +355,11 @@ def test_filter_flagged_posts(api_client: APIClient) -> None:
             assert result["abuse_flaggers"] == [abuse_flaggers]
 
 
-def test_filter_by_author(api_client: APIClient) -> None:
+def test_filter_by_author(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test filter threads by author id through get thread API."""
-    user_id1, _ = setup_models()
-    user_id2, _ = setup_models("2", "user2", "course2")
+    backend = patched_get_backend
+    user_id1, _ = setup_models(backend=backend)
+    user_id2, _ = setup_models(backend, "2", "user2", "course2")
 
     params = {"course_id": "course1", "author_id": user_id1}
     response = api_client.get_json("/api/v2/threads", params)
@@ -358,9 +381,9 @@ def test_filter_by_author(api_client: APIClient) -> None:
     assert len(result) == 0
 
 
-def test_anonymous_threads(api_client: APIClient) -> None:
+def test_anonymous_threads(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test Anonymus threads are only visible to Authors"""
-
+    backend = patched_get_backend
     course_id = "course-1"
     author_id = "1"
     author_username = "author-1"
@@ -405,11 +428,12 @@ def test_anonymous_threads(api_client: APIClient) -> None:
     assert len(result) == 2
 
 
-def test_unresponded_filter(api_client: APIClient) -> None:
+def test_unresponded_filter(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test unresponded filter"""
-    _, thread_id = setup_models()
-    create_comments_in_a_thread(thread_id)
-    setup_models("2", "user2")
+    backend = patched_get_backend
+    _, thread_id = setup_models(backend)
+    create_comments_in_a_thread(backend, thread_id)
+    setup_models(backend, "2", "user2")
 
     response = api_client.get_json(
         "/api/v2/threads", params={"course_id": "course1", "unresponded": "true"}
@@ -420,10 +444,11 @@ def test_unresponded_filter(api_client: APIClient) -> None:
     assert len(thread) == 1
 
 
-def test_filter_by_post_type(api_client: APIClient) -> None:
+def test_filter_by_post_type(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test filter threads by thread_type through get thread API."""
-    setup_models()
-    setup_models("2", "user2", "course1")
+    backend = patched_get_backend
+    setup_models(backend=backend)
+    setup_models(backend, "2", "user2", "course1")
     username_3 = "user3"
     user_id_3 = backend.find_or_create_user("3", username_3)
     backend.create_thread(
@@ -456,12 +481,15 @@ def test_filter_by_post_type(api_client: APIClient) -> None:
         assert thread["thread_type"] == "question"
 
 
-def test_filter_unanswered_questions(api_client: APIClient) -> None:
+def test_filter_unanswered_questions(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test filter unanswered questions through get thread API."""
+    backend = patched_get_backend
     course_id = "course1"
     username = "user1"
-    user_id_1, thread1 = setup_models("1", "user1", thread_type="question")
-    user_id_2, thread2 = setup_models("2", "user2", thread_type="question")
+    user_id_1, thread1 = setup_models(backend, "1", "user1", thread_type="question")
+    user_id_2, thread2 = setup_models(backend, "2", "user2", thread_type="question")
     username_3 = "user3"
     user_id_3 = backend.find_or_create_user("3", username_3)
     backend.create_thread(
@@ -526,9 +554,10 @@ def test_filter_unanswered_questions(api_client: APIClient) -> None:
         assert thread["body"] == "Thread 3"
 
 
-def test_get_thread(api_client: APIClient) -> None:
+def test_get_thread(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test get thread by thread_id."""
-    _, thread_id = setup_models()
+    backend = patched_get_backend
+    _, thread_id = setup_models(backend)
     response = api_client.get_json(
         f"/api/v2/threads/{thread_id}",
         params={
@@ -550,9 +579,12 @@ def test_get_thread(api_client: APIClient) -> None:
     assert thread["thread_type"] == "discussion"
 
 
-def test_computes_endorsed_correctly(api_client: APIClient) -> None:
+def test_computes_endorsed_correctly(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test computes endorsed correctly through get thread API."""
-    _, thread_id = setup_models()
+    backend = patched_get_backend
+    _, thread_id = setup_models(backend)
     comment_id = backend.create_comment(
         {
             "body": "Comment 1",
@@ -581,9 +613,12 @@ def test_computes_endorsed_correctly(api_client: APIClient) -> None:
     assert thread["endorsed"] is True
 
 
-def test_no_children_for_informational_request(api_client: APIClient) -> None:
+def test_no_children_for_informational_request(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test no children returned from get thread by thread_id API"""
-    _, thread_id = setup_models()
+    backend = patched_get_backend
+    _, thread_id = setup_models(backend)
     backend.create_comment(
         {
             "body": "Comment 1",
@@ -611,9 +646,10 @@ def test_no_children_for_informational_request(api_client: APIClient) -> None:
     assert "children" not in thread
 
 
-def test_mark_as_read(api_client: APIClient) -> None:
+def test_mark_as_read(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test mark as read"""
-    _, thread_id = setup_models()
+    backend = patched_get_backend
+    _, thread_id = setup_models(backend)
     response = api_client.get_json(
         f"/api/v2/threads/{thread_id}",
         params={
@@ -633,10 +669,11 @@ def test_mark_as_read(api_client: APIClient) -> None:
     assert thread["read"] is True
 
 
-def test_thread_with_comments(api_client: APIClient) -> None:
+def test_thread_with_comments(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test children returned from get thread by thread_id API"""
-    _, thread_id = setup_models()
-    comment_id_1, comment_id_2 = create_comments_in_a_thread(thread_id)
+    backend = patched_get_backend
+    _, thread_id = setup_models(backend)
+    comment_id_1, comment_id_2 = create_comments_in_a_thread(backend, thread_id)
 
     response = api_client.get_json(
         f"/api/v2/threads/{thread_id}",
@@ -657,13 +694,14 @@ def test_thread_with_comments(api_client: APIClient) -> None:
 
 
 def test_endorement_is_none_after_unanswering_a_comment_in_question(
-    api_client: APIClient,
+    api_client: APIClient, patched_get_backend: Any
 ) -> None:
     """
     Test endorsement is None by marking it as unanswered.
     when that question was initialy marked as answered.
     """
-    user_id, thread_id = setup_models(thread_type="question")
+    backend = patched_get_backend
+    user_id, thread_id = setup_models(backend, thread_type="question")
     comment_id = backend.create_comment(
         {
             "body": "Comment 1",
@@ -708,12 +746,15 @@ def test_endorement_is_none_after_unanswering_a_comment_in_question(
     assert thread["children"][0]["endorsement"] is None
 
 
-def test_response_for_thread_type_question(api_client: APIClient) -> None:
+def test_response_for_thread_type_question(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """
     Test responses for thread_type question.
     It varies according to queryparams.
     """
-    user_id, thread_id = setup_models(thread_type="question")
+    backend = patched_get_backend
+    user_id, thread_id = setup_models(backend, thread_type="question")
     comment_id1 = backend.create_comment(
         {
             "body": "Comment 1",

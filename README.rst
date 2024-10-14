@@ -66,6 +66,81 @@ Optionally, you may checkout the `edly-io/forum_v2 <https://github.com/edly-io/e
     git checkout forum_v2
     tutor mounts add .
 
+Forum v2 Waffle Flag
+********************
+
+Description
+-----------
+The ``forum_v2.enable_mysql_backend`` waffle flag is used to toggle the use of the MySQL backend instead of the MongoDB backend.
+
+Details
+-------
+- **Toggle Name**: ``forum_v2.enable_mysql_backend``
+- **Implementation**: CourseWaffleFlag
+- **Default**: False
+- **Description**: Waffle flag to use the MySQL backend instead of Mongo backend.
+- **Use Cases**: temporary, open_edx
+- **Creation Date**: 2025-12-05
+- **Target Removal Date**: 2025-12-05
+
+Usage
+-----
+This waffle flag is automatically enabled for a course when the ``migrate_courses_to_mysql`` command is run for that course. It can also be manually added through the Django admin interface.
+
+Migration from MongoDB to MySQL backend:
+****************************************
+
+    python manage.py forum_migrate_course_from_mongodb_to_mysql
+
+Description
+-----------
+This command migrates data from MongoDB to MySQL for the specified courses.
+
+Usage
+-----
+To migrate data for a specific course(s), run the command with the course ID(s) as argument:
+
+   python manage.py forum_migrate_course_from_mongodb_to_mysql <course_id_1> <course_id_2>
+
+To migrate data for all courses, run the command with the ``all`` argument:
+
+   python manage.py forum_migrate_course_from_mongodb_to_mysql all
+
+What the command does
+---------------------
+The command performs the following steps:
+
+1. **Migrates user data**: Migrates user data from MongoDB to MySQL.
+2. **Migrates content data**: Migrates content data from MongoDB to MySQL.
+3. **Migrates read state data**: Migrates read state data from MongoDB to MySQL.
+4. **Enables waffle flag**: Enables the ``forum_v2.enable_mysql_backend`` waffle flag for the specified course.
+
+
+``python manage.py forum_delete_course_from_mongodb``
+
+Description
+-----------
+This command deletes course data from MongoDB for the specified courses.
+
+Usage
+-----
+To delete data for a specific course(s), run the command with the course ID(s) as an argument:
+
+   python manage.py forum_delete_course_from_mongodb <course_id_1> <course_id_2>
+
+To delete data for all courses, run the command with the ``all`` argument:
+
+   python manage.py forum_delete_course_from_mongodb all
+
+Options
+-------
+* ``--dry-run``: Perform a dry run without actually deleting data.
+
+Example
+-------
+
+   python manage.py forum_delete_course_from_mongodb <course_id> --dry-run
+
 .. Deploying
 .. *********
 

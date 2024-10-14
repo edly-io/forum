@@ -1,16 +1,15 @@
 """Tests for Users apis."""
 
+from typing import Any
 import pytest
 
-from forum.backend import get_backend
 from forum.constants import RETIRED_BODY, RETIRED_TITLE
 from test_utils.client import APIClient
 
 pytestmark = pytest.mark.django_db
-backend = get_backend()()
 
 
-def setup_10_threads(author_id: str, author_username: str) -> list[str]:
+def setup_10_threads(author_id: str, author_username: str, backend: Any) -> list[str]:
     """Create 10 threads for a user."""
     ids = []
     for thread in range(10):
@@ -37,8 +36,9 @@ def setup_10_threads(author_id: str, author_username: str) -> list[str]:
     return ids
 
 
-def test_create_user(api_client: APIClient) -> None:
+def test_create_user(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test creating a new user."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     response = api_client.post_json(
@@ -50,8 +50,11 @@ def test_create_user(api_client: APIClient) -> None:
     assert user["username"] == username
 
 
-def test_create_user_with_existing_id(api_client: APIClient) -> None:
+def test_create_user_with_existing_id(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test create user with an existing id."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
@@ -64,8 +67,11 @@ def test_create_user_with_existing_id(api_client: APIClient) -> None:
     assert response.status_code == 400
 
 
-def test_create_user_with_existing_username(api_client: APIClient) -> None:
+def test_create_user_with_existing_username(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test create user with an existing username."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
@@ -78,8 +84,9 @@ def test_create_user_with_existing_username(api_client: APIClient) -> None:
     assert response.status_code == 400
 
 
-def test_update_user(api_client: APIClient) -> None:
+def test_update_user(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test updating user information."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     new_username = "new-test-user"
@@ -96,8 +103,11 @@ def test_update_user(api_client: APIClient) -> None:
     assert user["username"] == new_username
 
 
-def test_update_non_existent_user(api_client: APIClient) -> None:
+def test_update_non_existent_user(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test updating non-existent user."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     response = api_client.put_json(
         f"/api/v2/users/{user_id}", data={"username": "new-test-user"}
@@ -105,8 +115,11 @@ def test_update_non_existent_user(api_client: APIClient) -> None:
     assert response.status_code == 200
 
 
-def test_update_user_with_conflicting_info(api_client: APIClient) -> None:
+def test_update_user_with_conflicting_info(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test updating user with conflicting information."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     conflicting_username = "test-user-2"
@@ -124,8 +137,9 @@ def test_update_user_with_conflicting_info(api_client: APIClient) -> None:
     assert response.status_code == 400
 
 
-def test_get_user(api_client: APIClient) -> None:
+def test_get_user(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test getting user information."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
@@ -139,15 +153,19 @@ def test_get_user(api_client: APIClient) -> None:
     assert user["username"] == username
 
 
-def test_get_non_existent_user(api_client: APIClient) -> None:
+def test_get_non_existent_user(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test getting non-existent user."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     response = api_client.get(f"/api/v2/users/{user_id}")
     assert response.status_code == 404
 
 
-def test_get_user_with_no_votes(api_client: APIClient) -> None:
+def test_get_user_with_no_votes(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test getting user with no votes."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
@@ -160,8 +178,9 @@ def test_get_user_with_no_votes(api_client: APIClient) -> None:
     assert user["upvoted_ids"] == []
 
 
-def test_get_user_with_votes(api_client: APIClient) -> None:
+def test_get_user_with_votes(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test getting user with votes."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
@@ -195,29 +214,33 @@ def test_get_user_with_votes(api_client: APIClient) -> None:
     assert user["upvoted_ids"] == [thread_id]
 
 
-def test_get_active_threads_requires_course_id(api_client: APIClient) -> None:
+def test_get_active_threads_requires_course_id(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test getting active threads requires course id."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
         user_id,
         username,
     )
-    setup_10_threads(user_id, username)
+    setup_10_threads(user_id, username, backend)
     response = api_client.get(f"/api/v2/users/{user_id}/active_threads")
     assert response.status_code == 200
     assert response.json() == {}
 
 
-def test_get_active_threads(api_client: APIClient) -> None:
+def test_get_active_threads(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test getting active threads."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
         user_id,
         username,
     )
-    setup_10_threads(user_id, username)
+    setup_10_threads(user_id, username, backend)
     course_id = "course1"
     response = api_client.get(
         f"/api/v2/users/{user_id}/active_threads?course_id={course_id}",
@@ -227,8 +250,11 @@ def test_get_active_threads(api_client: APIClient) -> None:
     assert len(threads) == 10
 
 
-def test_marks_thread_as_read_for_user(api_client: APIClient) -> None:
+def test_marks_thread_as_read_for_user(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test marking a thread as read for a user."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
@@ -270,8 +296,9 @@ def test_marks_thread_as_read_for_user(api_client: APIClient) -> None:
     assert read_date[thread_id] >= thread["updated_at"]
 
 
-def test_replaces_username(api_client: APIClient) -> None:
+def test_replaces_username(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test replace_username api."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
@@ -304,16 +331,17 @@ def test_attempts_to_replace_username_of_non_existent_user(
 
 
 def test_attempts_to_replace_username_and_username_on_content(
-    api_client: APIClient,
+    api_client: APIClient, patched_get_backend: Any
 ) -> None:
     """Test replace_username api with content."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
         user_id,
         username,
     )
-    setup_10_threads(user_id, username)
+    setup_10_threads(user_id, username, backend)
     user = backend.get_user(user_id)
     new_username = "test_username_replacement"
 
@@ -332,9 +360,10 @@ def test_attempts_to_replace_username_and_username_on_content(
 
 
 def test_attempts_to_replace_username_without_sending_new_username(
-    api_client: APIClient,
+    api_client: APIClient, patched_get_backend: Any
 ) -> None:
     """Test replace_username api without sending new username."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
@@ -349,9 +378,10 @@ def test_attempts_to_replace_username_without_sending_new_username(
 
 
 def test_attempts_to_retire_user_without_sending_retired_username(
-    api_client: APIClient,
+    api_client: APIClient, patched_get_backend: Any
 ) -> None:
     """Test retire user api without sending retired username."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     response = api_client.post_json(
         f"/api/v2/users/{user_id}/retire",
@@ -360,8 +390,11 @@ def test_attempts_to_retire_user_without_sending_retired_username(
     assert response.status_code == 500
 
 
-def test_attempts_to_retire_non_existent_user(api_client: APIClient) -> None:
+def test_attempts_to_retire_non_existent_user(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test retire non-existent user."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     retired_username = "retired_user_test"
     response = api_client.post_json(
@@ -371,15 +404,16 @@ def test_attempts_to_retire_non_existent_user(api_client: APIClient) -> None:
     assert response.status_code == 400
 
 
-def test_retire_user(api_client: APIClient) -> None:
+def test_retire_user(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test retire user."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
         user_id,
         username,
     )
-    setup_10_threads(user_id, username)
+    setup_10_threads(user_id, username, backend)
     retired_username = "retired_username_ABCD1234"
     user = backend.get_user(user_id)
     assert user
@@ -403,8 +437,11 @@ def test_retire_user(api_client: APIClient) -> None:
         assert content["author_username"] == retired_username
 
 
-def test_retire_user_with_subscribed_threads(api_client: APIClient) -> None:
+def test_retire_user_with_subscribed_threads(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test retire user with subscribed threads."""
+    backend = patched_get_backend
     user_id = backend.generate_id()
     username = "test-user"
     backend.find_or_create_user(
@@ -414,7 +451,7 @@ def test_retire_user_with_subscribed_threads(api_client: APIClient) -> None:
     author_id = backend.generate_id()
     author_username = "author"
     backend.find_or_create_user(author_id, author_username)
-    setup_10_threads(user_id, username)
+    setup_10_threads(user_id, username, backend)
     retired_username = "retired_username_ABCD1234"
     user = backend.get_user(user_id)
     assert user
