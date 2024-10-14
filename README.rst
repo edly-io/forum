@@ -30,9 +30,7 @@ Development
 When developing this application, it is recommended to clone this repository locally. First, install our custom plugin to auto-mount the forum repository::
 
     tutor plugins install https://gist.githubusercontent.com/taimoor-ahmed-1/9e947a06d127498a328475877e41d7c0/raw/forumv2.py
-    tutor config save
-    tutor images build openedx-dev
-    tutor dev launch
+    tutor plugins enable forumv2
 
 Then, clone the forum repository and mount it within the application containers::
 
@@ -41,7 +39,7 @@ Then, clone the forum repository and mount it within the application containers:
 
 Check that the forum repository is properly bind-mounted both at build- and run-time by running ``tutor mounts list``. It should output the following::
 
-    - name: /home/data/regis/projets/overhang/repos/edx/forum
+    - name: /home/path/to/forum
       build_mounts:
       - image: openedx
         context: mnt-forum
@@ -58,13 +56,9 @@ Re-build the openedx-dev image and launch the platform::
     tutor images build openedx-dev
     tutor dev launch
 
-Optionally, you may checkout the `edly-io/forum_v2 <https://github.com/edly-io/edx-platform/tree/forum_v2>`__ branch of edx-platform branch that includes custom features, such as troubleshooting differences between the new and the legacy applications::
+To start using the forum v2, you will have to checkout the following branch of edx-platform: https://github.com/openedx/edx-platform/pull/35490 And then, create the "forum_v2.enable_forum_v2" waffle flag:
 
-    cd edx-platform/
-    git remote add edly https://github.com/edly-io/edx-platform/
-    git fetch edly
-    git checkout forum_v2
-    tutor mounts add .
+    tutor dev run lms ./manage.py lms waffle_flag forum_v2.enable_forum_v2 --create --everyone 
 
 .. Deploying
 .. *********
