@@ -1095,6 +1095,7 @@ class MySQLBackend(AbstractBackend):
         hash_data = {}
         hash_data["username"] = user_data["username"]
         hash_data["external_id"] = user_data["external_id"]
+        hash_data["id"] = user_data["external_id"]
 
         if params.get("complete"):
             subscribed_thread_ids = cls.find_subscribed_threads(user_id)
