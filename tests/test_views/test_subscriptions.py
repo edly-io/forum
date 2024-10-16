@@ -1,18 +1,20 @@
 """Tests for subscription apis."""
 
+from typing import Any
 import pytest
 
-from forum.backend import get_backend
 from test_utils.client import APIClient
 
 pytestmark = pytest.mark.django_db
-backend = get_backend()()
 
 
-def test_get_subscribed_threads(api_client: APIClient) -> None:
+def test_get_subscribed_threads(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """
     Test getting subscribed threads for a user.
     """
+    backend = patched_get_backend
     user_id = "1"
     username = "user1"
     course_id = "demo_course"
@@ -38,10 +40,13 @@ def test_get_subscribed_threads(api_client: APIClient) -> None:
     assert threads[0]["id"] == comment_thread_id
 
 
-def test_get_subscribed_threads_with_filters(api_client: APIClient) -> None:
+def test_get_subscribed_threads_with_filters(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """
     Test getting subscribed threads for a user with filters.
     """
+    backend = patched_get_backend
     user_id = "1"
     username = "user1"
     course_id = "demo_course"
@@ -74,10 +79,11 @@ def test_get_subscribed_threads_with_filters(api_client: APIClient) -> None:
     assert threads[0]["id"] == comment_thread_id
 
 
-def test_subscribe_thread(api_client: APIClient) -> None:
+def test_subscribe_thread(api_client: APIClient, patched_get_backend: Any) -> None:
     """
     Test subscribing to a thread.
     """
+    backend = patched_get_backend
     user_id = "1"
     course_id = "demo_course"
     username = "user1"
@@ -105,10 +111,11 @@ def test_subscribe_thread(api_client: APIClient) -> None:
     assert subscription is not None
 
 
-def test_unsubscribe_thread(api_client: APIClient) -> None:
+def test_unsubscribe_thread(api_client: APIClient, patched_get_backend: Any) -> None:
     """
     Test unsubscribing from a thread.
     """
+    backend = patched_get_backend
     user_id = "1"
     course_id = "demo_course"
     username = "user1"
@@ -140,10 +147,13 @@ def test_unsubscribe_thread(api_client: APIClient) -> None:
     assert response.status_code == 400
 
 
-def test_get_subscribed_threads_with_pagination(api_client: APIClient) -> None:
+def test_get_subscribed_threads_with_pagination(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """
     Test getting subscribed threads for a user with pagination.
     """
+    backend = patched_get_backend
     user_id = "1"
     course_id = "demo_course"
     username = "user1"
@@ -211,10 +221,13 @@ def test_get_subscribed_threads_with_pagination(api_client: APIClient) -> None:
     ]
 
 
-def test_get_thread_subscriptions(api_client: APIClient) -> None:
+def test_get_thread_subscriptions(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """
     Test getting subscriptions of a thread.
     """
+    backend = patched_get_backend
     user_id = "1"
     course_id = "demo_course"
     username = "user1"
@@ -252,10 +265,13 @@ def test_get_thread_subscriptions(api_client: APIClient) -> None:
     assert len(subscriptions) == 0
 
 
-def test_get_thread_subscriptions_with_pagination(api_client: APIClient) -> None:
+def test_get_thread_subscriptions_with_pagination(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """
     Test getting subscriptions of a thread with pagination.
     """
+    backend = patched_get_backend
     user_id = "1"
     course_id = "demo_course"
     author_id = "10"
