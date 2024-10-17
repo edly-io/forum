@@ -4,7 +4,7 @@ import math
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from bson import ObjectId
+from bson import ObjectId, errors as bason_errors
 from django.core.exceptions import ObjectDoesNotExist
 
 from forum.backends.backend import AbstractBackend
@@ -1581,9 +1581,12 @@ class MongoBackend(AbstractBackend):
         """
         Return course_id for the matching thread.
         """
-        thread = CommentThread().get(thread_id)
-        if thread:
-            return thread.get("course_id")
+        try:
+            thread = CommentThread().get(thread_id)
+            if thread:
+                return thread.get("course_id")
+        except bason_errors.InvalidId:
+            pass
         return None
 
     @staticmethod
@@ -1591,9 +1594,12 @@ class MongoBackend(AbstractBackend):
         """
         Return course_id for the matching comment.
         """
-        comment = Comment().get(comment_id)
-        if comment:
-            return comment.get("course_id")
+        try:
+            comment = Comment().get(comment_id)
+            if comment:
+                return comment.get("course_id")
+        except bason_errors.InvalidId:
+            pass
         return None
 
     @staticmethod
