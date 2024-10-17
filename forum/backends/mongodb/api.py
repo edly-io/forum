@@ -1479,6 +1479,8 @@ class MongoBackend(AbstractBackend):
         """Return comments from kwargs."""
         if "comment_thread_id" in kwargs:
             kwargs["comment_thread_id"] = ObjectId(kwargs["comment_thread_id"])
+        if parent_id := kwargs.get("parent_id"):
+            kwargs["parent_id"] = ObjectId(parent_id)
 
         return list(Comment().get_list(**kwargs))
 
