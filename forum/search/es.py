@@ -7,7 +7,10 @@ from typing import Optional
 from django.conf import settings
 from elasticsearch import Elasticsearch
 
-from forum.backends.mongodb import MODEL_INDICES, BaseContents
+from forum.backends.mongodb import BaseContents
+from forum.backends.mongodb import MODEL_INDICES as mongo_model_indices
+from forum.backends.mysql import MODEL_INDICES as mysql_model_indices
+from forum.models import Content
 
 __all__ = ["Elasticsearch", "ElasticsearchModelMixin"]
 
@@ -32,7 +35,11 @@ class ElasticsearchModelMixin:
 
     @property
     def models(self) -> tuple[type[BaseContents], ...]:
-        return MODEL_INDICES
+        return mongo_model_indices
+
+    @property
+    def mysql_models(self) -> tuple[type[Content], ...]:
+        return mysql_model_indices
 
     @property
     def index_names(self) -> list[str]:
@@ -43,3 +50,9 @@ class ElasticsearchModelMixin:
             list[str]: List of base index names.
         """
         return [model.index_name for model in self.models]
+
+    def get_mysql_model_from_index_name(self, index_name: str) -> type[Content]:
+        for model in self.mysql_models:
+            if index_name.startswith(model.index_name):
+                return model
+        raise Exception("Invalid model name")
