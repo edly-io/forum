@@ -4,7 +4,7 @@ import math
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from bson import ObjectId
+from bson import ObjectId, errors as bson_errors
 from django.core.exceptions import ObjectDoesNotExist
 
 from forum.backends.backend import AbstractBackend
@@ -1581,9 +1581,17 @@ class MongoBackend(AbstractBackend):
         """
         Return course_id for the matching thread.
         """
-        thread = CommentThread().get(thread_id)
-        if thread:
-            return thread.get("course_id")
+        try:
+            thread = CommentThread().get(thread_id)
+            if thread:
+                # As thread can be a standalone thread(without a course_id).
+                # So, using thread.get() instead of thread[] to avoid key error.
+                return thread.get("course_id")
+        except bson_errors.InvalidId:
+            # this exception occurs when trying to get course_id from thread that exists
+            # in mysql. Then Id will not be an ObjectID. So bypassing this exception will
+            # let it search in mysql.
+            pass
         return None
 
     @staticmethod
@@ -1591,9 +1599,17 @@ class MongoBackend(AbstractBackend):
         """
         Return course_id for the matching comment.
         """
-        comment = Comment().get(comment_id)
-        if comment:
-            return comment.get("course_id")
+        try:
+            comment = Comment().get(comment_id)
+            if comment:
+                # As comment can be a standalone comment(comment on a standalone thread).
+                # So, using comment.get() instead of comment[] to avoid key error.
+                return comment.get("course_id")
+        except bson_errors.InvalidId:
+            # this exception occurs when trying to get course_id from comment that exists
+            # in mysql. Then Id will not be an ObjectID. So bypassing this exception will
+            # let it search in mysql.
+            pass
         return None
 
     @staticmethod
