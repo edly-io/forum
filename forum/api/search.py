@@ -4,7 +4,7 @@ API for search.
 
 from typing import Any, Optional
 
-from forum.backends.mongodb.api import MongoBackend as backend
+from forum.backend import get_backend
 from forum.constants import FORUM_DEFAULT_PAGE, FORUM_DEFAULT_PER_PAGE
 from forum.search.comment_search import ThreadSearch
 from forum.serializers.thread import ThreadSerializer
@@ -84,6 +84,8 @@ def search_threads(
     thread_ids, corrected_text = _get_thread_ids_from_indexes(
         context, group_ids, text, commentable_ids, course_id
     )
+
+    backend = get_backend(course_id)()
 
     data = backend.handle_threads_query(
         thread_ids,
