@@ -1,7 +1,7 @@
 """Forum Utils."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Sequence
 
 import requests
@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.dispatch import Signal
 from django.http import HttpRequest
+from django.utils import timezone
 from requests.models import Response
 
 log = logging.getLogger(__name__)
@@ -154,7 +155,7 @@ def validate_upvote_or_downvote(value: int) -> None:
 def make_aware(dt: datetime) -> datetime:
     """Make datetime timezone-aware."""
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        return timezone.make_aware(dt)
     return dt
 
 
