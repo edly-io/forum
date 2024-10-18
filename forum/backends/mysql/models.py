@@ -664,3 +664,6 @@ class MongoContent(models.Model):
     )
     content: GenericForeignKey = GenericForeignKey("content_type", "content_object_id")
     mongo_id: models.CharField[str, str] = models.CharField(max_length=50, unique=True)
+
+    class Meta:
+        app_label = "forum"
