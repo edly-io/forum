@@ -3,23 +3,18 @@ Open edX Forum
 
 |ci-badge| |license-badge| |status-badge|
 
-⚠️ **THIS IS A WORK IN PROGRESS THAT IS NOT READY FOR PRODUCTION YET** The migration from cs_comments_service is not complete. In particular, the migration from Mongodb to MySQL has not been done yet. But this app should already be working as a drop-in replacement for the legacy cs_comments_service application. If it does not work for you, please open an issue in this repository.
-
 This application provides a forum backend for use within `Open edX <https://openedx.org>`__ courses. Features include: nested comments, voting, instructor endorsements, and others. The frontend is provided by the `frontend-app-discussions <https://github.com/openedx/frontend-app-discussions>`__ microfrontend application.
 
-This project is a drop-in replacement of the legaxy `cs_comments_service <https://github.com/openedx/cs_comments_service>`__ application. The legacy application was written in Ruby, while this one is written in Python for direct integration in the edx-platform Django project. Moreover, forum data no longer resides in MongoDB, but in the relational MySQL database. The motivation for this rewrite is described more extensively in the `Axim Funded Contribution Proposal <https://discuss.openedx.org/t/axim-funded-contribution-proposal-forum-rewrite-from-ruby-mongodb-to-python-mysql/12788>`_.
+This project is a drop-in replacement of the legacy `cs_comments_service <https://github.com/openedx/cs_comments_service>`__ application. The legacy application was written in Ruby, while this one is written in Python for direct integration in the edx-platform Django project. Moreover, forum data no longer resides in MongoDB, but in the relational MySQL database. The motivation for this rewrite is described more extensively in the `Axim Funded Contribution Proposal <https://discuss.openedx.org/t/axim-funded-contribution-proposal-forum-rewrite-from-ruby-mongodb-to-python-mysql/12788>`_.
 
 Installation
 ************
 
-The only prerequisite is a working Open edX platform with `Tutor <https://docs.tutor.edly.io/>`__, on the `nightly branch <https://docs.tutor.edly.io/tutorials/nightly.html>`__. Make sure to disable the legacy forum plugin::
+⚠️ At the moment, the forum is not yet fully integrated in Tutor. Users will need to install the forum plugin from the `regisb/forumv2 <https://github.com/overhangio/tutor-forum/pull/48>`__ branch.
 
-    tutor plugins disable forum
+The only prerequisite is a working Open edX platform with `Tutor <https://docs.tutor.edly.io/>`__, on the Sumac release (v19+) or the `nightly branch <https://docs.tutor.edly.io/tutorials/nightly.html>`__. Enable the forum by running::
 
-Install the forum application by running::
-
-    tutor config save --append 'OPENEDX_EXTRA_PIP_REQUIREMENTS=git+https://github.com/edly-io/forum.git@master'
-    tutor images build openedx
+    tutor plugins enable forum
     tutor local launch
 
 The forum feature will then be automatically enabled in the Open edX platform, and all API calls will be transparently handled by the new application.
@@ -27,12 +22,7 @@ The forum feature will then be automatically enabled in the Open edX platform, a
 Development
 ***********
 
-When developing this application, it is recommended to clone this repository locally. First, install our custom plugin to auto-mount the forum repository::
-
-    tutor plugins install https://gist.githubusercontent.com/taimoor-ahmed-1/9e947a06d127498a328475877e41d7c0/raw/forumv2.py
-    tutor plugins enable forumv2
-
-Then, clone the forum repository and mount it within the application containers::
+When developing this application, it is recommended to clone this repository locally and mount it within the application containers::
 
     git clone git@github.com:edly-io/forum.git
     tutor mounts add ./forum/
@@ -56,84 +46,67 @@ Re-build the openedx-dev image and launch the platform::
     tutor images build openedx-dev
     tutor dev launch
 
-To start using the forum v2, you will have to checkout the following branch of edx-platform: https://github.com/openedx/edx-platform/pull/35490 And then, create the "forum_v2.enable_forum_v2" waffle flag:
+Administration
+**************
 
-    tutor dev run lms ./manage.py lms waffle_flag forum_v2.enable_forum_v2 --create --everyone 
+Deployment of the forum v2 application is gated by two course waffle flags. In addition, this application provides a few commands to facilitate the transition from the legacy forum app.
 
-Forum v2 Waffle Flag
-********************
+Forum v2 toggle
+---------------
 
-Description
------------
-The ``forum_v2.enable_mysql_backend`` waffle flag is used to toggle the use of the MySQL backend instead of the MongoDB backend.
+In edx-platform, forum v2 is not enabled by default and edx-platform will keep communicating with the legacy forum app. To enable forum v2 in your Open edX platform, toggle the ``forum_v2.enable_forum_v2`` course waffle flag::
 
-Details
--------
-- **Toggle Name**: ``forum_v2.enable_mysql_backend``
-- **Implementation**: CourseWaffleFlag
-- **Default**: False
-- **Description**: Waffle flag to use the MySQL backend instead of Mongo backend.
-- **Use Cases**: temporary, open_edx
-- **Creation Date**: 2025-12-05
-- **Target Removal Date**: 2025-12-05
+    ./manage.py lms waffle_flag --create --everyone forum_v2.enable_forum_v2
 
-Usage
------
-This waffle flag is automatically enabled for a course when the ``migrate_courses_to_mysql`` command is run for that course. It can also be manually added through the Django admin interface.
+Note that Tutor enables this flag for all forum plugin users, such that you don't have to run this command yourself. If you wish to migrate your courses one by one to the new forum v2 app, you may create the corresponding "Waffle flag course override" objects in your LMS administration panel, at: ``http(s)://<LMS_HOST>/admin/waffle_utils/waffleflagcourseoverridemodel/``.
 
-Migration from MongoDB to MySQL backend:
-****************************************
+MySQL backend toggle
+--------------------
 
-    python manage.py forum_migrate_course_from_mongodb_to_mysql
+To preserve the legacy behaviour of storing data in MongoDB, the forum v2 app makes it possible to keep using MongoDB as a data backend. However, it is strongly recommended to switch to the MySQL storage backend by toggling the ``forum_v2.enable_mysql_backend`` course waffle flag::
 
-Description
------------
-This command migrates data from MongoDB to MySQL for the specified courses.
+    ./manage.py lms waffle_flag --create --everyone forum_v2.enable_mysql_backend
 
-Usage
------
-To migrate data for a specific course(s), run the command with the course ID(s) as argument:
+Here again, Tutor creates this flag by default, such that you don't have to create it yourself. If you decide to switch to MySQL, you will have to migrate your data from MongoDB -- see instructions below.
 
-   python manage.py forum_migrate_course_from_mongodb_to_mysql <course_id_1> <course_id_2>
+Migration from MongoDB to MySQL
+-------------------------------
 
-To migrate data for all courses, run the command with the ``all`` argument:
+The forum v2 app comes with the ``forum_migrate_courses_to_mysql`` migration command to move data from MongoDB to MySQL. This command will perform the following steps:
 
-   python manage.py forum_migrate_course_from_mongodb_to_mysql all
+1. Migrate data: user, content and read state data from MongoDB to MySQL.
+2. Enable the ``forum_v2.enable_mysql_backend`` waffle flag for the specified course(s).
 
-What the command does
+To migrate data for specific courses, run the command with the course IDs as argument::
+
+   ./manage.py lms forum_migrate_course_from_mongodb_to_mysql <course_id_1> <course_id_2>
+
+To migrate data for all courses, run the command with the ``all`` argument::
+
+   ./manage.py lms forum_migrate_course_from_mongodb_to_mysql all
+
+To test data migration without actually creating course toggles, use the ``--no-toggle`` option::
+
+    ./manage.py lms forum_migrate_course_from_mongodb_to_mysql --no-toggle all
+
+⚠️ Note that the command will create toggles only for the processed courses. Courses created in the future will not automatically use the MySQL backend unless you create the global waffle flag with the ``waffle_flag --create`` command indicated above.
+
+MongoDB data deletion
 ---------------------
-The command performs the following steps:
 
-1. **Migrates user data**: Migrates user data from MongoDB to MySQL.
-2. **Migrates content data**: Migrates content data from MongoDB to MySQL.
-3. **Migrates read state data**: Migrates read state data from MongoDB to MySQL.
-4. **Enables waffle flag**: Enables the ``forum_v2.enable_mysql_backend`` waffle flag for the specified course.
+After you have successfully migrated your course data from MySQL to MongoDB using the command above, you may delete your MongoDB data using the ``forum_delete_course_from_mongodb`` management command. This command deletes course data from MongoDB for the specified courses.
 
+Run the command with the course ID(s) as an argument::
 
-``python manage.py forum_delete_course_from_mongodb``
+   ./manage.py lms forum_delete_course_from_mongodb <course_id_1> <course_id_2>
 
-Description
------------
-This command deletes course data from MongoDB for the specified courses.
+To delete data for all courses, run the command with the ``all`` argument::
 
-Usage
------
-To delete data for a specific course(s), run the command with the course ID(s) as an argument:
+   ./manage.py lms forum_delete_course_from_mongodb all
 
-   python manage.py forum_delete_course_from_mongodb <course_id_1> <course_id_2>
+To try out changes before applying them, use the ``--dry-run`` option. For instance::
 
-To delete data for all courses, run the command with the ``all`` argument:
-
-   python manage.py forum_delete_course_from_mongodb all
-
-Options
--------
-* ``--dry-run``: Perform a dry run without actually deleting data.
-
-Example
--------
-
-   python manage.py forum_delete_course_from_mongodb <course_id> --dry-run
+   ./manage.py lms forum_delete_course_from_mongodb all --dry-run
 
 .. Deploying
 .. *********
@@ -210,8 +183,4 @@ Please do not report security issues in public. Please email security@openedx.or
     :target: https://github.com/edly-io/forum/blob/master/LICENSE.txt
     :alt: License
 
-.. TODO: Switch to the stable badge once we are ready for production.
-.. |status-badge| image:: https://img.shields.io/badge/Status-Experimental-yellow
-.. .. |status-badge| image:: https://img.shields.io/badge/Status-Maintained-brightgreen
-.. .. |status-badge| image:: https://img.shields.io/badge/Status-Deprecated-orange
-.. .. |status-badge| image:: https://img.shields.io/badge/Status-Unsupported-red
+.. |status-badge| image:: https://img.shields.io/badge/Status-Maintained-brightgreen
