@@ -22,6 +22,7 @@ from forum.models import (
     Subscription,
     UserVote,
 )
+from forum.utils import make_aware
 
 
 def get_all_course_ids(db: Database[dict[str, Any]]) -> list[str]:
@@ -43,6 +44,9 @@ def migrate_users(db: Database[dict[str, Any]], course_id: str) -> None:
         )
 
         for stat in user_data.get("course_stats", []):
+            last_activity_at = stat.get("last_activity_at")
+            if last_activity_at:
+                last_activity_at = make_aware(last_activity_at)
             if stat["course_id"] == course_id:
                 CourseStat.objects.update_or_create(
                     user=user,
@@ -53,7 +57,7 @@ def migrate_users(db: Database[dict[str, Any]], course_id: str) -> None:
                         "threads": stat.get("threads", 0),
                         "responses": stat.get("responses", 0),
                         "replies": stat.get("replies", 0),
-                        "last_activity_at": stat.get("last_activity_at"),
+                        "last_activity_at": last_activity_at,
                     },
                 )
 
@@ -89,8 +93,8 @@ def create_or_update_thread(thread_data: dict[str, Any]) -> None:
             anonymous_to_peers=thread_data.get("anonymous_to_peers", False),
             closed=thread_data.get("closed", False),
             pinned=thread_data.get("pinned"),
-            created_at=thread_data["created_at"],
-            updated_at=thread_data["updated_at"],
+            created_at=make_aware(thread_data["created_at"]),
+            updated_at=make_aware(thread_data["updated_at"]),
         )
         mongo_content.content_object_id = thread.pk
         mongo_content.content_type = thread.content_type
@@ -131,8 +135,8 @@ def create_or_update_comment(comment_data: dict[str, Any]) -> None:
             anonymous_to_peers=comment_data.get("anonymous_to_peers", False),
             endorsed=comment_data.get("endorsed", False),
             child_count=comment_data.get("child_count", 0),
-            created_at=comment_data["created_at"],
-            updated_at=comment_data["updated_at"],
+            created_at=make_aware(comment_data["created_at"]),
+            updated_at=make_aware(comment_data["updated_at"]),
         )
         mongo_comment.content_object_id = comment.pk
         mongo_comment.content_type = comment.content_type
@@ -249,7 +253,7 @@ def migrate_read_states(db: Database[dict[str, Any]], course_id: str) -> None:
                         LastReadTime.objects.get_or_create(
                             read_state=rs,
                             comment_thread=thread,
-                            timestamp=timestamp,
+                            timestamp=make_aware(timestamp),
                         )
 
 
