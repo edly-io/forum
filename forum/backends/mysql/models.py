@@ -533,9 +533,7 @@ class HistoricalAbuseFlagger(models.Model):
 class ReadState(models.Model):
     """Read state model."""
 
-    course_id: models.CharField[str, str] = models.CharField(
-        max_length=255, unique=True
-    )
+    course_id: models.CharField[str, str] = models.CharField(max_length=255)
     user: models.ForeignKey[User, User] = models.ForeignKey(
         User, related_name="read_states", on_delete=models.CASCADE
     )
@@ -575,7 +573,7 @@ class LastReadTime(models.Model):
 
     class Meta:
         app_label = "forum"
-        unique_together = ("read_state", "timestamp")
+        unique_together = ("read_state", "comment_thread")
         indexes = [
             models.Index(fields=["read_state", "timestamp"]),
             models.Index(fields=["comment_thread"]),
@@ -653,3 +651,16 @@ class Subscription(models.Model):
             models.Index(fields=["subscriber", "source_content_type"]),
             models.Index(fields=["source_object_id", "source_content_type"]),
         ]
+
+
+class MongoContent(models.Model):
+    """MongoContent model class."""
+
+    content_type: models.ForeignKey[ContentType] = models.ForeignKey(
+        ContentType, on_delete=models.CASCADE, null=True
+    )
+    content_object_id: models.PositiveIntegerField[int, int] = (
+        models.PositiveIntegerField(null=True)
+    )
+    content: GenericForeignKey = GenericForeignKey("content_type", "content_object_id")
+    mongo_id: models.CharField[str, str] = models.CharField(max_length=50, unique=True)

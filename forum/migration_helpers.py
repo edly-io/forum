@@ -9,14 +9,18 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 
 from forum.models import (
-    ForumUser,
-    CourseStat,
-    ReadState,
-    LastReadTime,
-    CommentThread,
+    AbuseFlagger,
     Comment,
-    UserVote,
+    CommentThread,
+    CourseStat,
+    EditHistory,
+    ForumUser,
+    HistoricalAbuseFlagger,
+    LastReadTime,
+    MongoContent,
+    ReadState,
     Subscription,
+    UserVote,
 )
 
 
@@ -69,54 +73,75 @@ def migrate_content(db: Database[dict[str, Any]], course_id: str) -> None:
 def create_or_update_thread(thread_data: dict[str, Any]) -> None:
     """Create or update a thread."""
     author = User.objects.get(id=int(thread_data["author_id"]))
-    thread, _ = CommentThread.objects.update_or_create(
-        id=int(str(thread_data["_id"]), 16),
-        defaults={
-            "author": author,
-            "course_id": thread_data["course_id"],
-            "title": thread_data.get("title", ""),
-            "body": thread_data["body"],
-            "thread_type": thread_data.get("thread_type", "discussion"),
-            "context": thread_data.get("context", "course"),
-            "anonymous": thread_data.get("anonymous", False),
-            "anonymous_to_peers": thread_data.get("anonymous_to_peers", False),
-            "closed": thread_data.get("closed", False),
-            "pinned": thread_data.get("pinned"),
-            "created_at": thread_data["created_at"],
-            "updated_at": thread_data["updated_at"],
-        },
+    mongo_thread_id = str(thread_data["_id"])
+    mongo_content, _ = MongoContent.objects.get_or_create(
+        mongo_id=mongo_thread_id,
     )
+    if not mongo_content.content_object_id:
+        thread = CommentThread.objects.create(
+            author=author,
+            course_id=thread_data["course_id"],
+            title=thread_data.get("title", ""),
+            body=thread_data["body"],
+            thread_type=thread_data.get("thread_type", "discussion"),
+            context=thread_data.get("context", "course"),
+            anonymous=thread_data.get("anonymous", False),
+            anonymous_to_peers=thread_data.get("anonymous_to_peers", False),
+            closed=thread_data.get("closed", False),
+            pinned=thread_data.get("pinned"),
+            created_at=thread_data["created_at"],
+            updated_at=thread_data["updated_at"],
+        )
+        mongo_content.content_object_id = thread.pk
+        mongo_content.content_type = thread.content_type
+        mongo_content.save()
+    else:
+        thread = CommentThread.objects.get(pk=mongo_content.content_object_id)
+
+    create_or_update_edit_history(thread_data)
+    create_or_update_abuse_flaggers(thread_data)
     create_votes(thread, thread_data.get("votes", {}))
 
 
 def create_or_update_comment(comment_data: dict[str, Any]) -> None:
     """Create or update a comment."""
     author = User.objects.get(id=int(comment_data["author_id"]))
-    thread = CommentThread.objects.get(
-        id=int(str(comment_data["comment_thread_id"]), 16)
-    )
+    mongo_thread_id = str(comment_data["comment_thread_id"])
+    mongo_thread = MongoContent.objects.get(mongo_id=mongo_thread_id)
+    thread = CommentThread.objects.get(pk=mongo_thread.content_object_id)
     parent = None
     if "parent_id" in comment_data and comment_data["parent_id"] != "None":
+        parent_id = str(comment_data["parent_id"])
+        mongo_parent_comment = MongoContent.objects.get(mongo_id=parent_id)
         parent = Comment.objects.filter(
-            id=int(str(comment_data["parent_id"]), 16)
+            id=mongo_parent_comment.content_object_id
         ).first()
 
-    comment, _ = Comment.objects.update_or_create(
-        id=int(str(comment_data["_id"]), 16),
-        defaults={
-            "author": author,
-            "comment_thread": thread,
-            "parent": parent,
-            "course_id": comment_data["course_id"],
-            "body": comment_data["body"],
-            "anonymous": comment_data.get("anonymous", False),
-            "anonymous_to_peers": comment_data.get("anonymous_to_peers", False),
-            "endorsed": comment_data.get("endorsed", False),
-            "child_count": comment_data.get("child_count", 0),
-            "created_at": comment_data["created_at"],
-            "updated_at": comment_data["updated_at"],
-        },
+    mongo_comment, _ = MongoContent.objects.get_or_create(
+        mongo_id=str(comment_data["_id"])
     )
+    if not mongo_comment.content_object_id:
+        comment = Comment.objects.create(
+            author=author,
+            comment_thread=thread,
+            parent=parent,
+            course_id=comment_data["course_id"],
+            body=comment_data["body"],
+            anonymous=comment_data.get("anonymous", False),
+            anonymous_to_peers=comment_data.get("anonymous_to_peers", False),
+            endorsed=comment_data.get("endorsed", False),
+            child_count=comment_data.get("child_count", 0),
+            created_at=comment_data["created_at"],
+            updated_at=comment_data["updated_at"],
+        )
+        mongo_comment.content_object_id = comment.pk
+        mongo_comment.content_type = comment.content_type
+        mongo_comment.save()
+    else:
+        comment = Comment.objects.get(pk=mongo_comment.content_object_id)
+
+    create_or_update_edit_history(comment_data)
+    create_or_update_abuse_flaggers(comment_data)
     create_votes(comment, comment_data.get("votes", {}))
 
 
@@ -133,16 +158,62 @@ def create_votes(content: CommentThread | Comment, votes_data: dict[str, Any]) -
             )
 
 
+def create_or_update_edit_history(content: dict[str, Any]) -> None:
+    """Create or update edit history for a content."""
+    edit_history = content.get("edit_history", [])
+    content_type = CommentThread if content["_type"] == "CommentThread" else Comment
+    mongo_content = MongoContent.objects.get(mongo_id=str(content["_id"]))
+    content_object = content_type.objects.get(pk=mongo_content.content_object_id)
+    for edit in edit_history:
+        EditHistory.objects.get_or_create(
+            content_object_id=content_object.pk,
+            content_type=content_object.content_type,
+            created_at=edit["created_at"],
+            editor=User.objects.get(pk=int(edit["author_id"])),
+            defaults={
+                "original_body": edit["original_body"],
+                "reason_code": edit["reason_code"],
+            },
+        )
+
+
+def create_or_update_abuse_flaggers(content: dict[str, Any]) -> None:
+    """Create or update abuse flaggers for content."""
+    content_type = CommentThread if content["_type"] == "CommentThread" else Comment
+    mongo_content = MongoContent.objects.get(mongo_id=str(content["_id"]))
+    content_object = content_type.objects.get(pk=mongo_content.content_object_id)
+    for user_id in content["abuse_flaggers"]:
+        user = User.objects.get(pk=int(user_id))
+        AbuseFlagger.objects.update_or_create(
+            user=user,
+            content_type=content_object.content_type,
+            content_object_id=content_object.pk,
+            defaults={
+                "flagged_at": timezone.now(),
+            },
+        )
+    for user_id in content["historical_abuse_flaggers"]:
+        user = User.objects.get(pk=int(user_id))
+        HistoricalAbuseFlagger.objects.update_or_create(
+            user=user,
+            content_type=content_object.content_type,
+            content_object_id=content_object.pk,
+            defaults={
+                "flagged_at": timezone.now(),
+            },
+        )
+
+
 def migrate_subscriptions(db: Database[dict[str, Any]], content_id: str) -> None:
     """Migrate subscriptions from mongo to mysql."""
-    subscriptions = db.subscriptions.find({"source_id": content_id})
+    subscriptions = db.subscriptions.find({"source_id": str(content_id)})
     for sub in subscriptions:
         user = User.objects.get(id=int(sub["subscriber_id"]))
         content_type = (
             CommentThread if sub["source_type"] == "CommentThread" else Comment
         )
-        content = content_type.objects.filter(id=int(str(content_id), 16)).first()
-
+        mongo_content = MongoContent.objects.get(mongo_id=str(content_id))
+        content = content_type.objects.get(pk=mongo_content.content_object_id)
         if content:
             Subscription.objects.update_or_create(
                 subscriber=user,
@@ -170,12 +241,15 @@ def migrate_read_states(db: Database[dict[str, Any]], course_id: str) -> None:
                 for thread_id, timestamp in read_state.get(
                     "last_read_times", {}
                 ).items():
+                    thread_id = MongoContent.objects.get(
+                        mongo_id=thread_id
+                    ).content_object_id
                     thread = CommentThread.objects.filter(id=thread_id).first()
                     if thread:
-                        LastReadTime.objects.update_or_create(
+                        LastReadTime.objects.get_or_create(
                             read_state=rs,
                             comment_thread=thread,
-                            defaults={"timestamp": timestamp},
+                            timestamp=timestamp,
                         )
 
 
@@ -189,7 +263,7 @@ def delete_course_data(
     contents = db.contents.find({"course_id": course_id})
     for content in contents:
         subscriptions = (
-            db.subscriptions.delete_many({"source_id": content["_id"]})
+            db.subscriptions.delete_many({"source_id": str(content["_id"])})
             if not dry_run
             else None
         )
@@ -216,7 +290,7 @@ def delete_course_data(
                     }
                 },
             )
-        stdout.write(f"Updated user data for user ID: {user_id}")
+            stdout.write(f"Updated user data for user ID: {user_id}")
 
     if not dry_run:
         db.users.update_many(
@@ -228,7 +302,7 @@ def delete_course_data(
                 }
             },
         )
-    stdout.write("Cleaned up users collection")
+        stdout.write("Cleaned up users collection")
 
 
 def log_deletion(
@@ -244,12 +318,12 @@ def enable_mysql_backend_for_course(course_id: str) -> None:
     """Enable MySQL backend waffle flag for a course."""
     # pylint: disable=C0415,E0401
     from opaque_keys.edx.locator import CourseKey  # type: ignore[import-not-found]
-    from openedx.core.djangoapps.waffle_utils import WaffleFlagCourseOverrideModel  # type: ignore[import-not-found]
+    from openedx.core.djangoapps.waffle_utils.models import (  # type: ignore[import-not-found]
+        WaffleFlagCourseOverrideModel,
+    )
     from forum.toggles import ENABLE_MYSQL_BACKEND
 
     course_key = CourseKey.from_string(course_id)
-    mysql_waffle_flag, _ = WaffleFlagCourseOverrideModel.objects.get_or_create(
-        course_id=course_key, waffle_flag=ENABLE_MYSQL_BACKEND.name
+    WaffleFlagCourseOverrideModel.objects.create(
+        course_id=course_key, waffle_flag=ENABLE_MYSQL_BACKEND.name, enabled=True
     )
-    mysql_waffle_flag.enabled = True
-    mysql_waffle_flag.save()

@@ -11,14 +11,15 @@ from django.utils import timezone
 from pymongo.database import Database
 
 from forum.models import (
-    ForumUser,
-    CourseStat,
-    ReadState,
-    LastReadTime,
-    CommentThread,
     Comment,
-    UserVote,
+    CommentThread,
+    CourseStat,
+    ForumUser,
+    LastReadTime,
+    MongoContent,
+    ReadState,
     Subscription,
+    UserVote,
 )
 
 pytestmark = pytest.mark.django_db
@@ -50,9 +51,6 @@ def test_migrate_users(patched_mongodb: Database[Any]) -> None:
                     "last_activity_at": timezone.now(),
                 }
             ],
-            "read_states": [
-                {"course_id": "test_course", "last_read_times": {"1": timezone.now()}}
-            ],
         }
     )
 
@@ -72,28 +70,49 @@ def test_migrate_users(patched_mongodb: Database[Any]) -> None:
 
 
 def test_migrate_content(patched_mongodb: Database[Any]) -> None:
-    patched_mongodb.users.insert_one(
-        {
-            "_id": "1",
-            "username": "testuser",
-            "default_sort_key": "date",
-            "course_stats": [
-                {
-                    "course_id": "test_course",
-                }
-            ],
-            "read_states": [
-                {
-                    "course_id": "test_course",
-                    "last_read_times": {"000000000000000000000001": timezone.now()},
-                }
-            ],
-        }
+    """Test migrate comments and comment threads."""
+    comment_thread_id = ObjectId()
+    comment_id = ObjectId()
+    patched_mongodb.users.insert_many(
+        [
+            {
+                "_id": "1",
+                "username": "testuser",
+                "default_sort_key": "date",
+                "course_stats": [
+                    {
+                        "course_id": "test_course",
+                    }
+                ],
+                "read_states": [
+                    {
+                        "course_id": "test_course",
+                        "last_read_times": {str(comment_thread_id): timezone.now()},
+                    }
+                ],
+            },
+            {
+                "_id": "2",
+                "username": "testuser2",
+                "default_sort_key": "date",
+                "course_stats": [
+                    {
+                        "course_id": "test_course",
+                    }
+                ],
+                "read_states": [
+                    {
+                        "course_id": "test_course",
+                        "last_read_times": {str(comment_thread_id): timezone.now()},
+                    }
+                ],
+            },
+        ]
     )
     patched_mongodb.contents.insert_many(
         [
             {
-                "_id": ObjectId("000000000000000000000001"),
+                "_id": comment_thread_id,
                 "_type": "CommentThread",
                 "author_id": "1",
                 "course_id": "test_course",
@@ -102,17 +121,21 @@ def test_migrate_content(patched_mongodb: Database[Any]) -> None:
                 "created_at": timezone.now(),
                 "updated_at": timezone.now(),
                 "votes": {"up": ["1"], "down": []},
+                "abuse_flaggers": ["1", "2"],
+                "historical_abuse_flaggers": ["1", "2"],
             },
             {
-                "_id": ObjectId("000000000000000000000002"),
+                "_id": comment_id,
                 "_type": "Comment",
                 "author_id": "1",
                 "course_id": "test_course",
                 "body": "Test comment",
                 "created_at": timezone.now(),
                 "updated_at": timezone.now(),
-                "comment_thread_id": ObjectId("000000000000000000000001"),
+                "comment_thread_id": comment_thread_id,
                 "votes": {"up": [], "down": ["1"]},
+                "abuse_flaggers": ["1", "2"],
+                "historical_abuse_flaggers": ["1", "2"],
             },
         ]
     )
@@ -121,13 +144,14 @@ def test_migrate_content(patched_mongodb: Database[Any]) -> None:
 
     call_command("forum_migrate_course_from_mongodb_to_mysql", "test_course")
 
-    thread = CommentThread.objects.get(
-        pk=int(str(ObjectId("000000000000000000000001")), 16)
-    )
+    mongo_thread = MongoContent.objects.get(mongo_id=comment_thread_id)
+    assert mongo_thread
+    thread = CommentThread.objects.get(pk=mongo_thread.content_object_id)
     assert thread.title == "Test Thread"
     assert thread.body == "Test body"
 
-    comment = Comment.objects.get(pk=int(str(ObjectId("000000000000000000000002")), 16))
+    mongo_comment = MongoContent.objects.get(mongo_id=comment_id)
+    comment = Comment.objects.get(pk=mongo_comment.content_object_id)
     assert comment.body == "Test comment"
     assert comment.comment_thread == thread
 
@@ -139,10 +163,13 @@ def test_migrate_content(patched_mongodb: Database[Any]) -> None:
 
 
 def test_migrate_subscriptions(patched_mongodb: Database[Any]) -> None:
+    """Test migrate subscriptions."""
+    comment_thread_id = ObjectId()
+    comment_id = ObjectId()
     patched_mongodb.contents.insert_many(
         [
             {
-                "_id": ObjectId("000000000000000000000001"),
+                "_id": comment_thread_id,
                 "_type": "CommentThread",
                 "author_id": "1",
                 "course_id": "test_course",
@@ -151,24 +178,36 @@ def test_migrate_subscriptions(patched_mongodb: Database[Any]) -> None:
                 "created_at": timezone.now(),
                 "updated_at": timezone.now(),
                 "votes": {"up": ["1"], "down": []},
+                "abuse_flaggers": [
+                    "1",
+                ],
+                "historical_abuse_flaggers": [
+                    "1",
+                ],
             },
             {
-                "_id": ObjectId("000000000000000000000002"),
+                "_id": comment_id,
                 "_type": "Comment",
                 "author_id": "1",
                 "course_id": "test_course",
                 "body": "Test comment",
                 "created_at": timezone.now(),
                 "updated_at": timezone.now(),
-                "comment_thread_id": ObjectId("000000000000000000000001"),
+                "comment_thread_id": comment_thread_id,
                 "votes": {"up": [], "down": ["1"]},
+                "abuse_flaggers": [
+                    "1",
+                ],
+                "historical_abuse_flaggers": [
+                    "1",
+                ],
             },
         ]
     )
     patched_mongodb.subscriptions.insert_one(
         {
             "subscriber_id": "1",
-            "source_id": ObjectId("000000000000000000000001"),
+            "source_id": str(comment_thread_id),
             "source_type": "CommentThread",
             "source": {"course_id": "test_course"},
             "created_at": timezone.now(),
@@ -177,20 +216,19 @@ def test_migrate_subscriptions(patched_mongodb: Database[Any]) -> None:
     )
 
     user = User.objects.create(pk=1, username="testuser")
-    thread = CommentThread.objects.create(
-        pk=int(str(ObjectId("000000000000000000000001")), 16),
-        author=user,
-        course_id="test_course",
-    )
-
     call_command("forum_migrate_course_from_mongodb_to_mysql", "test_course")
 
+    mongo_thread = MongoContent.objects.get(mongo_id=str(comment_thread_id))
+
     assert Subscription.objects.filter(
-        subscriber=user, source_object_id=thread.pk
+        subscriber=user, source_object_id=mongo_thread.content_object_id
     ).exists()
 
 
 def test_delete_course_data(patched_mongodb: Database[Any]) -> None:
+    """Test delete mongo course management command."""
+    comment_thread_id = ObjectId()
+    comment_id = ObjectId()
     patched_mongodb.users.insert_one(
         {
             "_id": "1",
@@ -204,7 +242,7 @@ def test_delete_course_data(patched_mongodb: Database[Any]) -> None:
             "read_states": [
                 {
                     "course_id": "test_course",
-                    "last_read_times": {"000000000000000000000001": timezone.now()},
+                    "last_read_times": {str(comment_thread_id): timezone.now()},
                 }
             ],
         }
@@ -212,7 +250,7 @@ def test_delete_course_data(patched_mongodb: Database[Any]) -> None:
     patched_mongodb.contents.insert_many(
         [
             {
-                "_id": ObjectId("000000000000000000000001"),
+                "_id": comment_thread_id,
                 "_type": "CommentThread",
                 "author_id": "1",
                 "course_id": "test_course",
@@ -223,14 +261,14 @@ def test_delete_course_data(patched_mongodb: Database[Any]) -> None:
                 "votes": {"up": ["1"], "down": []},
             },
             {
-                "_id": ObjectId("000000000000000000000002"),
+                "_id": comment_id,
                 "_type": "Comment",
                 "author_id": "1",
                 "course_id": "test_course",
                 "body": "Test comment",
                 "created_at": timezone.now(),
                 "updated_at": timezone.now(),
-                "comment_thread_id": ObjectId("000000000000000000000001"),
+                "comment_thread_id": comment_thread_id,
                 "votes": {"up": [], "down": ["1"]},
             },
         ]
@@ -238,7 +276,7 @@ def test_delete_course_data(patched_mongodb: Database[Any]) -> None:
     patched_mongodb.subscriptions.insert_one(
         {
             "subscriber_id": "1",
-            "source_id": ObjectId("000000000000000000000001"),
+            "source_id": str(comment_thread_id),
             "source_type": "CommentThread",
             "source": {"course_id": "test_course"},
             "created_at": timezone.now(),
