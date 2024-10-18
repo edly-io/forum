@@ -707,7 +707,7 @@ class MySQLBackend(AbstractBackend):
             )
 
         base_query = base_query.annotate(
-            votes_point=Sum("uservote__vote"),
+            votes_point=Sum("uservote__vote", distinct=True),
             comments_count=Count("comment", distinct=True),
         )
 

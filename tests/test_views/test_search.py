@@ -563,6 +563,19 @@ def test_sorting(api_client: APIClient, patched_get_backend: Any) -> None:
             }
         )
         threads_ids.append(thread)
+
+        if i in [1, 3]:
+            for j in range(5):
+                backend.create_comment(
+                    {
+                        "body": f"body-{j}",
+                        "course_id": "course_id",
+                        "comment_thread_id": thread,
+                        "author_id": user_id,
+                    }
+                )
+                time.sleep(0.001)
+
         # Add a slight delay to ensure created_date is different
         time.sleep(0.001)
 
@@ -570,19 +583,6 @@ def test_sorting(api_client: APIClient, patched_get_backend: Any) -> None:
     votes = backend.get_votes_dict(up=["1"], down=[])
     backend.update_thread(thread_id=threads_ids[1], votes=votes)
     backend.update_thread(thread_id=threads_ids[2], votes=votes)
-
-    for idx in [1, 3]:
-        thread_id = threads_ids[idx]
-        for i in range(5):
-            backend.create_comment(
-                {
-                    "body": f"body-{i}",
-                    "course_id": "course_id",
-                    "comment_thread_id": thread_id,
-                    "author_id": user_id,
-                }
-            )
-            time.sleep(0.001)
 
     refresh_elastic_search_indices()
 
@@ -602,11 +602,11 @@ def test_sorting(api_client: APIClient, patched_get_backend: Any) -> None:
         ), f"Expected {expected_ids}, but got {actual_ids}"
 
     # Test various sorting scenarios
-    # fetch_and_check("date", [5, 4, 3, 2, 1, 0])
-    # fetch_and_check("activity", [5, 4, 3, 2, 1, 0])
-    # fetch_and_check("votes", [2, 1, 5, 4, 3, 0])
+    fetch_and_check("date", [5, 4, 3, 2, 1, 0])
+    fetch_and_check("activity", [5, 4, 3, 2, 1, 0])
+    fetch_and_check("votes", [2, 1, 5, 4, 3, 0])
     fetch_and_check("comments", [3, 1, 5, 4, 2, 0])
-    # fetch_and_check(None, [5, 4, 3, 2, 1, 0])  # Default sorting by date
+    fetch_and_check(None, [5, 4, 3, 2, 1, 0])  # Default sorting by date
 
 
 def test_spelling_correction(api_client: APIClient, patched_get_backend: Any) -> None:
