@@ -567,9 +567,14 @@ class MongoBackend(AbstractBackend):
             dict[str, Any]: A dictionary containing the paginated thread results and associated metadata.
         """
         # Convert thread_ids to ObjectId
-        comment_thread_obj_ids: list[ObjectId] = [
-            ObjectId(tid) for tid in comment_thread_ids
-        ]
+        comment_thread_obj_ids: list[ObjectId] = []
+
+        for tid in comment_thread_ids:
+            try:
+                thread_id = ObjectId(tid)
+                comment_thread_obj_ids.append(thread_id)
+            except bson_errors.InvalidId:
+                continue
 
         # Base query
         base_query: dict[str, Any] = {

@@ -11,6 +11,7 @@ from elasticsearch import exceptions, helpers
 
 from forum.backends.mongodb.contents import BaseContents
 from forum.search.es import ElasticsearchModelMixin
+from forum.search.mappings import get_mapping_by_index_name
 
 log = logging.getLogger(__name__)
 
@@ -38,8 +39,19 @@ class ElasticsearchBackend(ElasticsearchModelMixin):
         index_names = self.create_indices()
         for index_name in index_names:
             current_batch = 1
-            model = self.get_index_model_rel(index_name)
-            for response in self._import_to_es(model, index_name, batch_size):
+            mongo_model = self.get_index_model_rel(index_name)
+            for response in self._import_to_es_from_mongo(
+                mongo_model, index_name, batch_size
+            ):
+                self.batch_import_post_process(response, current_batch)
+                current_batch += 1
+
+        for index_name in index_names:
+            current_batch = 1
+            mysql_model = self.get_mysql_model_from_index_name(index_name)
+            for response in self._import_to_es_from_mysql(
+                mysql_model, index_name, batch_size
+            ):
                 self.batch_import_post_process(response, current_batch)
                 current_batch += 1
 
@@ -52,6 +64,8 @@ class ElasticsearchBackend(ElasticsearchModelMixin):
         for index_name in index_names:
             model = self.get_index_model_rel(index_name)
             self.move_alias(model.index_name, index_name, force_delete=True)
+
+        self.delete_unused_indices()
 
         log.info("Rebuild indices complete.")
 
@@ -83,9 +97,21 @@ class ElasticsearchBackend(ElasticsearchModelMixin):
         """
         for index_name in index_names:
             current_batch = 1
-            model = self.get_index_model_rel(index_name)
-            query = {"updated_at": {"$gte": start_time}}
-            for response in self._import_to_es(model, index_name, batch_size, query):
+            mongo_model = self.get_index_model_rel(index_name)
+            mongo_query: dict[str, Any] = {"updated_at": {"$gte": start_time}}
+            for response in self._import_to_es_from_mongo(
+                mongo_model, index_name, batch_size, mongo_query
+            ):
+                self.batch_import_post_process(response, current_batch)
+                current_batch += 1
+
+        for index_name in index_names:
+            current_batch = 1
+            mysql_model = self.get_mysql_model_from_index_name(index_name)
+            mysql_query: dict[str, Any] = {"updated_at__gte": start_time}
+            for response in self._import_to_es_from_mysql(
+                mysql_model, index_name, batch_size, mysql_query
+            ):
                 self.batch_import_post_process(response, current_batch)
                 current_batch += 1
         log.info(f"Catch up from {start_time} complete.")
@@ -104,7 +130,8 @@ class ElasticsearchBackend(ElasticsearchModelMixin):
             index_name = f"{model.index_name}_{time_now}"
             index_names.append(index_name)
             self.client.indices.create(
-                index=index_name, body={"mappings": model.mapping()}
+                index=index_name,
+                body={"mappings": get_mapping_by_index_name(model.index_name)},
             )
         log.info(f"New indices {index_names} are created.")
         return index_names
@@ -270,7 +297,7 @@ class ElasticsearchBackend(ElasticsearchModelMixin):
 
         for index_name in actual_mappings:
             model = self.get_index_model_rel(index_name)
-            expected_mapping = model.mapping()
+            expected_mapping = get_mapping_by_index_name(model.index_name)
             actual_mapping = actual_mappings[index_name]["mappings"]
 
             if not expected_mapping.items() <= actual_mapping.items():
@@ -314,7 +341,7 @@ class ElasticsearchBackend(ElasticsearchModelMixin):
         """
         return all(self.exists_alias(name) for name in names)
 
-    def _import_to_es(
+    def _import_to_es_from_mongo(
         self,
         model: BaseContents,
         index_name: str,
@@ -339,6 +366,43 @@ class ElasticsearchBackend(ElasticsearchModelMixin):
             action = {
                 "_index": index_name,
                 "_id": str(doc.get("_id")),
+                "_source": model.doc_to_hash(doc),
+            }
+            actions.append(action)
+            if len(actions) >= batch_size:
+                yield helpers.bulk(self.client, actions)
+                actions = []
+        if actions:
+            yield helpers.bulk(self.client, actions)
+
+    def _import_to_es_from_mysql(
+        self,
+        model: Any,
+        index_name: str,
+        batch_size: int = 500,
+        query: dict[str, Any] | None = None,
+    ) -> Iterator[tuple[int, Any]]:
+        """
+        Import documents from the MySQL database into Elasticsearch.
+
+        Args:
+            model (Content): The model representing the documents.
+            index_name (str): The name of the index to import into.
+            batch_size (int): Number of documents to import in each batch.
+            query (dict[str, Any], optional): Query to filter documents for import.
+
+        Yields:
+            Iterator[tuple[int, Any]]: Number of successful imports and any errors.
+        """
+        queryset = model.objects.all()
+        if query:
+            queryset = queryset.filter(**query)
+
+        actions = []
+        for doc in queryset.iterator(chunk_size=batch_size):
+            action = {
+                "_index": index_name,
+                "_id": str(doc.id),
                 "_source": model.doc_to_hash(doc),
             }
             actions.append(action)

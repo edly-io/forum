@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from django.contrib.auth.models import User  # pylint: disable=E5142
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import QuerySet
@@ -71,9 +71,7 @@ class CourseStat(models.Model):
             "responses": self.responses,
             "replies": self.replies,
             "course_id": self.course_id,
-            "last_activity_at": (
-                self.last_activity_at.isoformat() if self.last_activity_at else None
-            ),
+            "last_activity_at": self.last_activity_at,
         }
 
     class Meta:
@@ -83,6 +81,8 @@ class CourseStat(models.Model):
 
 class Content(models.Model):
     """Content model."""
+
+    index_name = ""
 
     author: models.ForeignKey[User, User] = models.ForeignKey(
         User, on_delete=models.CASCADE
@@ -103,6 +103,11 @@ class Content(models.Model):
     )
     updated_at: models.DateTimeField[datetime, datetime] = models.DateTimeField(
         auto_now=True
+    )
+    uservote = GenericRelation(
+        "UserVote",
+        object_id_field="content_object_id",
+        content_type_field="content_type",
     )
 
     @property
@@ -182,6 +187,8 @@ class Content(models.Model):
 class CommentThread(Content):
     """Comment thread model."""
 
+    index_name = "comment_threads"
+
     THREAD_TYPE_CHOICES = [
         ("question", "Question"),
         ("discussion", "Discussion"),
@@ -244,9 +251,7 @@ class CommentThread(Content):
                     "reason_code": edit.reason_code,
                     "editor_username": edit.editor.username,
                     "author_id": edit.editor.pk,
-                    "created_at": (
-                        edit.created_at.isoformat() if edit.created_at else None
-                    ),
+                    "created_at": edit.created_at,
                 }
             )
 
@@ -273,14 +278,35 @@ class CommentThread(Content):
             "closed": self.closed,
             "closed_by_id": str(self.closed_by.pk) if self.closed_by else None,
             "close_reason_code": self.close_reason_code,
-            "author_id": self.author.pk,
+            "author_id": str(self.author.pk),
             "author_username": self.author.username,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "updated_at": self.updated_at,
+            "created_at": self.created_at,
+            "last_activity_at": self.last_activity_at,
+            "edit_history": edit_history,
+        }
+
+    def doc_to_hash(self) -> dict[str, Any]:
+        """
+        Converts the CommentThread model instance to a dictionary representation for Elasticsearch.
+        """
+        return {
+            "id": str(self.pk),
+            "title": self.title,
+            "body": self.body,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "last_activity_at": (
                 self.last_activity_at.isoformat() if self.last_activity_at else None
             ),
-            "edit_history": edit_history,
+            "comment_count": self.comment_count,
+            "votes_point": self.get_votes.get("point"),
+            "context": self.context,
+            "course_id": self.course_id,
+            "commentable_id": self.commentable_id,
+            "author_id": str(self.author.pk),
+            "group_id": self.group_id,
+            "thread_id": str(self.pk),
         }
 
     class Meta:
@@ -298,6 +324,8 @@ class CommentThread(Content):
 
 class Comment(Content):
     """Comment model class"""
+
+    index_name = "comments"
 
     endorsement: models.JSONField[dict[str, Any], dict[str, Any]] = models.JSONField(
         default=dict
@@ -373,9 +401,7 @@ class Comment(Content):
                     "reason_code": edit.reason_code,
                     "editor_username": edit.editor.username,
                     "author_id": edit.editor.pk,
-                    "created_at": (
-                        edit.created_at.isoformat() if edit.created_at else None
-                    ),
+                    "created_at": edit.created_at,
                 }
             )
 
@@ -406,8 +432,8 @@ class Comment(Content):
             "child_count": self.child_count,
             "author_username": self.author.username,
             "sk": str(self.pk),
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at,
+            "created_at": self.created_at,
             "endorsement": endorsement if self.endorsement else None,
         }
         if edit_history:
@@ -419,6 +445,22 @@ class Comment(Content):
     def get(cls, comment_id: str) -> Comment:
         """Get a comment model instance."""
         return cls.objects.get(pk=int(comment_id))
+
+    def doc_to_hash(self) -> dict[str, Any]:
+        """
+        Converts the Comment model instance to a dictionary representation for Elasticsearch.
+        """
+        return {
+            "body": self.body,
+            "course_id": self.course_id,
+            "comment_thread_id": self.comment_thread.pk,
+            "commentable_id": None,
+            "group_id": self.group_id,
+            "context": "course",
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "title": None,
+        }
 
     class Meta:
         app_label = "forum"
@@ -546,7 +588,7 @@ class ReadState(models.Model):
         last_read_times = {}
         for last_read_time in self.last_read_times.all():
             last_read_times[str(last_read_time.comment_thread.pk)] = (
-                last_read_time.timestamp.isoformat()
+                last_read_time.timestamp
             )
         return {
             "_id": str(self.pk),
@@ -638,8 +680,8 @@ class Subscription(models.Model):
             "subscriber_id": str(self.subscriber.pk),
             "source_id": str(self.source_object_id),
             "source_type": self.source_content_type.model,
-            "updated_at": self.updated_at.isoformat(),
-            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at,
+            "created_at": self.created_at,
         }
 
     class Meta:

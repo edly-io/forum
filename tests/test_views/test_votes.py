@@ -40,6 +40,11 @@ def get_thread(user: dict[str, Any], patched_get_backend: Any) -> dict[str, Any]
         dict[str, Any]: The created thread, represented as a dictionary.
     """
     backend = patched_get_backend
+
+    # create dummy users
+    for user_id in range(2, 6):
+        backend.find_or_create_user(str(user_id), username=f"testuser-{user_id}")
+
     thread_id = backend.create_thread(
         {
             "title": "Test Thread",

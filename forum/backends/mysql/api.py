@@ -20,6 +20,7 @@ from django.db.models import (
     Q,
     Subquery,
     When,
+    Sum,
 )
 from django.utils import timezone
 from rest_framework import status
@@ -537,7 +538,7 @@ class MySQLBackend(AbstractBackend):
         Returns:
             dict[str, Any]: The user's read state for the specified course, or an empty dictionary if not found.
         """
-        user = User.objects.get(pk=user_id)
+        user = User.objects.get(pk=int(user_id))
         try:
             read_state = ReadState.objects.get(user=user, course_id=course_id)
         except ObjectDoesNotExist:
@@ -563,8 +564,8 @@ class MySQLBackend(AbstractBackend):
         sort_key_mapper = {
             "date": "-created_at",
             "activity": "-last_activity_at",
-            "votes": "-votes__point",
-            "comments": "-comment_count",
+            "votes": "-votes_point",
+            "comments": "-comments_count",
         }
         sort_key = sort_key or "date"
         sort_key = sort_key_mapper.get(sort_key, "")
@@ -624,16 +625,25 @@ class MySQLBackend(AbstractBackend):
         Returns:
             dict[str, Any]: A dictionary containing the paginated thread results and associated metadata.
         """
+        mysql_comment_thread_ids: list[int] = []
+
+        for tid in comment_thread_ids:
+            try:
+                thread_id = int(tid)
+                mysql_comment_thread_ids.append(thread_id)
+            except ValueError:
+                continue
+
         if user_id is None or user_id == "":
             user = None
         else:
             try:
-                user = User.objects.get(pk=user_id)
+                user = User.objects.get(pk=int(user_id))
             except User.DoesNotExist as exc:
                 raise ValueError("User does not exist") from exc
         # Base query
         base_query = CommentThread.objects.filter(
-            pk__in=comment_thread_ids, context=context
+            pk__in=mysql_comment_thread_ids, context=context
         )
 
         # Group filtering
@@ -645,7 +655,7 @@ class MySQLBackend(AbstractBackend):
         # Author filtering
         if author_id:
             base_query = base_query.filter(author__pk=author_id)
-            if user and author_id != str(user.pk):
+            if user and int(author_id) != user.pk:
                 base_query = base_query.filter(
                     anonymous=False, anonymous_to_peers=False
                 )
@@ -681,7 +691,7 @@ class MySQLBackend(AbstractBackend):
 
             base_query = base_query.filter(
                 pk__in=list(
-                    set(comment_thread_ids) & set(flagged_comments)
+                    set(mysql_comment_thread_ids) & set(flagged_comments)
                     | set(flagged_threads)
                 )
             )
@@ -702,6 +712,16 @@ class MySQLBackend(AbstractBackend):
             base_query = base_query.annotate(num_comments=Count("comment")).filter(
                 num_comments=0
             )
+
+        base_query = base_query.annotate(
+            votes_point=Sum("uservote__vote"),
+            comments_count=Count("comment", distinct=True),
+        )
+
+        base_query = base_query.annotate(
+            votes_point=Sum("uservote__vote", distinct=True),
+            comments_count=Count("comment", distinct=True),
+        )
 
         sort_criteria = cls.get_sort_criteria(sort_key)
 
@@ -727,7 +747,7 @@ class MySQLBackend(AbstractBackend):
             has_more = False
 
             for thread in comment_threads.iterator():
-                thread_key = thread.pk
+                thread_key = str(thread.pk)
                 if (
                     thread_key not in read_dates
                     or read_dates[thread_key] < thread.last_activity_at
@@ -822,7 +842,8 @@ class MySQLBackend(AbstractBackend):
         )
 
         presenters = []
-        for thread in threads:
+        for thread_id in thread_ids:
+            thread = threads.get(id=thread_id)
             is_read, unread_count = read_states.get(
                 thread.pk, (False, thread.comment_count)
             )
@@ -1276,8 +1297,8 @@ class MySQLBackend(AbstractBackend):
             anonymous=False,
         )
 
-        responses = comments.filter(comment_thread__isnull=False)
-        replies = comments.filter(comment_thread__isnull=True)
+        responses = comments.filter(parent__isnull=True)
+        replies = comments.filter(parent__isnull=False)
 
         comment_ids = [comment.pk for comment in comments]
         active_flags = AbuseFlagger.objects.filter(
@@ -1532,6 +1553,28 @@ class MySQLBackend(AbstractBackend):
                     content_type=ContentType.objects.get_for_model(Comment),
                 )
 
+        if "historical_abuse_flaggers" in kwargs:
+            existing_historical_abuse_flaggers = HistoricalAbuseFlagger.objects.filter(
+                content_object_id=comment.pk,
+                content_type=ContentType.objects.get_for_model(Comment),
+            ).values_list("user_id", flat=True)
+
+            new_historical_abuse_flaggers = [
+                user_id
+                for user_id in kwargs["historical_abuse_flaggers"]
+                if user_id not in existing_historical_abuse_flaggers
+            ]
+            HistoricalAbuseFlagger.objects.bulk_create(
+                [
+                    HistoricalAbuseFlagger(
+                        user=User.objects.get(pk=user_id),
+                        content_object_id=comment.pk,
+                        content_type=ContentType.objects.get_for_model(Comment),
+                    )
+                    for user_id in new_historical_abuse_flaggers
+                ]
+            )
+
         if kwargs.get("editing_user_id"):
             EditHistory.objects.create(
                 comment=comment,
@@ -1540,6 +1583,42 @@ class MySQLBackend(AbstractBackend):
                 reason_code=kwargs.get("edit_reason_code"),
                 created_at=timezone.now(),
             )
+
+        if "votes" in kwargs:
+            up_votes = kwargs["votes"].get("up", [])
+            down_votes = kwargs["votes"].get("down", [])
+            for user_id in up_votes:
+                UserVote.objects.update_or_create(
+                    user=User.objects.get(id=int(user_id)),
+                    content_type=ContentType.objects.get_for_model(Comment),
+                    content_object_id=comment.pk,
+                    vote=1,
+                )
+            for user_id in down_votes:
+                UserVote.objects.update_or_create(
+                    user=User.objects.get(id=int(user_id)),
+                    content_type=ContentType.objects.get_for_model(Comment),
+                    content_object_id=comment.pk,
+                    vote=-1,
+                )
+
+        if "votes" in kwargs:
+            up_votes = kwargs["votes"].get("up", [])
+            down_votes = kwargs["votes"].get("down", [])
+            for user_id in up_votes:
+                UserVote.objects.update_or_create(
+                    user=User.objects.get(id=int(user_id)),
+                    content_type=ContentType.objects.get_for_model(Comment),
+                    content_object_id=comment.pk,
+                    vote=1,
+                )
+            for user_id in down_votes:
+                UserVote.objects.update_or_create(
+                    user=User.objects.get(id=int(user_id)),
+                    content_type=ContentType.objects.get_for_model(Comment),
+                    content_object_id=comment.pk,
+                    vote=-1,
+                )
 
         comment.updated_at = timezone.now()
         comment.save()
@@ -1557,7 +1636,7 @@ class MySQLBackend(AbstractBackend):
     def get_user(user_id: str) -> dict[str, Any] | None:
         """Return user from user_id."""
         try:
-            return ForumUser.objects.get(user__pk=user_id).to_dict()
+            return ForumUser.objects.get(user__pk=int(user_id)).to_dict()
         except ObjectDoesNotExist:
             return None
 
@@ -1623,6 +1702,9 @@ class MySQLBackend(AbstractBackend):
     @staticmethod
     def create_thread(data: dict[str, Any]) -> str:
         """Create thread."""
+        optional_args = {}
+        if group_id := data.get("group_id"):
+            optional_args["group_id"] = group_id
         new_thread = CommentThread.objects.create(
             title=data["title"],
             body=data["body"],
@@ -1634,6 +1716,7 @@ class MySQLBackend(AbstractBackend):
             thread_type=data.get("thread_type", "discussion"),
             context=data.get("context", "course"),
             last_activity_at=timezone.now(),
+            **optional_args,
         )
         return str(new_thread.pk)
 
@@ -1694,6 +1777,30 @@ class MySQLBackend(AbstractBackend):
                     content_object_id=thread.pk,
                     content_type=ContentType.objects.get_for_model(CommentThread),
                 )
+
+        if "historical_abuse_flaggers" in kwargs:
+            existing_historical_abuse_flaggers = HistoricalAbuseFlagger.objects.filter(
+                content_object_id=thread.pk,
+                content_type=ContentType.objects.get_for_model(Comment),
+            ).values_list("user_id", flat=True)
+
+            new_historical_abuse_flaggers = [
+                user_id
+                for user_id in kwargs["historical_abuse_flaggers"]
+                if user_id not in existing_historical_abuse_flaggers
+            ]
+
+            HistoricalAbuseFlagger.objects.bulk_create(
+                [
+                    HistoricalAbuseFlagger(
+                        user=User.objects.get(pk=user_id),
+                        content_object_id=thread.pk,
+                        content_type=ContentType.objects.get_for_model(Comment),
+                    )
+                    for user_id in new_historical_abuse_flaggers
+                ]
+            )
+
         if "editing_user_id" in kwargs and kwargs["editing_user_id"]:
             EditHistory.objects.create(
                 content_object_id=thread.pk,
@@ -1703,6 +1810,24 @@ class MySQLBackend(AbstractBackend):
                 editor=User.objects.get(pk=kwargs["editing_user_id"]),
                 created_at=timezone.now(),
             )
+
+        if "votes" in kwargs:
+            up_votes = kwargs["votes"].get("up", [])
+            down_votes = kwargs["votes"].get("down", [])
+            for user_id in up_votes:
+                UserVote.objects.update_or_create(
+                    user=User.objects.get(id=int(user_id)),
+                    content_type=ContentType.objects.get_for_model(CommentThread),
+                    content_object_id=thread.pk,
+                    vote=1,
+                )
+            for user_id in down_votes:
+                UserVote.objects.update_or_create(
+                    user=User.objects.get(id=int(user_id)),
+                    content_type=ContentType.objects.get_for_model(CommentThread),
+                    content_object_id=thread.pk,
+                    vote=-1,
+                )
 
         thread.updated_at = timezone.now()
         thread.save()
