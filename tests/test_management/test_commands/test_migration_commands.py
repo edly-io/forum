@@ -123,6 +123,7 @@ def test_migrate_content(patched_mongodb: Database[Any]) -> None:
                 "votes": {"up": ["1"], "down": []},
                 "abuse_flaggers": ["1", "2"],
                 "historical_abuse_flaggers": ["1", "2"],
+                "last_activity_at": timezone.now(),
             },
             {
                 "_id": comment_id,
@@ -177,6 +178,7 @@ def test_migrate_subscriptions(patched_mongodb: Database[Any]) -> None:
                 "body": "Test body",
                 "created_at": timezone.now(),
                 "updated_at": timezone.now(),
+                "last_activity_at": timezone.now(),
                 "votes": {"up": ["1"], "down": []},
                 "abuse_flaggers": [
                     "1",

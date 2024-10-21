@@ -95,6 +95,8 @@ def create_or_update_thread(thread_data: dict[str, Any]) -> None:
             pinned=thread_data.get("pinned"),
             created_at=make_aware(thread_data["created_at"]),
             updated_at=make_aware(thread_data["updated_at"]),
+            last_activity_at=make_aware(thread_data["last_activity_at"]),
+            commentable_id=thread_data.get("commentable_id"),
         )
         mongo_content.content_object_id = thread.pk
         mongo_content.content_type = thread.content_type

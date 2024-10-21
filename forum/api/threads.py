@@ -67,6 +67,7 @@ def prepare_thread_api_response(
     include_context: Optional[bool] = False,
     data_or_params: Optional[dict[str, Any]] = None,
     include_data_from_params: Optional[bool] = False,
+    course_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Serialize thread data for the api response."""
     thread_data = get_thread_data(thread)
@@ -99,7 +100,7 @@ def prepare_thread_api_response(
                     if value := data_or_params.get(param):
                         context[param] = str_to_bool(value)
                 if user_id and backend.get_user(user_id):
-                    mark_thread_as_read(user_id, thread["_id"])
+                    mark_thread_as_read(user_id, thread["_id"], course_id=course_id)
 
     serializer = ThreadSerializer(
         data=thread_data,
@@ -150,6 +151,7 @@ def get_thread(
             True,
             params,
             True,
+            course_id=course_id,
         )
     except ValidationError as error:
         log.error(f"Validation error in get_thread: {error}")

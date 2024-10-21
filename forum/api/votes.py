@@ -89,7 +89,7 @@ def update_thread_votes(
         raise ForumV2RequestError(vote_serializer.errors)
 
     try:
-        thread, user = _get_thread_and_user(thread_id, user_id)
+        thread, user = _get_thread_and_user(thread_id, user_id, course_id=course_id)
     except ValueError as error:
         raise ForumV2RequestError(str(error)) from error
 
@@ -120,7 +120,7 @@ def delete_thread_vote(
     """
     backend = get_backend(course_id)()
     try:
-        _, user = _get_thread_and_user(thread_id, user_id)
+        _, user = _get_thread_and_user(thread_id, user_id, course_id=course_id)
     except ValueError as error:
         raise ForumV2RequestError(str(error)) from error
 
