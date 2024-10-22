@@ -36,7 +36,7 @@ def create_subscription(
     Create a subscription for a user.
     """
     backend = get_backend(course_id)()
-    _, _ = validate_user_and_thread(user_id, source_id)
+    _, _ = validate_user_and_thread(user_id, source_id, course_id=course_id)
     subscription = backend.subscribe_user(
         user_id, source_id, source_type="CommentThread"
     )
@@ -51,7 +51,7 @@ def delete_subscription(
     Delete a subscription for a user.
     """
     backend = get_backend(course_id)()
-    _, _ = validate_user_and_thread(user_id, source_id)
+    _, _ = validate_user_and_thread(user_id, source_id, course_id=course_id)
 
     subscription = backend.get_subscription(
         user_id, source_id, source_type="CommentThread"
