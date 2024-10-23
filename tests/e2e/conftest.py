@@ -2,8 +2,6 @@
 Init file for tests.
 """
 
-from typing import Any, Generator
-
 import logging
 import time
 
@@ -85,13 +83,3 @@ def patch_default_mongo_database() -> None:
 @pytest.fixture(autouse=True)
 def mock_elasticsearch_backend() -> None:
     """Overide teh mocked backend to use actual backend."""
-
-
-@pytest.fixture(autouse=True)
-def patched_get_backend(monkeypatch: pytest.MonkeyPatch) -> Generator[Any, Any, Any]:
-    """Return the patched get_backend function for Mongo backend."""
-    monkeypatch.setattr(
-        "forum.backend.is_mysql_backend_enabled",
-        lambda course_id: False,
-    )
-    yield
