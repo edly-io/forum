@@ -122,7 +122,7 @@ class Content(models.Model):
     @property
     def type(self) -> str:
         """Return the type of content as str."""
-        return ContentType.objects.get_for_model(self).__class__.__name__
+        return self._meta.object_name or ""
 
     @property
     def content_type(self) -> ContentType:
