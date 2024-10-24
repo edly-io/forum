@@ -129,7 +129,7 @@ class MySQLBackend(AbstractBackend):
                 entity.author.pk,
                 entity.pk,
                 has_no_historical_flags,
-                entity_tpye=entity.type,
+                entity_type=entity.type,
             )
 
         return entity.to_dict()
@@ -160,7 +160,7 @@ class MySQLBackend(AbstractBackend):
             entity.author.pk,
             entity.pk,
             has_no_historical_flags,
-            entity_tpye=entity.type,
+            entity_type=entity.type,
         )
 
         return entity.to_dict()
