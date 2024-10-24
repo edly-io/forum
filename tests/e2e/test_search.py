@@ -6,12 +6,13 @@ import time
 from typing import Any, Optional
 from urllib.parse import urlencode
 
+import pytest
 from requests import Response
 
-from forum.backends.mongodb import Comment, CommentThread, Users
-from forum.backends.mongodb.api import MongoBackend as backend
 from forum.search.backend import get_search_backend
 from test_utils.client import APIClient
+
+pytestmark = pytest.mark.django_db
 
 
 def perform_search_query(api_client: APIClient, params: dict[str, Any]) -> Response:
@@ -32,33 +33,49 @@ def refresh_elastic_search_indices() -> None:
     get_search_backend().refresh_indices()
 
 
-def test_invalid_request(api_client: APIClient) -> None:
+@pytest.fixture(name="user_data")
+def create_test_user(patched_get_backend: Any) -> tuple[str, str]:
+    """Create a user."""
+    backend = patched_get_backend()
+
+    user_id = "1"
+    username = "test_user"
+    backend.find_or_create_user(user_id, username=username)
+    return user_id, username
+
+
+def test_invalid_request(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """
     Test that invalid requests to the search API return a 400 status.
 
     This test checks that invalid parameters in the search query string
     result in a 400 Bad Request response.
     """
+    backend = patched_get_backend()
+    user_id, _ = user_data
 
-    user_id = "1"
     course_id = "course-v1:Arbisoft+SE002+2024_S2"
-
-    Users().insert(user_id, username="user1", email="email1")
-    comment_thread_id = CommentThread().insert(
-        title="title",
-        body="Hello World!",
-        pinned=False,
-        author_id=user_id,
-        course_id=course_id,
-        commentable_id="66b4e0440dead7001deb948b",
-        author_username="Faraz",
+    comment_thread_id = backend.create_thread(
+        {
+            "title": "title",
+            "body": "Hello World!",
+            "pinned": False,
+            "author_id": user_id,
+            "course_id": course_id,
+            "commentable_id": "66b4e0440dead7001deb948b",
+            "author_username": "Faraz",
+        }
     )
-    Comment().insert(
-        body="Hello World!",
-        course_id=course_id,
-        comment_thread_id=comment_thread_id,
-        author_id="1",
-        author_username="Faraz",
+    backend.create_comment(
+        {
+            "body": "Hello World!",
+            "course_id": course_id,
+            "comment_thread_id": comment_thread_id,
+            "author_id": "1",
+            "author_username": "Faraz",
+        }
     )
 
     refresh_elastic_search_indices()
@@ -72,7 +89,9 @@ def test_invalid_request(api_client: APIClient) -> None:
     assert response.status_code == 400
 
 
-def test_search_returns_empty_for_deleted_thread(api_client: APIClient) -> None:
+def test_search_returns_empty_for_deleted_thread(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """
     Test that searching for a deleted thread returns no results.
 
@@ -80,17 +99,22 @@ def test_search_returns_empty_for_deleted_thread(api_client: APIClient) -> None:
     in search results.
     """
 
+    backend = patched_get_backend()
     course_id = "course-v1:Arbisoft+SE002+2024_S2"
-    thread_id = CommentThread().insert(
-        title="title-1",
-        course_id=course_id,
-        body="body-1",
-        author_id="1",
-        author_username="test_user",
-        commentable_id="course",
+
+    user_id, username = user_data
+    thread_id = backend.create_thread(
+        {
+            "title": "title-1",
+            "course_id": course_id,
+            "body": "body-1",
+            "author_id": user_id,
+            "author_username": username,
+            "commentable_id": "course",
+        },
     )
 
-    CommentThread().delete(thread_id)
+    backend.delete_thread(thread_id)
 
     refresh_elastic_search_indices()
 
@@ -100,27 +124,33 @@ def test_search_returns_empty_for_deleted_thread(api_client: APIClient) -> None:
     assert_result_total(response, 0)
 
 
-def test_search_returns_only_updated_thread(api_client: APIClient) -> None:
+def test_search_returns_only_updated_thread(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """
     Test that searching for a thread returns only the updated version.
 
     This test checks that after a thread is updated, the search results reflect
     the updated title and not the original one.
     """
+    backend = patched_get_backend()
+    user_id, username = user_data
 
     original_title = "title-original"
     updated_title = "updated-title"
     course_id = "course-v1:Arbisoft+SE002+2024_S2"
 
-    thread_id = CommentThread().insert(
-        title=original_title,
-        course_id=course_id,
-        body="body-1",
-        author_id="1",
-        author_username="test_user",
-        commentable_id="course",
+    thread_id = backend.create_thread(
+        {
+            "title": original_title,
+            "course_id": course_id,
+            "body": "body-1",
+            "author_id": user_id,
+            "author_username": username,
+            "commentable_id": "course",
+        },
     )
-    CommentThread().update(thread_id=thread_id, title=updated_title)
+    backend.update_thread(thread_id=thread_id, title=updated_title)
 
     refresh_elastic_search_indices()
 
@@ -134,30 +164,38 @@ def test_search_returns_only_updated_thread(api_client: APIClient) -> None:
     assert_result_total(response, 1)
 
 
-def test_search_returns_empty_for_deleted_comment(api_client: APIClient) -> None:
+def test_search_returns_empty_for_deleted_comment(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """
     Test that searching for a deleted comment returns no results.
 
     This test checks that after a comment is deleted, it no longer appears
     in search results.
     """
-
+    backend = patched_get_backend()
     course_id = "course-v1:Arbisoft+SE002+2024_S2"
-    thread_id = CommentThread().insert(
-        title="thread-1",
-        course_id=course_id,
-        body="thread-body",
-        author_id="1",
-        author_username="test_user",
-        commentable_id="course",
+    user_id, username = user_data
+
+    thread_id = backend.create_thread(
+        {
+            "title": "thread-1",
+            "course_id": course_id,
+            "body": "thread-body",
+            "author_id": user_id,
+            "author_username": username,
+            "commentable_id": "course",
+        },
     )
-    comment_id = Comment().insert(
-        body="comment-body",
-        course_id=course_id,
-        comment_thread_id=thread_id,
-        author_id="1",
+    comment_id = backend.create_comment(
+        {
+            "body": "comment-body",
+            "course_id": course_id,
+            "comment_thread_id": thread_id,
+            "author_id": user_id,
+        },
     )
-    Comment().delete(comment_id)
+    backend.delete_comment(comment_id)
 
     refresh_elastic_search_indices()
 
@@ -167,34 +205,42 @@ def test_search_returns_empty_for_deleted_comment(api_client: APIClient) -> None
     assert_result_total(response, 0)
 
 
-def test_search_returns_only_updated_comment(api_client: APIClient) -> None:
+def test_search_returns_only_updated_comment(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """
     Test that searching for a comment returns only the updated version.
 
     This test checks that after a comment is updated, the search results reflect
     the updated text and not the original one.
     """
+    backend = patched_get_backend()
+    user_id, username = user_data
 
     original_comment = "comment-original"
     updated_comment = "comment-updated"
     course_id = "course-v1:Arbisoft+SE002+2024_S2"
 
-    thread_id = CommentThread().insert(
-        title="thread-1",
-        course_id=course_id,
-        body="thread-body",
-        author_id="1",
-        author_username="test_user",
-        commentable_id="course",
+    thread_id = backend.create_thread(
+        {
+            "title": "thread-1",
+            "course_id": course_id,
+            "body": "thread-body",
+            "author_id": user_id,
+            "author_username": username,
+            "commentable_id": "course",
+        },
     )
-    comment_id = Comment().insert(
-        body=original_comment,
-        course_id=course_id,
-        comment_thread_id=thread_id,
-        author_id="1",
+    comment_id = backend.create_comment(
+        {
+            "body": original_comment,
+            "course_id": course_id,
+            "comment_thread_id": thread_id,
+            "author_id": user_id,
+        },
     )
 
-    Comment().update(comment_id=comment_id, body=updated_comment)
+    backend.update_comment(comment_id=comment_id, body=updated_comment)
     refresh_elastic_search_indices()
 
     params = {"course_id": course_id, "text": original_comment}
@@ -207,7 +253,7 @@ def test_search_returns_only_updated_comment(api_client: APIClient) -> None:
 
 
 def create_threads_and_comments_for_filter_tests(
-    course_id_0: str, course_id_1: str
+    course_id_0: str, course_id_1: str, author_id: str, author_name: str, backend: Any
 ) -> tuple[list[str], dict[str, Any]]:
     """
     Create a set of threads and comments for testing various filter conditions.
@@ -218,36 +264,43 @@ def create_threads_and_comments_for_filter_tests(
     for i in range(35):
         context = "standalone" if i > 29 else "course"
         group_id = i % 5
-        thread_id = CommentThread().insert(
-            title=f"title-{i}",
-            body="text",
-            author_id="1",
-            course_id=course_id_0 if i % 2 == 0 else course_id_1,
-            commentable_id=f"commentable{i % 3}",
-            context=context,
-            group_id=group_id,
+        thread_id = backend.create_thread(
+            {
+                "title": f"title-{i}",
+                "body": "text",
+                "author_id": author_id,
+                "author_name": author_name,
+                "course_id": course_id_0 if i % 2 == 0 else course_id_1,
+                "commentable_id": f"commentable{i % 3}",
+                "context": context,
+                "group_id": group_id,
+            },
         )
         threads_ids.append(thread_id)
 
         if i < 2:
-            comment_id = Comment().insert(
-                body="objectionable",
-                course_id=course_id_0 if i % 2 == 0 else course_id_1,
-                comment_thread_id=thread_id,
-                author_id="1",
+            comment_id = backend.create_comment(
+                {
+                    "body": "objectionable",
+                    "course_id": course_id_0 if i % 2 == 0 else course_id_1,
+                    "comment_thread_id": thread_id,
+                    "author_id": author_id,
+                },
             )
-            Comment().update(comment_id=comment_id, abuse_flaggers=["1"])
+            backend.update_comment(comment_id=comment_id, abuse_flaggers=["1"])
             comment_ids = threads_comments.get(thread_id, [])
             comment_ids.append(comment_id)
             threads_comments[thread_id] = comment_ids
 
         if i in [0, 2, 4]:
-            CommentThread().update(thread_id=thread_id, thread_type="question")
-            comment_id = Comment().insert(
-                body="response",
-                course_id=course_id_0 if i % 2 == 0 else course_id_1,
-                comment_thread_id=thread_id,
-                author_id="1",
+            backend.update_thread(thread_id=thread_id, thread_type="question")
+            comment_id = backend.create_comment(
+                {
+                    "body": "response",
+                    "course_id": course_id_0 if i % 2 == 0 else course_id_1,
+                    "comment_thread_id": thread_id,
+                    "author_id": "1",
+                },
             )
             comment_ids = threads_comments.get(thread_id, [])
             comment_ids.append(comment_id)
@@ -267,13 +320,17 @@ def assert_response_contains(
     assert actual_ids == expected_ids, f"Expected {expected_ids}, but got {actual_ids}"
 
 
-def test_filter_threads_by_course_id(api_client: APIClient) -> None:
+def test_filter_threads_by_course_id(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """Test filtering threads by course_id."""
+    backend = patched_get_backend()
     course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
     course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
 
+    user_id, username = user_data
     threads_ids, _ = create_threads_and_comments_for_filter_tests(
-        course_id_0, course_id_1
+        course_id_0, course_id_1, user_id, username, backend
     )
     refresh_elastic_search_indices()
 
@@ -284,13 +341,18 @@ def test_filter_threads_by_course_id(api_client: APIClient) -> None:
     )
 
 
-def test_filter_threads_by_context(api_client: APIClient) -> None:
+def test_filter_threads_by_context(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """Test filtering threads by context."""
+    backend = patched_get_backend()
+
     course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
     course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
 
+    user_id, username = user_data
     threads_ids, _ = create_threads_and_comments_for_filter_tests(
-        course_id_0, course_id_1
+        course_id_0, course_id_1, user_id, username, backend
     )
     refresh_elastic_search_indices()
 
@@ -299,14 +361,18 @@ def test_filter_threads_by_context(api_client: APIClient) -> None:
     assert_response_contains(response, list(range(30, 35)), threads_ids)
 
 
-def test_filter_threads_by_unread(api_client: APIClient) -> None:
+def test_filter_threads_by_unread(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """Test filtering threads by unread status."""
+    backend = patched_get_backend()
     course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
     course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
+    user_id = "1"
 
-    user_id = Users().insert("1", username="user1", email="example@test.com")
+    user_id, username = user_data
     threads_ids, _ = create_threads_and_comments_for_filter_tests(
-        course_id_0, course_id_1
+        course_id_0, course_id_1, user_id, username, backend
     )
     refresh_elastic_search_indices()
     backend.mark_as_read(user_id, threads_ids[0])
@@ -323,13 +389,17 @@ def test_filter_threads_by_unread(api_client: APIClient) -> None:
     )
 
 
-def test_filter_threads_by_flagged(api_client: APIClient) -> None:
+def test_filter_threads_by_flagged(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """Test filtering threads by flagged status."""
+    backend = patched_get_backend()
     course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
     course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
 
+    user_id, username = user_data
     threads_ids, _ = create_threads_and_comments_for_filter_tests(
-        course_id_0, course_id_1
+        course_id_0, course_id_1, user_id, username, backend
     )
     refresh_elastic_search_indices()
 
@@ -338,13 +408,17 @@ def test_filter_threads_by_flagged(api_client: APIClient) -> None:
     assert_response_contains(response, [0], threads_ids)
 
 
-def test_filter_threads_by_unanswered(api_client: APIClient) -> None:
+def test_filter_threads_by_unanswered(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """Test filtering threads by unanswered status."""
+    backend = patched_get_backend()
     course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
     course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
 
+    user_id, username = user_data
     threads_ids, threads_comments = create_threads_and_comments_for_filter_tests(
-        course_id_0, course_id_1
+        course_id_0, course_id_1, user_id, username, backend
     )
     refresh_elastic_search_indices()
 
@@ -373,20 +447,24 @@ def test_filter_threads_by_unanswered(api_client: APIClient) -> None:
 
     # Test after endorsing a comment
     comment = threads_comments[threads_ids[4]][0]
-    Comment().update(comment_id=comment, endorsed=True)
+    backend.update_comment(comment_id=comment, endorsed=True)
     refresh_elastic_search_indices()
 
     response = perform_search_query(api_client, params)
     assert_response_contains(response, [0], threads_ids)
 
 
-def test_filter_threads_by_commentable_id(api_client: APIClient) -> None:
+def test_filter_threads_by_commentable_id(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """Test filtering threads by commentable_id."""
+    backend = patched_get_backend()
     course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
     course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
 
+    user_id, username = user_data
     threads_ids, _ = create_threads_and_comments_for_filter_tests(
-        course_id_0, course_id_1
+        course_id_0, course_id_1, user_id, username, backend
     )
     refresh_elastic_search_indices()
 
@@ -403,13 +481,17 @@ def test_filter_threads_by_commentable_id(api_client: APIClient) -> None:
     )
 
 
-def test_filter_threads_by_group_id(api_client: APIClient) -> None:
+def test_filter_threads_by_group_id(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """Test filtering threads by group_id."""
+    backend = patched_get_backend()
     course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
     course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
 
+    user_id, username = user_data
     threads_ids, _ = create_threads_and_comments_for_filter_tests(
-        course_id_0, course_id_1
+        course_id_0, course_id_1, user_id, username, backend
     )
     refresh_elastic_search_indices()
 
@@ -426,13 +508,17 @@ def test_filter_threads_by_group_id(api_client: APIClient) -> None:
     )
 
 
-def test_filter_threads_combined(api_client: APIClient) -> None:
+def test_filter_threads_combined(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """Test filtering threads with multiple filters combined."""
+    backend = patched_get_backend()
     course_id_0 = "course-v1:Arbisoft+SE002+2024_S2"
     course_id_1 = "course-v1:Arbisoft+SE003+2024_S2"
 
+    user_id, username = user_data
     threads_ids, _ = create_threads_and_comments_for_filter_tests(
-        course_id_0, course_id_1
+        course_id_0, course_id_1, user_id, username, backend
     )
     refresh_elastic_search_indices()
 
@@ -446,21 +532,27 @@ def test_filter_threads_combined(api_client: APIClient) -> None:
     assert_response_contains(response, [0, 6], threads_ids)
 
 
-def test_pagination(api_client: APIClient) -> None:
+def test_pagination(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """
     Test pagination of search results. Ensures that results are correctly paginated and that the order of
     threads is as expected across different pages.
     """
+    backend = patched_get_backend()
     course_id = "course-v1:Arbisoft+SE002+2024_S2"
+    user_id, _ = user_data
 
     threads_ids = []
     for i in range(50):
-        thread_id = CommentThread().insert(
-            title=f"title-{i}",
-            body="text",
-            author_id="1",
-            course_id=course_id,
-            commentable_id="dummy",
+        thread_id = backend.create_thread(
+            {
+                "title": f"title-{i}",
+                "body": "text",
+                "author_id": user_id,
+                "course_id": course_id,
+                "commentable_id": "dummy",
+            },
         )
         threads_ids.append(thread_id)
         # Add a slight delay to ensure created_date is different
@@ -489,33 +581,50 @@ def test_pagination(api_client: APIClient) -> None:
     check_pagination(None, 3)
 
 
-def test_sorting(api_client: APIClient) -> None:
+def test_sorting(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """
     Test the sorting functionality for threads based on various criteria, such as date, activity, votes, and comments.
     Asserts that the threads are sorted correctly according to the specified sorting key.
     """
+    backend = patched_get_backend()
     course_id = "course-v1:Arbisoft+SE002+2024_S2"
+    user_id, _ = user_data
 
     # Create and save threads
     threads_ids = []
     for i in range(6):
-        thread = CommentThread().insert(
-            title=f"title-{i}",
-            body="text",
-            author_id="1",
-            course_id=course_id,
-            commentable_id="dummy",
+        thread = backend.create_thread(
+            {
+                "title": f"title-{i}",
+                "body": "text",
+                "author_id": user_id,
+                "course_id": course_id,
+                "commentable_id": "dummy",
+            }
         )
         threads_ids.append(thread)
+
+        if i in [1, 3]:
+            for j in range(5):
+                backend.create_comment(
+                    {
+                        "body": f"body-{j}",
+                        "course_id": "course_id",
+                        "comment_thread_id": thread,
+                        "author_id": user_id,
+                    }
+                )
+                time.sleep(0.001)
+
         # Add a slight delay to ensure created_date is different
         time.sleep(0.001)
 
     # Update specific threads to simulate activity, votes, and comments
-    votes = CommentThread().get_votes_dict(up=["1"], down=[])
-    CommentThread().update(thread_id=threads_ids[1], votes=votes)
-    CommentThread().update(thread_id=threads_ids[2], votes=votes)
-    CommentThread().update(thread_id=threads_ids[1], comments_count=5)
-    CommentThread().update(thread_id=threads_ids[3], comments_count=5)
+    votes = backend.get_votes_dict(up=["1"], down=[])
+    backend.update_thread(thread_id=threads_ids[1], votes=votes)
+    backend.update_thread(thread_id=threads_ids[2], votes=votes)
 
     refresh_elastic_search_indices()
 
@@ -542,28 +651,36 @@ def test_sorting(api_client: APIClient) -> None:
     fetch_and_check(None, [5, 4, 3, 2, 1, 0])  # Default sorting by date
 
 
-def test_spelling_correction(api_client: APIClient) -> None:
+def test_spelling_correction(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """
     Test the spelling correction feature in search.
     Verifies that misspelled words in both thread titles and comment bodies are correct
     """
+    backend = patched_get_backend()
     commentable_id = "test_commentable"
     thread_title = "a thread about green artichokes"
     comment_body = "a comment about greed pineapples"
+    user_id, _ = user_data
 
-    thread_id = CommentThread().insert(
-        title=thread_title,
-        body="",
-        author_id="1",
-        course_id="course_id",
-        commentable_id=commentable_id,
+    thread_id = backend.create_thread(
+        {
+            "title": thread_title,
+            "body": "",
+            "author_id": user_id,
+            "course_id": "course_id",
+            "commentable_id": commentable_id,
+        },
     )
 
-    Comment().insert(
-        body=comment_body,
-        course_id="course_id",
-        comment_thread_id=thread_id,
-        author_id="1",
+    backend.create_comment(
+        {
+            "body": comment_body,
+            "course_id": "course_id",
+            "comment_thread_id": thread_id,
+            "author_id": user_id,
+        },
     )
     refresh_elastic_search_indices()
 
@@ -601,13 +718,17 @@ def test_spelling_correction(api_client: APIClient) -> None:
     check_correction("greed", None)
 
 
-def test_spelling_correction_with_mush_clause(api_client: APIClient) -> None:
+def test_spelling_correction_with_mush_clause(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """
     Test the spelling correction feature & mush clause in the search.
     Verifies the even if the text matches with the threds it should also consider other
     params in the search i.e course_id
     """
+    backend = patched_get_backend()
     course_id = "course_id"
+    user_id, _ = user_data
 
     # Add documents containing a word that is close to our search term
     # but that do not match our filter criteria; because we currently only
@@ -615,12 +736,14 @@ def test_spelling_correction_with_mush_clause(api_client: APIClient) -> None:
     # to the filter, and that suggestion in this case does not match any
     # results, we should get back no results and no correction.
     for _ in range(10):
-        CommentThread().insert(
-            title="abbot",
-            body="text",
-            author_id="1",
-            course_id="other_course_id",
-            commentable_id="other_commentable_id",
+        backend.create_thread(
+            {
+                "title": "abbot",
+                "body": "text",
+                "author_id": user_id,
+                "course_id": "other_course_id",
+                "commentable_id": "other_commentable_id",
+            },
         )
     refresh_elastic_search_indices()
 
@@ -635,13 +758,17 @@ def test_spelling_correction_with_mush_clause(api_client: APIClient) -> None:
     assert not result["collection"], "Expected an empty collection, but got results."
 
 
-def test_total_results_and_num_pages(api_client: APIClient) -> None:
+def test_total_results_and_num_pages(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """
     Test the total number of results and pagination of search results.
     Ensures that the total count of search results and the number of pages are calculated
     correctly based on varying text patterns in threads.
     """
+    backend = patched_get_backend()
     course_id = "test/course/id"
+    user_id, _ = user_data
 
     threads_ids = []
 
@@ -658,12 +785,14 @@ def test_total_results_and_num_pages(api_client: APIClient) -> None:
             text += " one"
 
         # Create the comment
-        thread_id = CommentThread().insert(
-            title=f"title-{i}",
-            body=text,
-            course_id=course_id,
-            author_id="1",
-            commentable_id="course",
+        thread_id = backend.create_thread(
+            {
+                "title": f"title-{i}",
+                "body": text,
+                "course_id": course_id,
+                "author_id": user_id,
+                "commentable_id": "course",
+            },
         )
         threads_ids.append(thread_id)
 
@@ -692,27 +821,35 @@ def test_total_results_and_num_pages(api_client: APIClient) -> None:
     test_text("one", 1, 1)
 
 
-def test_unicode_data(api_client: APIClient) -> None:
+def test_unicode_data(
+    api_client: APIClient, patched_get_backend: Any, user_data: tuple[str, str]
+) -> None:
     """
     Test the handling of Unicode characters in search queries. Verifies that threads containing Unicode characters
     are searchable and return correct results when queried with ASCII search terms.
     """
+    backend = patched_get_backend()
     text = "␎ⶀⅰ⑀⍈┣♲⺝"
     search_term = "artichoke"
+    user_id, _ = user_data
 
     # Create a comment thread and a comment containing the specified text
-    thread_id = CommentThread().insert(
-        title="A thread title",
-        body=f"{search_term} {text}",
-        author_id="1",
-        course_id="course-v1:Arbisoft+SE002+2024_S2",
-        commentable_id="course",
+    thread_id = backend.create_thread(
+        {
+            "title": "A thread title",
+            "body": f"{search_term} {text}",
+            "author_id": user_id,
+            "course_id": "course-v1:Arbisoft+SE002+2024_S2",
+            "commentable_id": "course",
+        },
     )
-    Comment().insert(
-        body=text,
-        course_id="course-v1:Arbisoft+SE002+2024_S2",
-        comment_thread_id=thread_id,
-        author_id="1",
+    backend.create_comment(
+        {
+            "body": text,
+            "course_id": "course-v1:Arbisoft+SE002+2024_S2",
+            "comment_thread_id": thread_id,
+            "author_id": user_id,
+        },
     )
 
     # Refresh Elasticsearch indices to make the new data searchable

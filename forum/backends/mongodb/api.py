@@ -1690,3 +1690,36 @@ class MongoBackend(AbstractBackend):
             "_type": {"$in": [CommentThread.content_type]},
             "course_id": {"$in": [course_id]},
         }
+
+    @staticmethod
+    def find_thread(**kwargs: Any) -> Optional[dict[str, Any]]:
+        """
+        Retrieves a first matching thread from the database.
+        """
+        return CommentThread().find_one(kwargs)
+
+    @staticmethod
+    def find_comment(
+        is_parent_comment: bool = True, with_abuse_flaggers: bool = False, **kwargs: Any
+    ) -> Optional[dict[str, Any]]:
+        """
+        Retrieves a first matching comment from the database.
+        """
+        if is_parent_comment:
+            kwargs["parent_id"] = None
+        else:
+            kwargs["parent_id"] = {"$ne": None}
+        if with_abuse_flaggers:
+            kwargs["abuse_flaggers"] = {"$ne": []}
+
+        return Comment().find_one(kwargs)
+
+    @staticmethod
+    def get_user_contents_by_username(username: str) -> list[dict[str, Any]]:
+        """
+        Retrieve all threads and comments authored by a specific user.
+        """
+        contents = list(Comment().find({"author_username": username})) + list(
+            CommentThread().find({"author_username": username})
+        )
+        return contents

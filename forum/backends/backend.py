@@ -444,3 +444,26 @@ class AbstractBackend:
             "point": len(up) - len(down),
         }
         return votes
+
+    @staticmethod
+    def find_thread(**kwargs: Any) -> Optional[dict[str, Any]]:
+        """
+        Retrieves a first matching thread from the database.
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def find_comment(
+        is_parent_comment: bool = True, with_abuse_flaggers: bool = False, **kwargs: Any
+    ) -> Optional[dict[str, Any]]:
+        """
+        Retrieves a first matching comment from the database.
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def get_user_contents_by_username(username: str) -> list[dict[str, Any]]:
+        """
+        Retrieve all threads and comments authored by a specific user.
+        """
+        raise NotImplementedError

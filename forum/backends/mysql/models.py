@@ -29,10 +29,15 @@ class ForumUser(models.Model):
         max_length=25, default="date"
     )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, course_id: Optional[str] = None) -> dict[str, Any]:
         """Return a dictionary representation of the model."""
         course_stats = CourseStat.objects.filter(user=self.user)
         read_states = ReadState.objects.filter(user=self.user)
+
+        if course_id:
+            course_stat = course_stats.filter(course_id=course_id).first()
+        else:
+            course_stat = None
 
         return {
             "_id": self.user.pk,
@@ -40,7 +45,11 @@ class ForumUser(models.Model):
             "external_id": self.user.pk,
             "username": self.user.username,
             "email": self.user.email,
-            "course_stats": [stat.to_dict() for stat in course_stats],
+            "course_stats": (
+                course_stat.to_dict()
+                if course_stat
+                else [stat.to_dict() for stat in course_stats]
+            ),
             "read_states": [state.to_dict() for state in read_states],
         }
 

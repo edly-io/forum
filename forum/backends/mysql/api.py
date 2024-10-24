@@ -1301,15 +1301,49 @@ class MySQLBackend(AbstractBackend):
         replies = comments.filter(parent__isnull=False)
 
         comment_ids = [comment.pk for comment in comments]
-        active_flags = AbuseFlagger.objects.filter(
-            content_type=ContentType.objects.get_for_model(Comment),
-            content_object_id__in=comment_ids,
-        ).count()
+        threads_ids = [thread.pk for thread in threads]
 
-        inactive_flags = HistoricalAbuseFlagger.objects.filter(
-            content_type=ContentType.objects.get_for_model(Comment),
-            content_object_id__in=comment_ids,
-        ).count()
+        active_flags_comments = (
+            AbuseFlagger.objects.filter(
+                content_object_id__in=comment_ids, content_type=Comment().content_type
+            )
+            .values("content_object_id")
+            .annotate(count=Count("content_object_id"))
+            .count()
+        )
+
+        active_flags_threads = (
+            AbuseFlagger.objects.filter(
+                content_object_id__in=threads_ids,
+                content_type=CommentThread().content_type,
+            )
+            .values("content_object_id")
+            .annotate(count=Count("content_object_id"))
+            .count()
+        )
+
+        active_flags = active_flags_comments + active_flags_threads
+
+        inactive_flags_comments = (
+            HistoricalAbuseFlagger.objects.filter(
+                content_object_id__in=comment_ids, content_type=Comment().content_type
+            )
+            .values("content_object_id")
+            .annotate(count=Count("content_object_id"))
+            .count()
+        )
+
+        inactive_flags_threads = (
+            HistoricalAbuseFlagger.objects.filter(
+                content_object_id__in=threads_ids,
+                content_type=CommentThread().content_type,
+            )
+            .values("content_object_id")
+            .annotate(count=Count("content_object_id"))
+            .count()
+        )
+
+        inactive_flags = inactive_flags_comments + inactive_flags_threads
 
         threads_updated_at = threads.aggregate(Max("updated_at"))["updated_at__max"]
         comments_updated_at = comments.aggregate(Max("updated_at"))["updated_at__max"]
@@ -1538,38 +1572,39 @@ class MySQLBackend(AbstractBackend):
         if "abuse_flaggers" in kwargs:
             existing_abuse_flaggers = AbuseFlagger.objects.filter(
                 content_object_id=comment.pk,
-                content_type=ContentType.objects.get_for_model(Comment),
+                content_type=comment.content_type,
             ).values_list("user_id", flat=True)
 
             new_abuse_flaggers = [
-                user_id
+                int(user_id)
                 for user_id in kwargs["abuse_flaggers"]
-                if user_id not in existing_abuse_flaggers
+                if int(user_id) not in existing_abuse_flaggers
             ]
+
             for user_id in new_abuse_flaggers:
                 AbuseFlagger.objects.create(
                     user=User.objects.get(pk=user_id),
                     content_object_id=comment.pk,
-                    content_type=ContentType.objects.get_for_model(Comment),
+                    content_type=comment.content_type,
                 )
 
         if "historical_abuse_flaggers" in kwargs:
             existing_historical_abuse_flaggers = HistoricalAbuseFlagger.objects.filter(
                 content_object_id=comment.pk,
-                content_type=ContentType.objects.get_for_model(Comment),
+                content_type=comment.content_type,
             ).values_list("user_id", flat=True)
 
             new_historical_abuse_flaggers = [
-                user_id
+                int(user_id)
                 for user_id in kwargs["historical_abuse_flaggers"]
-                if user_id not in existing_historical_abuse_flaggers
+                if int(user_id) not in existing_historical_abuse_flaggers
             ]
             HistoricalAbuseFlagger.objects.bulk_create(
                 [
                     HistoricalAbuseFlagger(
                         user=User.objects.get(pk=user_id),
                         content_object_id=comment.pk,
-                        content_type=ContentType.objects.get_for_model(Comment),
+                        content_type=comment.content_type,
                     )
                     for user_id in new_historical_abuse_flaggers
                 ]
@@ -1590,14 +1625,14 @@ class MySQLBackend(AbstractBackend):
             for user_id in up_votes:
                 UserVote.objects.update_or_create(
                     user=User.objects.get(id=int(user_id)),
-                    content_type=ContentType.objects.get_for_model(Comment),
+                    content_type=comment.content_type,
                     content_object_id=comment.pk,
                     vote=1,
                 )
             for user_id in down_votes:
                 UserVote.objects.update_or_create(
                     user=User.objects.get(id=int(user_id)),
-                    content_type=ContentType.objects.get_for_model(Comment),
+                    content_type=comment.content_type,
                     content_object_id=comment.pk,
                     vote=-1,
                 )
@@ -1608,14 +1643,14 @@ class MySQLBackend(AbstractBackend):
             for user_id in up_votes:
                 UserVote.objects.update_or_create(
                     user=User.objects.get(id=int(user_id)),
-                    content_type=ContentType.objects.get_for_model(Comment),
+                    content_type=comment.content_type,
                     content_object_id=comment.pk,
                     vote=1,
                 )
             for user_id in down_votes:
                 UserVote.objects.update_or_create(
                     user=User.objects.get(id=int(user_id)),
-                    content_type=ContentType.objects.get_for_model(Comment),
+                    content_type=comment.content_type,
                     content_object_id=comment.pk,
                     vote=-1,
                 )
@@ -1762,32 +1797,32 @@ class MySQLBackend(AbstractBackend):
         if "abuse_flaggers" in kwargs:
             existing_abuse_flaggers = AbuseFlagger.objects.filter(
                 content_object_id=thread.pk,
-                content_type=ContentType.objects.get_for_model(CommentThread),
+                content_type=thread.content_type,
             ).values_list("user_id", flat=True)
 
             new_abuse_flaggers = [
-                user_id
+                int(user_id)
                 for user_id in kwargs["abuse_flaggers"]
-                if user_id not in existing_abuse_flaggers
+                if int(user_id) not in existing_abuse_flaggers
             ]
 
             for user_id in new_abuse_flaggers:
                 AbuseFlagger.objects.create(
                     user=User.objects.get(pk=user_id),
                     content_object_id=thread.pk,
-                    content_type=ContentType.objects.get_for_model(CommentThread),
+                    content_type=thread.content_type,
                 )
 
         if "historical_abuse_flaggers" in kwargs:
             existing_historical_abuse_flaggers = HistoricalAbuseFlagger.objects.filter(
                 content_object_id=thread.pk,
-                content_type=ContentType.objects.get_for_model(Comment),
-            ).values_list("user_id", flat=True)
+                content_type=thread.content_type,
+            ).values_list("user__pk", flat=True)
 
             new_historical_abuse_flaggers = [
-                user_id
+                int(user_id)
                 for user_id in kwargs["historical_abuse_flaggers"]
-                if user_id not in existing_historical_abuse_flaggers
+                if int(user_id) not in existing_historical_abuse_flaggers
             ]
 
             HistoricalAbuseFlagger.objects.bulk_create(
@@ -1795,7 +1830,7 @@ class MySQLBackend(AbstractBackend):
                     HistoricalAbuseFlagger(
                         user=User.objects.get(pk=user_id),
                         content_object_id=thread.pk,
-                        content_type=ContentType.objects.get_for_model(Comment),
+                        content_type=thread.content_type,
                     )
                     for user_id in new_historical_abuse_flaggers
                 ]
@@ -1817,14 +1852,14 @@ class MySQLBackend(AbstractBackend):
             for user_id in up_votes:
                 UserVote.objects.update_or_create(
                     user=User.objects.get(id=int(user_id)),
-                    content_type=ContentType.objects.get_for_model(CommentThread),
+                    content_type=thread.content_type,
                     content_object_id=thread.pk,
                     vote=1,
                 )
             for user_id in down_votes:
                 UserVote.objects.update_or_create(
                     user=User.objects.get(id=int(user_id)),
-                    content_type=ContentType.objects.get_for_model(CommentThread),
+                    content_type=thread.content_type,
                     content_object_id=thread.pk,
                     vote=-1,
                 )
@@ -1955,7 +1990,7 @@ class MySQLBackend(AbstractBackend):
         if editing_user_id:
             EditHistory.objects.create(
                 content_object_id=comment.pk,
-                content_type=ContentType.objects.get_for_model(Comment),
+                content_type=comment.content_type,
                 editor=User.objects.get(pk=editing_user_id),
                 original_body=original_body,
                 reason_code=edit_reason_code,
@@ -2017,15 +2052,19 @@ class MySQLBackend(AbstractBackend):
             A dictionary representing the sort criterion.
         """
         if sort_by == "flagged":
-            return {"-active_flags": None, "-inactive_flags": None, "-username": None}
+            return {
+                "course_stats__active_flags": -1,
+                "course_stats__inactive_flags": -1,
+                "username": -1,
+            }
         elif sort_by == "recency":
-            return {"-last_activity_at": None, "-username": None}
+            return {"course_stats__last_activity_at": -1, "username": -1}
         else:
             return {
-                "-threads": None,
-                "-responses": None,
-                "-replies": None,
-                "-username": None,
+                "course_stats__threads": -1,
+                "course_stats__responses": -1,
+                "course_stats__replies": -1,
+                "username": -1,
             }
 
     @classmethod
@@ -2037,16 +2076,20 @@ class MySQLBackend(AbstractBackend):
             Q(course_stats__course_id=course_id)
             & Q(course_stats__course_id__isnull=False)
         ).order_by(
-            *[key for key, value in sort_criterion.items() if value == -1],
+            *[f"-{key}" for key, value in sort_criterion.items() if value == -1],
             *[key for key, value in sort_criterion.items() if value == 1],
         )
 
         paginator = Paginator(users, per_page)
         paginated_users = paginator.page(page)
 
+        forum_users = [
+            ForumUser.objects.get(user_id=user_id)
+            for user_id in paginated_users.object_list
+        ]
         return {
-            "total_count": paginator.count,
-            "data": paginated_users.object_list,
+            "pagination": [{"total_count": paginator.count}],
+            "data": [user.to_dict(course_id=course_id) for user in forum_users],
         }
 
     @staticmethod
@@ -2077,3 +2120,49 @@ class MySQLBackend(AbstractBackend):
 
         result = [content.to_dict() for content in list(comments) + list(threads)]
         return result
+
+    @staticmethod
+    def find_thread(**kwargs: Any) -> Optional[dict[str, Any]]:
+        """
+        Retrieves a first matching thread from the database.
+        """
+        thread = CommentThread.objects.filter(**kwargs).first()
+        return thread.to_dict() if thread else None
+
+    @staticmethod
+    def find_comment(
+        is_parent_comment: bool = True, with_abuse_flaggers: bool = False, **kwargs: Any
+    ) -> Optional[dict[str, Any]]:
+        """
+        Retrieves a first matching thread from the database.
+        """
+        if is_parent_comment:
+            kwargs["parent__isnull"] = True
+        else:
+            kwargs["parent__isnull"] = False
+
+        comments = Comment.objects.filter(**kwargs)
+        comment = None
+        if with_abuse_flaggers:
+            for comm in comments:
+                if comm.abuse_flaggers:
+                    comment = comm
+                    break
+        else:
+            comment = comments.first()
+
+        return comment.to_dict() if comment else None
+
+    @staticmethod
+    def get_user_contents_by_username(username: str) -> list[dict[str, Any]]:
+        """
+        Retrieve all threads and comments authored by a specific user.
+        """
+        contents = [
+            comment.to_dict()
+            for comment in Comment.objects.filter(author__username=username)
+        ] + [
+            thread.to_dict()
+            for thread in CommentThread.objects.filter(author__username=username)
+        ]
+        return contents

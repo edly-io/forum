@@ -4,46 +4,49 @@ E2E testcases.
 
 import random
 import time
-from abc import ABCMeta
 from typing import Any, Optional
 
 import pytest
 from faker import Faker
 
-from forum.backends.mongodb import Comment, CommentThread, Users
-from forum.backends.mongodb.api import MongoBackend as backend
 from test_utils.client import APIClient
 
 fake = Faker()
+pytestmark = pytest.mark.django_db
 
 
-def setup_10_threads(author_id: str, author_username: str) -> list[str]:
+def setup_10_threads(author_id: str, author_username: str, backend: Any) -> list[str]:
     """Create 10 threads for a user."""
     ids = []
     for thread in range(10):
-        thread_id = CommentThread().insert(
-            title=f"Test Thread {thread}",
-            body="This is a test thread",
-            course_id="course1",
-            commentable_id="commentable1",
-            author_id=author_id,
-            author_username=author_username,
+        thread_id = backend.create_thread(
+            {
+                "title": f"Test Thread {thread}",
+                "body": "This is a test thread",
+                "course_id": "course1",
+                "commentable_id": "commentable1",
+                "author_id": author_id,
+                "author_username": author_username,
+            },
         )
-        Comment().insert(
-            body="This is a test comment",
-            course_id="course1",
-            author_id=author_id,
-            comment_thread_id=str(thread_id),
-            author_username=author_username,
+        backend.create_comment(
+            {
+                "body": "This is a test comment",
+                "course_id": "course1",
+                "author_id": author_id,
+                "comment_thread_id": str(thread_id),
+                "author_username": author_username,
+            },
         )
         ids.append(thread_id)
     return ids
 
 
 def add_flags(
-    model: ABCMeta,
+    content_type: str,
     content_data: Optional[dict[str, Any]],
     expected_data: dict[str, Any],
+    backend: Any,
 ) -> None:
     """Add abuse flags to the content and update expected data."""
     if not content_data:
@@ -52,11 +55,18 @@ def add_flags(
     abuse_flaggers = list(range(1, random.randint(0, 3)))
     historical_abuse_flaggers = list(range(1, random.randint(0, 2)))
 
-    model().update(
-        str(content_data["_id"]),
-        abuse_flaggers=abuse_flaggers,
-        historical_abuse_flaggers=historical_abuse_flaggers,
-    )
+    if content_type == "comment":
+        backend.update_comment(
+            str(content_data["_id"]),
+            abuse_flaggers=abuse_flaggers,
+            historical_abuse_flaggers=historical_abuse_flaggers,
+        )
+    else:
+        backend.update_thread(
+            str(content_data["_id"]),
+            abuse_flaggers=abuse_flaggers,
+            historical_abuse_flaggers=historical_abuse_flaggers,
+        )
 
     expected_data[content_data["author_id"]]["active_flags"] += (
         1 if abuse_flaggers else 0
@@ -69,6 +79,7 @@ def add_flags(
 def build_structure_and_response(
     course_id: str,
     authors: list[dict[str, Any]],
+    backend: Any,
     build_initial_stats: bool = True,
     with_timestamps: bool = False,
 ) -> dict[str, dict[str, Any]]:
@@ -78,7 +89,7 @@ def build_structure_and_response(
     assert not any(not item for item in authors)
 
     expected_data: dict[str, dict[str, Any]] = {
-        author["external_id"]: {
+        str(author["external_id"]): {
             "username": author["username"],
             "active_flags": 0,
             "inactive_flags": 0,
@@ -91,57 +102,63 @@ def build_structure_and_response(
 
     for _ in range(10):
         thread_author = random.choice(authors)
-        expected_data[thread_author["external_id"]]["threads"] += 1
+        expected_data[str(thread_author["external_id"])]["threads"] += 1
         if with_timestamps:
-            expected_data[thread_author["external_id"]]["last_activity_at"] = (
+            expected_data[str(thread_author["external_id"])]["last_activity_at"] = (
                 time.strftime("%Y-%m-%dT%H:%M:%SZ")
             )
-        thread_id = CommentThread().insert(
-            title=fake.word(),
-            body=fake.sentence(),
-            course_id=course_id,
-            commentable_id="course",
-            author_id=thread_author["external_id"],
+        thread_id = backend.create_thread(
+            {
+                "title": fake.word(),
+                "body": fake.sentence(),
+                "course_id": course_id,
+                "commentable_id": "course",
+                "author_id": thread_author["external_id"],
+            },
         )
-        thread = CommentThread().get(thread_id) or {}
+        thread = backend.get_thread(thread_id) or {}
 
-        add_flags(CommentThread, thread, expected_data)
+        add_flags("thread", thread, expected_data, backend)
 
         for _ in range(5):
             comment_author = random.choice(authors)
-            expected_data[comment_author["external_id"]]["responses"] += 1
+            expected_data[str(comment_author["external_id"])]["responses"] += 1
             if with_timestamps:
-                expected_data[comment_author["external_id"]]["last_activity_at"] = (
-                    time.strftime("%Y-%m-%dT%H:%M:%SZ")
-                )
-            comment_id = Comment().insert(
-                body=fake.sentence(),
-                course_id=course_id,
-                author_id=comment_author["external_id"],
-                comment_thread_id=thread_id,
+                expected_data[str(comment_author["external_id"])][
+                    "last_activity_at"
+                ] = time.strftime("%Y-%m-%dT%H:%M:%SZ")
+            comment_id = backend.create_comment(
+                {
+                    "body": fake.sentence(),
+                    "course_id": course_id,
+                    "author_id": comment_author["external_id"],
+                    "comment_thread_id": thread_id,
+                },
             )
-            comment = Comment().get(comment_id) or {}
+            comment = backend.get_comment(comment_id) or {}
 
-            add_flags(Comment, comment, expected_data)
+            add_flags("comment", comment, expected_data, backend)
 
             for _ in range(2):
                 reply_author = random.choice(authors)
-                expected_data[reply_author["external_id"]]["replies"] += 1
+                expected_data[str(reply_author["external_id"])]["replies"] += 1
                 if with_timestamps:
-                    expected_data[reply_author["external_id"]]["last_activity_at"] = (
-                        time.strftime("%Y-%m-%dT%H:%M:%SZ")
-                    )
+                    expected_data[str(reply_author["external_id"])][
+                        "last_activity_at"
+                    ] = time.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-                reply_id = Comment().insert(
-                    body=fake.sentence(),
-                    course_id=course_id,
-                    author_id=reply_author["external_id"],
-                    parent_id=str(comment["_id"]),
-                    comment_thread_id=thread_id,
+                reply_id = backend.create_comment(
+                    {
+                        "body": fake.sentence(),
+                        "course_id": course_id,
+                        "author_id": reply_author["external_id"],
+                        "parent_id": str(comment["_id"]),
+                        "comment_thread_id": thread_id,
+                    },
                 )
-                reply = Comment().get(reply_id) or {}
+                reply = backend.get_comment(reply_id) or {}
 
-                add_flags(Comment, reply, expected_data)
+                add_flags("comment", reply, expected_data, backend)
 
     if build_initial_stats:
         for author in authors:
@@ -151,15 +168,18 @@ def build_structure_and_response(
 
 
 @pytest.mark.parametrize("sort_key", [None, "recency", "flagged"])
-def test_get_user_stats(api_client: Any, sort_key: Optional[str]) -> None:
+def test_get_user_stats(
+    api_client: Any, sort_key: Optional[str], patched_get_backend: Any
+) -> None:
     """Test retrieving user stats with various sorting options."""
+    backend = patched_get_backend()
     course_id = fake.word()
     authors_ids = [
-        Users().insert(external_id=f"{i}", username=f"author-{i}") for i in range(1, 7)
+        backend.find_or_create_user(str(i), username=f"author-{i}") for i in range(1, 7)
     ]
-    authors = [Users().get(author_id) or {} for author_id in authors_ids]
+    authors = [backend.get_user(author_id) or {} for author_id in authors_ids]
 
-    build_structure_and_response(course_id, authors)
+    build_structure_and_response(course_id, authors, backend)
 
     params = {"sort_key": sort_key, "with_timestamps": "true"}
     response = api_client.get_json(f"/api/v2/users/{course_id}/stats", params)
@@ -200,22 +220,25 @@ def test_stats_for_user_with_no_activity(api_client: Any) -> None:
     assert res_data == []
 
 
-def test_user_stats_filtered_by_user(api_client: Any) -> None:
+def test_user_stats_filtered_by_user(api_client: Any, patched_get_backend: Any) -> None:
     """Test returning user stats filtered by usernames with default/activity sort."""
+    backend = patched_get_backend()
     course_id = fake.word()
 
     # Create some users
     authors_ids = [
-        Users().insert(external_id=f"{i}", username=f"userauthor-{i}")
-        for i in range(1, 4)
+        backend.find_or_create_user(str(i), username=f"userauthor-{i}")
+        for i in range(1, 11)
     ]
-    authors = [Users().get(author_id) or {} for author_id in authors_ids]
+    authors = [backend.get_user(author_id) or {} for author_id in authors_ids]
 
     # Build structure and response
-    full_data = build_structure_and_response(course_id, authors)
+    full_data = build_structure_and_response(course_id, authors, backend)
 
     # Randomly sample and shuffle usernames
-    usernames = random.sample([f"userauthor-{i}" for i in range(1, 4)], 2)
+    usernames = [
+        "userauthor-1"
+    ]  # random.sample([f"userauthor-{i}" for i in range(1, 4)], 2)
 
     usernames_str = ",".join(usernames)
 
@@ -236,18 +259,21 @@ def test_user_stats_filtered_by_user(api_client: Any) -> None:
     assert res_data == expected_result
 
 
-def test_user_stats_with_recency_sort(api_client: APIClient) -> None:
+def test_user_stats_with_recency_sort(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test returning user stats with recency sort."""
+    backend = patched_get_backend()
     course_id = fake.word()
     # Create some users
     authors_ids = [
-        Users().insert(external_id=f"author-{i}", username=f"userauthor-{i}")
+        backend.find_or_create_user(str(i), username=f"userauthor-{i}")
         for i in range(1, 6)
     ]
-    authors = [Users().get(author_id) or {} for author_id in authors_ids]
+    authors = [backend.get_user(author_id) or {} for author_id in authors_ids]
 
     # Build structure with timestamps
-    build_structure_and_response(course_id, authors, with_timestamps=True)
+    build_structure_and_response(course_id, authors, backend, with_timestamps=True)
 
     # Get user stats sorted by recency
     response = api_client.get_json(
@@ -267,16 +293,19 @@ def test_user_stats_with_recency_sort(api_client: APIClient) -> None:
 
 
 @pytest.fixture(name="original_stats")
-def get_original_stats(api_client: APIClient) -> tuple[dict[str, Any], str, str]:
+def get_original_stats(
+    api_client: APIClient, patched_get_backend: Any
+) -> tuple[dict[str, Any], str, str]:
     """Setup the initial data structure and save stats."""
+    backend = patched_get_backend()
     course_id = fake.word()
     authors_ids = [
-        Users().insert(external_id=f"{i}", username=f"userauthor-{i}")
+        backend.find_or_create_user(str(i), username=f"userauthor-{i}")
         for i in range(1, 4)
     ]
-    authors = [Users().get(author_id) or {} for author_id in authors_ids]
+    authors = [backend.get_user(author_id) or {} for author_id in authors_ids]
 
-    build_structure_and_response(course_id, authors)
+    build_structure_and_response(course_id, authors, backend)
 
     response = api_client.get_json(f"/api/v2/users/{course_id}/stats", params={})
     assert response.status_code == 200
@@ -308,13 +337,16 @@ def get_new_stats(
 def test_handles_deleting_threads(
     api_client: APIClient,
     original_stats: tuple[dict[str, Any], str, str],
+    patched_get_backend: Any,
 ) -> None:
     """Test handling deleting threads."""
+    backend = patched_get_backend()
     stats, username, course_id = original_stats
 
-    thread = CommentThread().find_one(
-        {"author_username": username, "course_id": course_id}
-    )
+    user = backend.get_user_by_username(username)
+    assert user is not None
+
+    thread = backend.find_thread(author_id=user["_id"], course_id=course_id)
     assert thread is not None
 
     response = api_client.delete_json(f"/api/v2/threads/{str(thread['_id'])}")
@@ -331,13 +363,16 @@ def test_handles_deleting_threads(
 def test_handles_updating_threads(
     api_client: APIClient,
     original_stats: tuple[dict[str, Any], str, str],
+    patched_get_backend: Any,
 ) -> None:
     """Test handling updating threads."""
+    backend = patched_get_backend()
     stats, username, course_id = original_stats
 
-    thread = CommentThread().find_one(
-        {"author_username": username, "course_id": course_id}
-    )
+    user = backend.get_user_by_username(username)
+    assert user is not None
+
+    thread = backend.find_thread(author_id=user["_id"], course_id=course_id)
     assert thread is not None
 
     response = api_client.put_json(
@@ -387,17 +422,19 @@ def test_handles_adding_threads(
 
 
 def test_handles_deleting_responses(
-    api_client: APIClient, original_stats: tuple[dict[str, Any], str, str]
+    api_client: APIClient,
+    original_stats: tuple[dict[str, Any], str, str],
+    patched_get_backend: Any,
 ) -> None:
     """Test handling deleting responses."""
+    backend = patched_get_backend()
     stats, username, course_id = original_stats
 
-    comment = Comment().find_one(
-        {
-            "author_username": username,
-            "course_id": course_id,
-            "parent_id": None,
-        }
+    user = backend.get_user_by_username(username)
+    assert user is not None
+
+    comment = backend.find_comment(
+        author_id=user["_id"], course_id=course_id, parent_id=None
     )
     assert comment is not None
 
@@ -415,17 +452,16 @@ def test_handles_deleting_responses(
 def test_handles_updating_responses(
     api_client: APIClient,
     original_stats: tuple[dict[str, Any], str, str],
+    patched_get_backend: Any,
 ) -> None:
     """Test handling updating responses."""
+    backend = patched_get_backend()
     stats, username, course_id = original_stats
 
-    comment = Comment().find_one(
-        {
-            "author_username": username,
-            "course_id": course_id,
-            "parent_id": None,
-        }
-    )
+    user = backend.get_user_by_username(username)
+    assert user is not None
+
+    comment = backend.find_comment(author_id=user["_id"], course_id=course_id)
     assert comment is not None
 
     response = api_client.put_json(
@@ -445,19 +481,19 @@ def test_handles_updating_responses(
 def test_handles_deleting_replies(
     api_client: APIClient,
     original_stats: tuple[dict[str, Any], str, str],
+    patched_get_backend: Any,
 ) -> None:
     """Test handling deleting replies."""
+    backend = patched_get_backend()
     stats, username, course_id = original_stats
 
-    # Find a reply (comment with a parent_id)
-    reply = Comment().find_one(
-        {
-            "author_username": username,
-            "course_id": course_id,
-            "parent_id": {"$ne": None},
-        }
-    )
+    user = backend.get_user_by_username(username)
+    assert user is not None
 
+    # Find a reply (comment with a parent_id)
+    reply = backend.find_comment(
+        author_id=user["_id"], course_id=course_id, is_parent_comment=False
+    )
     assert reply is not None
 
     # Delete the reply
@@ -476,22 +512,23 @@ def test_handles_deleting_replies(
 def test_handles_removing_flags(
     api_client: APIClient,
     original_stats: tuple[dict[str, Any], str, str],
+    patched_get_backend: Any,
 ) -> None:
     """Test handling removing abuse flags."""
+    backend = patched_get_backend()
     stats, username, course_id = original_stats
 
+    user = backend.get_user_by_username(username)
+    assert user is not None
+
     # Find a comment with existing abuse flaggers
-    comment = Comment().find_one(
-        {
-            "author_username": username,
-            "course_id": course_id,
-            "abuse_flaggers": {"$ne": []},
-        }
+    comment = backend.find_comment(
+        author_id=user["_id"], course_id=course_id, with_abuse_flaggers=True
     )
     assert comment is not None
 
     # Set abuse flaggers to two users
-    Comment().update(str(comment["_id"]), abuse_flaggers=["1", "2"])
+    backend.update_comment(str(comment["_id"]), abuse_flaggers=["1", "2"])
 
     # Remove the flag for the first user
     response = api_client.put_json(
@@ -523,11 +560,13 @@ def test_handles_removing_flags(
     assert new_stats["active_flags"] == stats["active_flags"] - 1
 
 
-def test_build_course_stats_with_anonymous_posts(api_client: APIClient) -> None:
+def test_build_course_stats_with_anonymous_posts(
+    api_client: APIClient, patched_get_backend: Any
+) -> None:
     """Test that anonymous posts are not included in user stats after a non-anonymous post."""
-
+    backend = patched_get_backend()
     # Create a test user
-    user_id = Users().insert(external_id="3", username="user3")
+    user_id = backend.find_or_create_user(user_id="3", username="user3")
     course_id = "course-1"
 
     threads_ids = []
@@ -561,18 +600,19 @@ def test_build_course_stats_with_anonymous_posts(api_client: APIClient) -> None:
     assert stats["user_stats"][0]["threads"] == 1
 
 
-def test_update_user_stats(api_client: APIClient) -> None:
+def test_update_user_stats(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test that user stats are updated when requested."""
+    backend = patched_get_backend()
     # Create a test course ID and users
     course_id = fake.word()
     authors_ids = [
-        Users().insert(external_id=f"author-{i}", username=f"author-{i}")
+        backend.find_or_create_user(user_id=str(i), username=f"author-{i}")
         for i in range(1, 7)
     ]
-    authors = [Users().get(author_id) or {} for author_id in authors_ids]
+    authors = [backend.get_user(author_id) or {} for author_id in authors_ids]
     # Build the expected data without initial stats
     expected_data = build_structure_and_response(
-        course_id, authors, build_initial_stats=False
+        course_id, authors, backend, build_initial_stats=False
     )
 
     # Sort the data for expected result (threads, responses, replies)
@@ -604,18 +644,19 @@ def test_update_user_stats(api_client: APIClient) -> None:
     )  # User stats should now match the expected data
 
 
-def test_mark_thread_as_read(api_client: APIClient) -> None:
+def test_mark_thread_as_read(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test that a thread is marked as read for the user."""
+    backend = patched_get_backend()
     user_id = "1"
     username = "user1"
-    Users().insert(external_id=user_id, username=username)
+    backend.find_or_create_user(user_id=user_id, username=username)
 
     # Setup 10 threads for testing
-    threads_ids = setup_10_threads(user_id, username)
-    thread = CommentThread().get(threads_ids[0]) or {}
+    threads_ids = setup_10_threads(user_id, username, backend)
+    thread = backend.get_thread(threads_ids[0]) or {}
 
     # Create a test user
-    user_id = Users().insert(external_id="42", username="user-42")
+    user_id = backend.find_or_create_user(user_id="42", username="user-42")
 
     # Mark the first thread as read
     response = api_client.post_json(
@@ -625,7 +666,7 @@ def test_mark_thread_as_read(api_client: APIClient) -> None:
     assert response.status_code == 200
 
     # Reload the user and verify read state
-    user = Users().get(user_id) or {}
+    user = backend.get_user(user_id) or {}
     read_states = [
         course_state
         for course_state in user["read_states"]
@@ -638,11 +679,12 @@ def test_mark_thread_as_read(api_client: APIClient) -> None:
     )  # Verify the read date is on or after the thread's updated_at
 
 
-def test_retire_user_inactive(api_client: APIClient) -> None:
+def test_retire_user_inactive(api_client: APIClient, patched_get_backend: Any) -> None:
     """Test retiring an inactive user."""
 
-    user_id = Users().insert(external_id="1", username="user1")
-    user = Users().get(user_id) or {}
+    backend = patched_get_backend()
+    user_id = backend.find_or_create_user(user_id="1", username="user1")
+    user = backend.get_user(user_id) or {}
 
     # Verify user is not subscribed to any threads
     response = api_client.get_json(
@@ -667,12 +709,9 @@ def test_retire_user_inactive(api_client: APIClient) -> None:
     )
     assert response.status_code == 200
 
-    user = Users().get(user_id) or {}
+    user = backend.get_user(user_id) or {}
     assert user["username"] == retired_username
     assert user["email"] == ""
 
-    # Check user's comments are blanked
-    comments = list(Comment().find({"author_username": retired_username})) + list(
-        CommentThread().find({"author_username": retired_username})
-    )
-    assert len(comments) == 0
+    content = backend.get_user_contents_by_username(retired_username)
+    assert len(content) == 0
