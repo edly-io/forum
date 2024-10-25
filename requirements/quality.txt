@@ -9,9 +9,8 @@ asgiref==3.8.1
     #   -r requirements/test.txt
     #   django
     #   django-stubs
-astroid==3.2.4
+astroid==2.13.5
     # via
-    #   -r requirements/test.txt
     #   pylint
     #   pylint-celery
 cachetools==5.5.0
@@ -52,9 +51,7 @@ coverage[toml]==7.6.4
     #   -r requirements/test.txt
     #   pytest-cov
 dill==0.3.9
-    # via
-    #   -r requirements/test.txt
-    #   pylint
+    # via pylint
 distlib==0.3.9
     # via
     #   -r requirements/test.txt
@@ -102,20 +99,19 @@ iniconfig==2.0.0
 isort==5.13.2
     # via
     #   -r requirements/quality.in
-    #   -r requirements/test.txt
     #   pylint
 jinja2==3.1.4
     # via
     #   -r requirements/test.txt
     #   code-annotations
+lazy-object-proxy==1.10.0
+    # via astroid
 markupsafe==3.0.2
     # via
     #   -r requirements/test.txt
     #   jinja2
 mccabe==0.7.0
-    # via
-    #   -r requirements/test.txt
-    #   pylint
+    # via pylint
 mongomock==4.2.0.post1
     # via -r requirements/test.txt
 mypy==1.13.0
@@ -152,16 +148,16 @@ pycodestyle==2.12.1
     # via -r requirements/quality.in
 pydocstyle==6.3.0
     # via -r requirements/quality.in
-pylint==3.2.7
+pylint==2.15.10
     # via
-    #   -r requirements/test.txt
+    #   -c requirements/constraints.txt
     #   edx-lint
     #   pylint-celery
     #   pylint-django
     #   pylint-plugin-utils
 pylint-celery==0.3
     # via edx-lint
-pylint-django==2.6.1
+pylint-django==2.5.5
     # via edx-lint
 pylint-plugin-utils==0.8.2
     # via
@@ -226,9 +222,7 @@ text-unidecode==1.3
     #   -r requirements/test.txt
     #   python-slugify
 tomlkit==0.13.2
-    # via
-    #   -r requirements/test.txt
-    #   pylint
+    # via pylint
 tox==4.23.2
     # via -r requirements/test.txt
 types-pyyaml==6.0.12.20240917
@@ -258,3 +252,5 @@ virtualenv==20.27.0
     # via
     #   -r requirements/test.txt
     #   tox
+wrapt==1.16.0
+    # via astroid

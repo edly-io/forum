@@ -12,3 +12,5 @@
 -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
 
 backports.zoneinfo ; python_version < "3.9"
+
+pylint<2.16.0 # pinning the pylint to the same version as that of edx-platform

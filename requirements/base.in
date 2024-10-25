@@ -10,4 +10,3 @@ requests
 pymongo
 elasticsearch
 mysqlclient
-pylint==3.2.7
