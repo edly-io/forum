@@ -9,4 +9,5 @@ openedx-atlas
 requests
 pymongo
 elasticsearch
-mysqlclient==2.2.4
+mysqlclient
+pylint==3.2.7
