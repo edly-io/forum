@@ -9,7 +9,7 @@ asgiref==3.8.1
     #   -r requirements/test.txt
     #   django
     #   django-stubs
-astroid==2.13.5
+astroid==3.3.5
     # via
     #   pylint
     #   pylint-celery
@@ -104,8 +104,6 @@ jinja2==3.1.4
     # via
     #   -r requirements/test.txt
     #   code-annotations
-lazy-object-proxy==1.10.0
-    # via astroid
 markupsafe==3.0.2
     # via
     #   -r requirements/test.txt
@@ -148,16 +146,15 @@ pycodestyle==2.12.1
     # via -r requirements/quality.in
 pydocstyle==6.3.0
     # via -r requirements/quality.in
-pylint==2.15.10
+pylint==3.3.1
     # via
-    #   -c requirements/constraints.txt
     #   edx-lint
     #   pylint-celery
     #   pylint-django
     #   pylint-plugin-utils
 pylint-celery==0.3
     # via edx-lint
-pylint-django==2.5.5
+pylint-django==2.6.1
     # via edx-lint
 pylint-plugin-utils==0.8.2
     # via
@@ -252,5 +249,3 @@ virtualenv==20.27.0
     # via
     #   -r requirements/test.txt
     #   tox
-wrapt==1.16.0
-    # via astroid
