@@ -9,7 +9,7 @@ asgiref==3.8.1
     #   -r requirements/quality.txt
     #   django
     #   django-stubs
-astroid==3.2.4
+astroid==3.3.5
     # via
     #   -r requirements/quality.txt
     #   pylint
@@ -167,7 +167,7 @@ pycodestyle==2.12.1
     # via -r requirements/quality.txt
 pydocstyle==6.3.0
     # via -r requirements/quality.txt
-pylint==3.2.7
+pylint==3.3.1
     # via
     #   -r requirements/quality.txt
     #   edx-lint
