@@ -1,11 +1,14 @@
 """Tests for db client."""
 
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth import get_user_model
 
 from forum.backends.mysql.models import (
     AbuseFlagger,
     CommentThread,
+    CourseStat,
 )
 from forum.backends.mysql.api import MySQLBackend as backend
 
@@ -86,3 +89,89 @@ def test_un_flag_all_as_abuse_historical_flags_updated() -> None:
     assert un_flagged_comment_thread["_id"] == str(comment_thread.pk)
     assert len(comment_thread.abuse_flaggers) == 0
     assert len(comment_thread.historical_abuse_flaggers) == 1
+
+
+@pytest.mark.django_db
+def test_update_stats_for_course_creates_new_stat() -> None:
+    """Test that a new CourseStat is created with default values."""
+    user = User.objects.create(username="testuser")
+    course_id = "course123"
+    backend.update_stats_for_course(str(user.pk), course_id)
+
+    course_stat = CourseStat.objects.get(user=user, course_id=course_id)
+    assert course_stat.active_flags == 0
+    assert course_stat.inactive_flags == 0
+    assert course_stat.threads == 0
+    assert course_stat.responses == 0
+    assert course_stat.replies == 0
+
+
+@pytest.mark.django_db
+def test_update_stats_for_course_updates_existing_stat() -> None:
+    """Test that an existing CourseStat is updated correctly."""
+    user = User.objects.create(username="testuser")
+    user_2 = User.objects.create(username="testuser2")
+    course_id = "course123"
+    comment_thread = CommentThread.objects.create(
+        author=user,
+        course_id=course_id,
+        title="Test Thread",
+        body="This is a test thread",
+        thread_type="discussion",
+        context="course",
+    )
+    comment_thread_2 = CommentThread.objects.create(
+        author=user,
+        course_id=course_id,
+        title="Test Thread",
+        body="This is a test thread",
+        thread_type="discussion",
+        context="course",
+    )
+    AbuseFlagger.objects.create(user=user, content=comment_thread)
+    AbuseFlagger.objects.create(user=user_2, content=comment_thread_2)
+    course_stat = CourseStat.objects.create(
+        user=user, course_id=course_id, active_flags=2
+    )
+
+    backend.update_stats_for_course(str(user.pk), course_id, active_flags=2, threads=2)
+
+    course_stat.refresh_from_db()
+    assert course_stat.active_flags == 2
+    assert course_stat.threads == 2
+
+
+@pytest.mark.django_db
+def test_update_stats_for_course_ignores_invalid_keys() -> None:
+    """Test that invalid keys in kwargs are ignored."""
+    user = User.objects.create(username="testuser")
+    course_id = "course123"
+    comment_thread = CommentThread.objects.create(
+        author=user,
+        course_id=course_id,
+        title="Test Thread",
+        body="This is a test thread",
+        thread_type="discussion",
+        context="course",
+    )
+    AbuseFlagger.objects.create(user=user, content=comment_thread)
+    course_stat = CourseStat.objects.create(
+        user=user, course_id=course_id, active_flags=1
+    )
+
+    # Update stats with an invalid key
+    backend.update_stats_for_course(str(user.pk), course_id, invalid_key=10)
+
+    course_stat.refresh_from_db()
+    assert course_stat.active_flags == 1
+
+
+@pytest.mark.django_db
+def test_update_stats_for_course_calls_build_course_stats() -> None:
+    """Test that build_course_stats is called after updating stats."""
+    user = User.objects.create(username="testuser")
+    course_id = "course123"
+
+    with patch.object(backend, "build_course_stats") as mock_build_course_stats:
+        backend.update_stats_for_course(str(user.pk), course_id, active_flags=1)
+        mock_build_course_stats.assert_called_once_with(str(user.pk), course_id)
