@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 
 from django.core.management.base import BaseCommand
 
-from forum.search.backend import get_search_backend
+from forum.search import get_index_search_backend
 from forum.utils import get_int_value_from_collection
 
 
@@ -42,7 +42,7 @@ class Command(BaseCommand):
             args: Additional arguments.
             kwargs: Command options.
         """
-        search_backend = get_search_backend()
+        search_backend = get_index_search_backend()
 
         batch_size = get_int_value_from_collection(kwargs, "batch_size", 500)
         extra_catchup_minutes = get_int_value_from_collection(

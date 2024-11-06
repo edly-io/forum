@@ -9,7 +9,7 @@ import pytest
 from pymongo.errors import ServerSelectionTimeoutError
 
 from forum.mongo import get_database
-from forum.search.backend import ElasticsearchBackend
+from forum.search.es import ElasticsearchIndexBackend
 from test_utils.client import APIClient
 
 log = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ def wait_for_mongodb() -> None:
 
 def wait_for_elasticsearch() -> None:
     """Wait for ElasticSearch to start."""
-    es = ElasticsearchBackend()
+    es = ElasticsearchIndexBackend()
     timeout = ES_TIMEOUT
     while timeout > 0:
         if es.client.ping():
@@ -59,7 +59,7 @@ def wait_for_elasticsearch() -> None:
 def initialize_indices() -> None:
     """Initialize Elasticsearch indices."""
     wait_for_elasticsearch()
-    es = ElasticsearchBackend()
+    es = ElasticsearchIndexBackend()
     es.client.indices.delete(index="*")
     es.initialize_indices()
 

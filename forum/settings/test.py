@@ -65,16 +65,13 @@ TEMPLATES = [
 FORUM_MONGODB_DATABASE = "testdb"
 FORUM_MONGODB_CLIENT_PARAMETERS: dict[str, str] = {}
 
-FORUM_ENABLE_ELASTIC_SEARCH = True
-if FORUM_ENABLE_ELASTIC_SEARCH:
-    FORUM_ELASTIC_SEARCH_CONFIG = [
-        {
-            "host": "localhost",
-            "port": "5200",
-            "use_ssl": False,
-        }
-    ]
-else:
-    FORUM_ELASTIC_SEARCH_CONFIG = [{}]
+FORUM_SEARCH_BACKEND = "forum.search.es.ElasticsearchBackend"
+FORUM_ELASTIC_SEARCH_CONFIG = [
+    {
+        "host": "localhost",
+        "port": "5200",
+        "use_ssl": False,
+    }
+]
 
 USE_TZ = True

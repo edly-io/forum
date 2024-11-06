@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from forum.backend import get_backend
 from forum.constants import FORUM_DEFAULT_PAGE, FORUM_DEFAULT_PER_PAGE
-from forum.search.comment_search import ThreadSearch
+from forum.search import get_thread_search_backend
 from forum.serializers.thread import ThreadSerializer
 
 
@@ -32,7 +32,7 @@ def _get_thread_ids_from_indexes(
             - A suggested correction for the search text, or None if no correction is found.
     """
     corrected_text: Optional[str] = None
-    thread_search = ThreadSearch()
+    thread_search = get_thread_search_backend()
 
     thread_ids = thread_search.get_thread_ids(
         context,
@@ -42,7 +42,7 @@ def _get_thread_ids_from_indexes(
         course_id=course_id,
     )
     if not thread_ids:
-        corrected_text = thread_search.get_suggested_text(text, ["body", "title"])
+        corrected_text = thread_search.get_suggested_text(text)
         if corrected_text:
             thread_ids = thread_search.get_thread_ids_with_corrected_text(
                 context,

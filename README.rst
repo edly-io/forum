@@ -22,6 +22,13 @@ The forum feature will then be automatically enabled in the Open edX platform, a
 Development
 ***********
 
+Run tests with::
+
+    make test-all       # run all tests
+    make test           # run unit tests only
+    make test-quality   # run quality tests only
+    make test-e2e       # run end-to-end tests only
+
 When developing this application, it is recommended to clone this repository locally and mount it within the application containers::
 
     git clone git@github.com:openedx/forum.git

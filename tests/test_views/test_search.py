@@ -4,19 +4,18 @@ Test Search Thread API Endpoints
 By default, the test cases use fixtures and do not hit the actual Elasticsearch instance.
 However, it is recommended to use the actual Elasticsearch for verifying all tests.
 
-To do so, update the following configurations:
+To do so, update FORUM_ELASTIC_SEARCH_CONFIG based on your Elasticsearch instance. By
+default, it queries localhost:5000.
 
-- Set FORUM_ENABLE_ELASTIC_SEARCH=True in forum.settings.test.py.
-- Update FORUM_ELASTIC_SEARCH_CONFIG based on your Elasticsearch instance. By default, it queries localhost:5000.
-To test it quickly, you can create a new container with the same image as the production instance.
+To test it quickly, you can create a new container with the same image as the production
+instance.
 
 Run this command to start Elasticsearch on localhost:5000.
-Note: Update the image i.e elasticsearch:7.17.13 as used in production
 
-```
-docker run --rm --name elasticsearch_test -p 5200:9200 -p 5300:9300 -e \
-"discovery.type=single-node" elasticsearch:7.17.13
-```
+    docker run --rm --name elasticsearch_test -p 5200:9200 -p 5300:9300 \
+        -e "discovery.type=single-node" elasticsearch:7.17.13
+
+Note: Update the image tag (i.e: "elasticsearch:7.17.13") to match the one used in production.
 """
 
 import time
@@ -27,8 +26,8 @@ from urllib.parse import urlencode
 import pytest
 from requests import Response
 
-from forum.search.backend import get_search_backend
-from forum.search.comment_search import ThreadSearch
+from forum.search import get_index_search_backend
+from forum.search.es import ElasticsearchThreadSearchBackend
 from test_utils.client import APIClient
 
 pytestmark = pytest.mark.django_db
@@ -46,36 +45,38 @@ def get_search_response(
     params: dict[str, str],
     get_thread_ids_value: Optional[list[str]] = None,
     get_suggested_text_value: Optional[str] = "",
-    get_therad_ids_with_corrected_text_values: Optional[list[str]] = None,
+    get_thread_ids_with_corrected_text_values: Optional[list[str]] = None,
 ) -> Response:
     """
-    Helper function to patch ThreadSearch methods and get search response.
+    Helper function to patch ElasticsearchThreadSearchBackend methods and get search response.
 
     :param api_client: The API client used to make the request.
     :param params: The query dict for the search.
     :param get_thread_ids_value: Mocked return value for get_thread_ids.
     :param get_suggested_text_value: Mocked return value for get_suggested_text.
-    :param get_therad_ids_with_corrected_text_values: Mocked return value for get_thread_ids_with_corrected_text.
+    :param get_thread_ids_with_corrected_text_values: Mocked return value for get_thread_ids_with_corrected_text.
     :return: The response from the search request.
     """
 
     get_thread_ids_value = get_thread_ids_value or []
-    get_therad_ids_with_corrected_text_values = (
-        get_therad_ids_with_corrected_text_values or []
+    get_thread_ids_with_corrected_text_values = (
+        get_thread_ids_with_corrected_text_values or []
     )
 
     with patch.object(
-        ThreadSearch, "get_thread_ids", return_value=get_thread_ids_value
+        ElasticsearchThreadSearchBackend,
+        "get_thread_ids",
+        return_value=get_thread_ids_value,
     ):
         with patch.object(
-            ThreadSearch,
+            ElasticsearchThreadSearchBackend,
             "get_suggested_text",
             return_value=get_suggested_text_value,
         ):
             with patch.object(
-                ThreadSearch,
+                ElasticsearchThreadSearchBackend,
                 "get_thread_ids_with_corrected_text",
-                return_value=get_therad_ids_with_corrected_text_values,
+                return_value=get_thread_ids_with_corrected_text_values,
             ):
                 encoded_params = urlencode(params)
                 return api_client.get_json(
@@ -85,7 +86,7 @@ def get_search_response(
 
 def refresh_elastic_search_indices() -> None:
     """Refresh Elasticsearch indices."""
-    get_search_backend().refresh_indices()
+    get_index_search_backend().refresh_indices()
 
 
 def test_invalid_request(api_client: APIClient, patched_get_backend: Any) -> None:

@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 import pytest
 from requests import Response
 
-from forum.search.backend import get_search_backend
+from forum.search import get_index_search_backend
 from test_utils.client import APIClient
 
 pytestmark = pytest.mark.django_db
@@ -30,7 +30,7 @@ def assert_result_total(response: Response, expected_total: int) -> None:
 
 def refresh_elastic_search_indices() -> None:
     """Refresh Elasticsearch indices."""
-    get_search_backend().refresh_indices()
+    get_index_search_backend().refresh_indices()
 
 
 @pytest.fixture(name="user_data")
