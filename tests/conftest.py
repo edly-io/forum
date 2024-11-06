@@ -13,7 +13,10 @@ from pymongo.database import Database
 from forum.backends.mysql.api import MySQLBackend
 from forum.backends.mongodb.api import MongoBackend
 from test_utils.client import APIClient
-from test_utils.mock_es_backend import MockElasticsearchBackend
+from test_utils.mock_es_backend import (
+    MockElasticsearchIndexBackend,
+    MockElasticsearchDocumentBackend,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -35,8 +38,14 @@ def fixture_api_client() -> APIClient:
 @pytest.fixture(autouse=True)
 def mock_elasticsearch_backend() -> Generator[Any, Any, Any]:
     """Mock the dummy elastic search."""
-    with patch("forum.search.backend.ElasticsearchBackend", MockElasticsearchBackend):
-        yield
+    with patch(
+        "forum.search.es.ElasticsearchIndexBackend", MockElasticsearchIndexBackend
+    ):
+        with patch(
+            "forum.search.es.ElasticsearchDocumentBackend",
+            MockElasticsearchDocumentBackend,
+        ):
+            yield
 
 
 @pytest.fixture(params=[MongoBackend, MySQLBackend])

@@ -7,7 +7,7 @@ from typing import Any
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from forum.search.backend import get_search_backend
+from forum.search import get_document_search_backend
 from forum.utils import get_str_value_from_collection
 from forum.models import Comment, CommentThread
 
@@ -23,7 +23,7 @@ def handle_comment_thread_deletion(sender: Any, **kwargs: dict[str, str]) -> Non
         **kwargs (dict[str, Any]): Additional arguments, including 'comment_thread_id'.
     """
     thread_id = get_str_value_from_collection(kwargs, "comment_thread_id")
-    search_backend = get_search_backend()
+    search_backend = get_document_search_backend()
     search_backend.delete_document(sender.index_name, thread_id)
 
 
@@ -36,7 +36,7 @@ def handle_comment_deletion(sender: Any, **kwargs: dict[str, Any]) -> None:
         **kwargs (dict[str, Any]): Additional arguments, including 'comment_id'.
     """
     comment_id = get_str_value_from_collection(kwargs, "comment_id")
-    search_backend = get_search_backend()
+    search_backend = get_document_search_backend()
     search_backend.delete_document(sender.index_name, comment_id)
 
 
@@ -50,9 +50,8 @@ def handle_comment_thread_insertion(sender: Any, **kwargs: dict[str, Any]) -> No
     """
     thread_id = get_str_value_from_collection(kwargs, "comment_thread_id")
     thread = sender().get(_id=thread_id)
-    es_helper = get_search_backend()
     doc = sender().doc_to_hash(thread)
-    es_helper.index_document(sender.index_name, thread_id, doc)
+    get_document_search_backend().index_document(sender.index_name, thread_id, doc)
     log.info(f"Thread {thread_id} added to Elasticsearch index")
 
 
@@ -66,9 +65,8 @@ def handle_comment_insertion(sender: Any, **kwargs: dict[str, Any]) -> None:
     """
     comment_id = get_str_value_from_collection(kwargs, "comment_id")
     comment = sender().get(_id=comment_id)
-    es_helper = get_search_backend()
     doc = sender().doc_to_hash(comment)
-    es_helper.index_document(sender.index_name, comment_id, doc)
+    get_document_search_backend().index_document(sender.index_name, comment_id, doc)
     log.info(f"Comment {comment_id} added to Elasticsearch index")
 
 
@@ -82,9 +80,8 @@ def handle_comment_thread_updated(sender: Any, **kwargs: dict[str, Any]) -> None
     """
     thread_id = get_str_value_from_collection(kwargs, "comment_thread_id")
     thread = sender().get(_id=thread_id)
-    es_helper = get_search_backend()
     doc = sender().doc_to_hash(thread)
-    es_helper.update_document(sender.index_name, thread_id, doc)
+    get_document_search_backend().update_document(sender.index_name, thread_id, doc)
     log.info(f"Thread {thread_id} added to Elasticsearch index")
 
 
@@ -98,9 +95,8 @@ def handle_comment_updated(sender: Any, **kwargs: dict[str, Any]) -> None:
     """
     comment_id = get_str_value_from_collection(kwargs, "comment_id")
     comment = sender().get(_id=comment_id)
-    es_helper = get_search_backend()
     doc = sender().doc_to_hash(comment)
-    es_helper.update_document(sender.index_name, comment_id, doc)
+    get_document_search_backend().update_document(sender.index_name, comment_id, doc)
     log.info(f"Comment {comment_id} added to Elasticsearch index")
 
 
@@ -115,9 +111,9 @@ def handle_deletion(sender: Any, instance: Any, **kwargs: dict[str, Any]) -> Non
         instance (Any): The instance of the deleted comment thread or comment.
     """
     document_id = instance.id
-    search_backend = get_search_backend()
+    search_backend = get_document_search_backend()
     search_backend.delete_document(sender.index_name, document_id)
-    log.info(f"{sender.__name__} {document_id} deleted from the elasticsearch")
+    log.info(f"{sender.__name__} {document_id} deleted from the search backend")
 
 
 @receiver(post_save, sender=CommentThread)
@@ -134,12 +130,12 @@ def handle_comment_thread_and_comment(
         created (bool): Indicates if the instance was created.
     """
     document_id = instance.id
-    es_helper = get_search_backend()
+    search_backend = get_document_search_backend()
     doc = instance.doc_to_hash()
 
     if created:
-        es_helper.index_document(sender.index_name, document_id, doc)
-        log.info(f"{sender.__name__} {document_id} added to the elasticsearch")
+        search_backend.index_document(sender.index_name, document_id, doc)
+        log.info(f"{sender.__name__} {document_id} added to the search backend")
     else:
-        es_helper.update_document(sender.index_name, document_id, doc)
-        log.info(f"{sender.__name__} {document_id} updated in the elasticsearch")
+        search_backend.update_document(sender.index_name, document_id, doc)
+        log.info(f"{sender.__name__} {document_id} updated in the search backend")

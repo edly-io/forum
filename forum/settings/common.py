@@ -10,7 +10,9 @@ def plugin_settings(settings: Any) -> None:
     Common settings for forum app
     """
     settings.FORUM_MONGODB_DATABASE = "cs_comments_service"
-    settings.FORUM_ENABLE_ELASTIC_SEARCH = True
+    settings.FORUM_SEARCH_BACKEND = getattr(
+        settings, "FORUM_SEARCH_BACKEND", "forum.search.es.ElasticsearchBackend"
+    )
 
     # Unfortunately we can't copy settings from edx-platform because tutor patches have
     # not been applied yet

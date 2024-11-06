@@ -3,12 +3,12 @@ Mock Elasticsearch Backend.
 """
 
 from typing import Any
-from forum.search.backend import ElasticsearchBackend
+from forum.search.es import ElasticsearchIndexBackend, ElasticsearchDocumentBackend
 
 
-class MockElasticsearchBackend(ElasticsearchBackend):
+class MockElasticsearchIndexBackend(ElasticsearchIndexBackend):
     """
-    Mocked class for ElasticsearchBackend to return dummy values.
+    Mocked class for ElasticsearchIndexBackend to return dummy values.
 
     Since we are using fixtures for the search API in tests, these methods
     are overridden to provide mocked behavior without performing actual operations.
@@ -43,6 +43,12 @@ class MockElasticsearchBackend(ElasticsearchBackend):
 
     def validate_indices(self) -> None:
         """Mock method for validating Elasticsearch indices."""
+
+
+class MockElasticsearchDocumentBackend(ElasticsearchDocumentBackend):
+    """
+    Mocked class for ElasticsearchDocumentBackend to return dummy values.
+    """
 
     def update_document(
         self, index_name: str, doc_id: str, update_data: dict[str, Any]
