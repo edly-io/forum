@@ -36,16 +36,23 @@ def fixture_api_client() -> APIClient:
 
 
 @pytest.fixture(autouse=True)
-def mock_elasticsearch_backend() -> Generator[Any, Any, Any]:
+def mock_elasticsearch_document_backend() -> Generator[Any, Any, Any]:
     """Mock the dummy elastic search."""
     with patch(
-        "forum.search.es.ElasticsearchIndexBackend", MockElasticsearchIndexBackend
+        "forum.search.es.ElasticsearchBackend.DOCUMENT_SEARCH_CLASS",
+        MockElasticsearchDocumentBackend,
     ):
-        with patch(
-            "forum.search.es.ElasticsearchDocumentBackend",
-            MockElasticsearchDocumentBackend,
-        ):
-            yield
+        yield
+
+
+@pytest.fixture(autouse=True)
+def mock_elasticsearch_index_backend() -> Generator[Any, Any, Any]:
+    """Mock the dummy elastic search."""
+    with patch(
+        "forum.search.es.ElasticsearchBackend.INDEX_SEARCH_CLASS",
+        MockElasticsearchIndexBackend,
+    ):
+        yield
 
 
 @pytest.fixture(params=[MongoBackend, MySQLBackend])

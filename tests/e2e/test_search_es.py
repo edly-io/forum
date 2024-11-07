@@ -2,6 +2,7 @@
 Test Search Thread API Endpoints
 """
 
+import logging
 import time
 from typing import Any, Optional
 from urllib.parse import urlencode
@@ -10,9 +11,37 @@ import pytest
 from requests import Response
 
 from forum.search import get_index_search_backend
+from forum.search.es import ElasticsearchIndexBackend
 from test_utils.client import APIClient
 
+log = logging.getLogger(__name__)
 pytestmark = pytest.mark.django_db
+
+ES_TIMEOUT = 60
+ES_SLEEP_INTERVAL = 5
+
+
+@pytest.fixture(autouse=True)
+def initialize_indices() -> None:
+    """Initialize Elasticsearch indices."""
+    wait_for_elasticsearch()
+    es = ElasticsearchIndexBackend()
+    es.client.indices.delete(index="*")
+    es.initialize_indices()
+
+
+def wait_for_elasticsearch() -> None:
+    """Wait for ElasticSearch to start."""
+    es = ElasticsearchIndexBackend()
+    timeout = ES_TIMEOUT
+    while timeout > 0:
+        if es.client.ping():
+            log.info("Connected to the Elastic Search")
+            return
+        log.info("Waiting for elasticsearch to connect")
+        time.sleep(ES_SLEEP_INTERVAL)
+        timeout -= ES_SLEEP_INTERVAL
+    raise Exception("Elasticsearch did not start in time")
 
 
 def perform_search_query(api_client: APIClient, params: dict[str, Any]) -> Response:
@@ -31,17 +60,6 @@ def assert_result_total(response: Response, expected_total: int) -> None:
 def refresh_elastic_search_indices() -> None:
     """Refresh Elasticsearch indices."""
     get_index_search_backend().refresh_indices()
-
-
-@pytest.fixture(name="user_data")
-def create_test_user(patched_get_backend: Any) -> tuple[str, str]:
-    """Create a user."""
-    backend = patched_get_backend()
-
-    user_id = "1"
-    username = "test_user"
-    backend.find_or_create_user(user_id, username=username)
-    return user_id, username
 
 
 def test_invalid_request(
