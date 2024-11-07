@@ -74,4 +74,8 @@ FORUM_ELASTIC_SEARCH_CONFIG = [
     }
 ]
 
+# Meilisearch connection parameters
+MEILISEARCH_URL = "http://localhost:5700"
+MEILISEARCH_API_KEY = "MEILISEARCH_MASTER_KEY"
+
 USE_TZ = True

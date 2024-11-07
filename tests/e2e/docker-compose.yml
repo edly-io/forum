@@ -15,3 +15,11 @@ services:
         environment:
             - discovery.type=single-node
             - xpack.security.enabled=false
+
+    meilisearch:
+        # https://hub.docker.com/r/getmeili/meilisearch/tags
+        image: docker.io/getmeili/meilisearch:v1.8.4
+        ports:
+            - 127.0.0.1:5700:7700
+        environment:
+            MEILI_MASTER_KEY: "MEILISEARCH_MASTER_KEY"
