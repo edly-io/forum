@@ -10,4 +10,5 @@ pycodestyle               # PEP 8 compliance validation
 pydocstyle                # PEP 257 compliance validation
 mypy
 djangorestframework-stubs
+types-beautifulsoup4
 types-requests
