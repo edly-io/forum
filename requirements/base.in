@@ -4,9 +4,11 @@
 Django             # Web application framework
 
 
+beautifulsoup4
 djangorestframework
 openedx-atlas
 requests
 pymongo
 elasticsearch
+edx-search # meilisearch backend
 mysqlclient
