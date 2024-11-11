@@ -24,7 +24,7 @@ Development
 
 When developing this application, it is recommended to clone this repository locally and mount it within the application containers::
 
-    git clone git@github.com:edly-io/forum.git
+    git clone git@github.com:openedx/forum.git
     tutor mounts add ./forum/
 
 Check that the forum repository is properly bind-mounted both at build- and run-time by running ``tutor mounts list``. It should output the following::
@@ -137,7 +137,7 @@ If you are having trouble, we have discussion forums at https://discuss.openedx.
 
 Our real-time conversations are on Slack. You can request a `Slack invitation`_, then join our `community Slack workspace`_.
 
-For anything non-trivial, the best path is to open an issue `in this repository <https://github.com/edly-io/forum/issues>`__ with as many details about the issue you are facing as you can provide.
+For anything non-trivial, the best path is to open an issue `in this repository <https://github.com/openedx/forum/issues>`__ with as many details about the issue you are facing as you can provide.
 
 For more information about these options, see the `Getting Help <https://openedx.org/getting-help>`__ page.
 
@@ -175,12 +175,12 @@ Reporting Security Issues
 
 Please do not report security issues in public. Please email security@openedx.org.
 
-.. |ci-badge| image:: https://github.com/edly-io/forum/actions/workflows/ci.yml/badge.svg
-    :target: https://github.com/edly-io/forum/actions/workflows/ci.yml
+.. |ci-badge| image:: https://github.com/openedx/forum/actions/workflows/ci.yml/badge.svg
+    :target: https://github.com/openedx/forum/actions/workflows/ci.yml
     :alt: CI
 
-.. |license-badge| image:: https://img.shields.io/github/license/edly-io/forum.svg
-    :target: https://github.com/edly-io/forum/blob/master/LICENSE.txt
+.. |license-badge| image:: https://img.shields.io/github/license/openedx/forum.svg
+    :target: https://github.com/openedx/forum/blob/master/LICENSE.txt
     :alt: License
 
 .. |status-badge| image:: https://img.shields.io/badge/Status-Maintained-brightgreen

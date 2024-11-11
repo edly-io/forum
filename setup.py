@@ -147,9 +147,9 @@ CHANGELOG = open(
 ).read()
 
 setup(
-    name="forum",
+    name="openedx-forum",
     version=VERSION,
-    description="""openedx forum app""",
+    description="""Open edX forum application""",
     long_description=README + "\n\n" + CHANGELOG,
     author="Open edX Project",
     author_email="oscm@openedx.org",
