@@ -11,17 +11,19 @@ def is_mysql_backend_enabled(course_id: str | None) -> bool:
     Return True if mysql backend is enabled for the course.
     """
     try:
-        from forum.toggles import ENABLE_MYSQL_BACKEND  # pylint: disable=C0415
-
-        # pylint: disable=C0415
-        from opaque_keys.edx.locator import CourseKey  # type: ignore[import-not-found]
+        # pylint: disable=import-outside-toplevel
+        from forum.toggles import ENABLE_MYSQL_BACKEND
+        from opaque_keys.edx.keys import CourseKey
     except ImportError:
         return True
 
-    if isinstance(course_id, str):
-        course_id = CourseKey.from_string(course_id)
+    course_key: "CourseKey" | None = None
+    if isinstance(course_id, CourseKey):
+        course_key = course_id  # type: ignore[unreachable]
+    elif isinstance(course_id, str):
+        course_key = CourseKey.from_string(course_id)
 
-    return ENABLE_MYSQL_BACKEND.is_enabled(course_id)
+    return ENABLE_MYSQL_BACKEND.is_enabled(course_key)
 
 
 def get_backend(
