@@ -151,6 +151,7 @@ setup(
     version=VERSION,
     description="""Open edX forum application""",
     long_description=README + "\n\n" + CHANGELOG,
+    long_description_content_type="text/x-rst",
     author="Open edX Project",
     author_email="oscm@openedx.org",
     url="https://github.com/openedx/forum",
