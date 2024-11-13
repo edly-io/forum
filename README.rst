@@ -61,9 +61,9 @@ Deployment of the forum v2 application is gated by two course waffle flags. In a
 Forum v2 toggle
 ---------------
 
-In edx-platform, forum v2 is not enabled by default and edx-platform will keep communicating with the legacy forum app. To enable forum v2 in your Open edX platform, toggle the ``forum_v2.enable_forum_v2`` course waffle flag::
+In edx-platform, forum v2 is not enabled by default and edx-platform will keep communicating with the legacy forum app. To enable forum v2 in your Open edX platform, toggle the ``discussions.enable_forum_v2`` course waffle flag::
 
-    ./manage.py lms waffle_flag --create --everyone forum_v2.enable_forum_v2
+    ./manage.py lms waffle_flag --create --everyone discussions.enable_forum_v2
 
 Note that Tutor enables this flag for all forum plugin users, such that you don't have to run this command yourself. If you wish to migrate your courses one by one to the new forum v2 app, you may create the corresponding "Waffle flag course override" objects in your LMS administration panel, at: ``http(s)://<LMS_HOST>/admin/waffle_utils/waffleflagcourseoverridemodel/``.
 
