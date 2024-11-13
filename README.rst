@@ -61,18 +61,18 @@ Deployment of the forum v2 application is gated by two course waffle flags. In a
 Forum v2 toggle
 ---------------
 
-In edx-platform, forum v2 is not enabled by default and edx-platform will keep communicating with the legacy forum app. To enable forum v2 in your Open edX platform, toggle the ``forum_v2.enable_forum_v2`` course waffle flag::
+In edx-platform, forum v2 is not enabled by default and edx-platform will keep communicating with the legacy forum app. To enable forum v2 in your Open edX platform, toggle the ``discussions.enable_forum_v2`` course waffle flag::
 
-    ./manage.py lms waffle_flag --create --everyone forum_v2.enable_forum_v2
+    ./manage.py lms waffle_flag --create --everyone discussions.enable_forum_v2
 
 Note that Tutor enables this flag for all forum plugin users, such that you don't have to run this command yourself. If you wish to migrate your courses one by one to the new forum v2 app, you may create the corresponding "Waffle flag course override" objects in your LMS administration panel, at: ``http(s)://<LMS_HOST>/admin/waffle_utils/waffleflagcourseoverridemodel/``.
 
 MySQL backend toggle
 --------------------
 
-To preserve the legacy behaviour of storing data in MongoDB, the forum v2 app makes it possible to keep using MongoDB as a data backend. However, it is strongly recommended to switch to the MySQL storage backend by toggling the ``forum_v2.enable_mysql_backend`` course waffle flag::
+To preserve the legacy behaviour of storing data in MongoDB, the forum v2 app makes it possible to keep using MongoDB as a data backend. However, it is strongly recommended to switch to the MySQL storage backend by toggling the ``discussions.enable_mysql_backend`` course waffle flag::
 
-    ./manage.py lms waffle_flag --create --everyone forum_v2.enable_mysql_backend
+    ./manage.py lms waffle_flag --create --everyone discussions.enable_mysql_backend
 
 Here again, Tutor creates this flag by default, such that you don't have to create it yourself. If you decide to switch to MySQL, you will have to migrate your data from MongoDB -- see instructions below.
 
@@ -82,7 +82,7 @@ Migration from MongoDB to MySQL
 The forum v2 app comes with the ``forum_migrate_courses_to_mysql`` migration command to move data from MongoDB to MySQL. This command will perform the following steps:
 
 1. Migrate data: user, content and read state data from MongoDB to MySQL.
-2. Enable the ``forum_v2.enable_mysql_backend`` waffle flag for the specified course(s).
+2. Enable the ``discussions.enable_mysql_backend`` waffle flag for the specified course(s).
 
 To migrate data for specific courses, run the command with the course IDs as argument::
 
