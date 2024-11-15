@@ -18,7 +18,7 @@ FILTERABLE_FIELDS = [
     "course_id",
     "commentable_id",
 ]
-INDEXED_FIELDS = ["body", "title"]
+INDEXED_FIELDS = ["body", "title", "comment_thread_id"]
 ALL_FIELDS = FILTERABLE_FIELDS + INDEXED_FIELDS
 
 
@@ -52,7 +52,8 @@ def create_document(document: dict[str, t.Any], doc_id: str) -> dict[str, t.Any]
     doc_id = str(doc_id)
     processed = {"id": doc_id, m.PRIMARY_KEY_FIELD_NAME: m.id2pk(doc_id)}
     for field in ALL_FIELDS:
-        processed[field] = document[field]
+        if field in document:
+            processed[field] = document[field]
     # We remove html markup, which breaks search in some places. For instance
     # "<p>Word" will not match "Word", which is a shame.
     processed["body"] = BeautifulSoup(processed["body"]).get_text()
