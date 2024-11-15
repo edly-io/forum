@@ -6,6 +6,10 @@ from forum.search import get_index_search_backend
 
 
 class Command(BaseCommand):
+    """
+    Django management command for the deletion of unused search indices.
+    """
+
     help = (
         "Delete all Elasticsearch indices that are not the latest for each model type."
     )

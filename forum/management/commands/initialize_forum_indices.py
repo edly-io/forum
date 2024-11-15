@@ -9,6 +9,10 @@ from forum.search import get_index_search_backend
 
 
 class Command(BaseCommand):
+    """
+    Django management command for the initialization of search indices.
+    """
+
     help = "Initialize Elasticsearch indices, optionally forcing the creation of new indices."
 
     def add_arguments(self, parser: ArgumentParser) -> None:
