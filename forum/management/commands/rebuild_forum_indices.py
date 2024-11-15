@@ -9,6 +9,10 @@ from forum.utils import get_int_value_from_collection
 
 
 class Command(BaseCommand):
+    """
+    Django management command for rebuilding search indices from scratch.
+    """
+
     help = "Rebuild Elasticsearch indices by creating new indices and reindexing data."
 
     def add_arguments(self, parser: ArgumentParser) -> None:
