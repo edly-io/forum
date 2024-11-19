@@ -15,16 +15,16 @@ class BaseDocumentSearchBackend:
     """
 
     def index_document(
-        self, index_name: str, doc_id: str, document: dict[str, t.Any]
+        self, index_name: str, doc_id: str | int, document: dict[str, t.Any]
     ) -> None:
         raise NotImplementedError
 
     def update_document(
-        self, index_name: str, doc_id: str, update_data: dict[str, t.Any]
+        self, index_name: str, doc_id: str | int, update_data: dict[str, t.Any]
     ) -> None:
         raise NotImplementedError
 
-    def delete_document(self, index_name: str, doc_id: str) -> None:
+    def delete_document(self, index_name: str, doc_id: str | int) -> None:
         raise NotImplementedError
 
 

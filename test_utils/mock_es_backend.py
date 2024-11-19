@@ -51,14 +51,14 @@ class MockElasticsearchDocumentBackend(ElasticsearchDocumentBackend):
     """
 
     def update_document(
-        self, index_name: str, doc_id: str, update_data: dict[str, Any]
+        self, index_name: str, doc_id: str | int, update_data: dict[str, Any]
     ) -> None:
         """Mock method for updating a document in Elasticsearch."""
 
-    def delete_document(self, index_name: str, doc_id: str) -> None:
+    def delete_document(self, index_name: str, doc_id: str | int) -> None:
         """Mock method for deleting a document from Elasticsearch."""
 
     def index_document(
-        self, index_name: str, doc_id: str, document: dict[str, Any]
+        self, index_name: str, doc_id: str | int, document: dict[str, Any]
     ) -> None:
         """Mock method for indexing a document in Elasticsearch."""

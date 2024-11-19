@@ -80,7 +80,7 @@ class ElasticsearchDocumentBackend(
     """
 
     def update_document(
-        self, index_name: str, doc_id: str, update_data: dict[str, Any]
+        self, index_name: str, doc_id: str | int, update_data: dict[str, Any]
     ) -> None:
         """
         Update a single document in the specified index.
@@ -98,7 +98,7 @@ class ElasticsearchDocumentBackend(
         except exceptions.RequestError as e:
             log.error(f"Error updating document {doc_id} in index {index_name}: {e}")
 
-    def delete_document(self, index_name: str, doc_id: str) -> None:
+    def delete_document(self, index_name: str, doc_id: str | int) -> None:
         """
         Delete a single document from the specified index.
 
@@ -115,7 +115,7 @@ class ElasticsearchDocumentBackend(
             log.error(f"Error deleting document {doc_id} from index {index_name}: {e}")
 
     def index_document(
-        self, index_name: str, doc_id: str, document: dict[str, Any]
+        self, index_name: str, doc_id: str | int, document: dict[str, Any]
     ) -> None:
         """
         Index a single document in the specified Elasticsearch index.
