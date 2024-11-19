@@ -48,15 +48,14 @@ def create_document(document: dict[str, t.Any], doc_id: str) -> dict[str, t.Any]
     """
     We index small documents in Meilisearch, with just a handful of fields.
     """
-    # THE CAKE IS A LIE. Sometimes the doc_id is an integer.
-    doc_id = str(doc_id)
     processed = {"id": doc_id, m.PRIMARY_KEY_FIELD_NAME: m.id2pk(doc_id)}
     for field in ALL_FIELDS:
         if field in document:
             processed[field] = document[field]
     # We remove html markup, which breaks search in some places. For instance
     # "<p>Word" will not match "Word", which is a shame.
-    processed["body"] = BeautifulSoup(processed["body"]).get_text()
+    if body := processed.get("body"):
+        processed["body"] = BeautifulSoup(body, features="html.parser").get_text()
     return processed
 
 
@@ -68,29 +67,29 @@ class MeilisearchDocumentBackend(
     """
 
     def index_document(
-        self, index_name: str, doc_id: str, document: dict[str, t.Any]
+        self, index_name: str, doc_id: str | int, document: dict[str, t.Any]
     ) -> None:
         """
         Insert a single document in the Meilisearch index.
         """
         meilisearch_index = self.get_index(index_name)
-        processed = create_document(document, doc_id)
+        processed = create_document(document, str(doc_id))
         meilisearch_index.add_documents([processed])
 
     def update_document(
-        self, index_name: str, doc_id: str, update_data: dict[str, t.Any]
+        self, index_name: str, doc_id: str | int, update_data: dict[str, t.Any]
     ) -> None:
         """
         Updating is the same as inserting in meilisearch
         """
         return self.index_document(index_name, doc_id, update_data)
 
-    def delete_document(self, index_name: str, doc_id: str) -> None:
+    def delete_document(self, index_name: str, doc_id: str | int) -> None:
         """
         Delete a single document, identified by its ID.
         """
         meilisearch_index = self.get_index(index_name)
-        doc_pk = m.id2pk(doc_id)
+        doc_pk = m.id2pk(str(doc_id))
         meilisearch_index.delete_document(doc_pk)
 
 
@@ -100,12 +99,7 @@ class MeilisearchIndexBackend(base.BaseIndexSearchBackend, MeilisearchClientMixi
     """
 
     def initialize_indices(self, force_new_index: bool = False) -> None:
-        filterable_fields = [
-            m.PRIMARY_KEY_FIELD_NAME,
-            "context",
-            "course_id",
-            "commentable_id",
-        ]
+        filterable_fields = [m.PRIMARY_KEY_FIELD_NAME] + FILTERABLE_FIELDS
         index_filterables = {
             Model.index_name: filterable_fields for Model in MODEL_INDICES
         }
@@ -132,7 +126,7 @@ class MeilisearchIndexBackend(base.BaseIndexSearchBackend, MeilisearchClientMixi
             for page_number in paginator.page_range:
                 page = paginator.get_page(page_number)
                 documents = [
-                    create_document(obj.doc_to_hash(), obj.id)
+                    create_document(obj.doc_to_hash(), str(obj.id))
                     for obj in page.object_list
                 ]
                 if documents:
