@@ -24,6 +24,7 @@ class CommentThread(BaseContents):
         get_handler_by_name("comment_thread_deleted").send(
             sender=self.__class__, comment_thread_id=_id
         )
+        Users().delete_read_state_by_thread_id(_id)
         return result
 
     @classmethod

@@ -111,3 +111,20 @@ class Users(MongoBaseModel):
             {"$set": update_data},
         )
         return result.modified_count
+
+    def delete_read_state_by_thread_id(self, thread_id: str) -> None:
+        """Delete read state from users based on thread_id."""
+        users = self.get_list(
+            **{
+                "read_states.last_read_times": {"$exists": True},
+                f"read_states.last_read_times.{thread_id}": {"$exists": True},
+            }
+        )
+        for user in list(users):
+            updated_read_states = []
+            for read_state in user.get("read_states", []):
+                del read_state["last_read_times"][thread_id]
+                updated_read_states.append(read_state)
+            self._collection.update_one(
+                {"_id": user["_id"]}, {"$set": {"read_states": updated_read_states}}
+            )
