@@ -86,3 +86,13 @@ def patch_mongo_migration_database(monkeypatch: pytest.MonkeyPatch) -> Database[
         lambda *args: db,
     )
     return db
+
+
+@pytest.fixture(autouse=True)
+def patched_mongo_backend(monkeypatch: pytest.MonkeyPatch) -> Generator[Any, Any, Any]:
+    """Return the patched mongo_backend function for Mongo backend."""
+    monkeypatch.setattr(
+        "forum.backend.is_mysql_backend_enabled",
+        lambda course_id: False,
+    )
+    yield MongoBackend
