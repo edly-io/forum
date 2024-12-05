@@ -73,6 +73,7 @@ def test_migrate_content(patched_mongodb: Database[Any]) -> None:
     """Test migrate comments and comment threads."""
     comment_thread_id = ObjectId()
     comment_id = ObjectId()
+    sub_comment_id = ObjectId()
     patched_mongodb.users.insert_many(
         [
             {
@@ -137,6 +138,24 @@ def test_migrate_content(patched_mongodb: Database[Any]) -> None:
                 "votes": {"up": [], "down": ["1"]},
                 "abuse_flaggers": ["1", "2"],
                 "historical_abuse_flaggers": ["1", "2"],
+                "depth": 0,
+                "sk": f"{comment_id}",
+            },
+            {
+                "_id": sub_comment_id,
+                "_type": "Comment",
+                "author_id": "1",
+                "course_id": "test_course",
+                "body": "Test sub comment",
+                "created_at": timezone.now(),
+                "updated_at": timezone.now(),
+                "comment_thread_id": comment_thread_id,
+                "votes": {"up": [], "down": ["1"]},
+                "abuse_flaggers": ["1", "2"],
+                "historical_abuse_flaggers": ["1", "2"],
+                "parent_id": comment_id,
+                "depth": 1,
+                "sk": f"{comment_id}-{sub_comment_id}",
             },
         ]
     )
@@ -155,6 +174,15 @@ def test_migrate_content(patched_mongodb: Database[Any]) -> None:
     comment = Comment.objects.get(pk=mongo_comment.content_object_id)
     assert comment.body == "Test comment"
     assert comment.comment_thread == thread
+    assert comment.sort_key == f"{comment.pk}"
+    assert comment.depth == 0
+
+    mongo_sub_comment = MongoContent.objects.get(mongo_id=sub_comment_id)
+    sub_comment = Comment.objects.get(pk=mongo_sub_comment.content_object_id)
+    assert sub_comment.body == "Test sub comment"
+    assert sub_comment.comment_thread == thread
+    assert sub_comment.sort_key == f"{comment.pk}-{sub_comment.pk}"
+    assert sub_comment.depth == 1
 
     assert UserVote.objects.filter(content_object_id=thread.pk, vote=1).exists()
     assert UserVote.objects.filter(content_object_id=comment.pk, vote=-1).exists()
@@ -403,3 +431,79 @@ def test_delete_all_courses(patched_mongodb: Database[Any]) -> None:
     assert len(list(patched_mongodb.contents.find())) == 0
     assert "Deleting data for course: test_course_1" in output
     assert "Deleting data for course: test_course_2" in output
+
+
+def test_last_read_times_migration(patched_mongodb: Database[Any]) -> None:
+    """Mock test last_read_times migration while migrating read_states of a thread."""
+    comment_thread_id = ObjectId()
+    last_read_time_for_thread = timezone.now()
+    patched_mongodb.users.insert_one(
+        {
+            "_id": "1",
+            "username": "testuser",
+            "default_sort_key": "date",
+            "course_stats": [
+                {
+                    "course_id": "test_course",
+                }
+            ],
+            "read_states": [
+                {
+                    "course_id": "test_course",
+                    "last_read_times": {
+                        str(comment_thread_id): last_read_time_for_thread
+                    },
+                }
+            ],
+        }
+    )
+    patched_mongodb.contents.insert_one(
+        {
+            "_id": comment_thread_id,
+            "_type": "CommentThread",
+            "author_id": "1",
+            "course_id": "test_course",
+            "title": "Test Thread",
+            "body": "Test body",
+            "created_at": timezone.now(),
+            "updated_at": timezone.now(),
+            "votes": {"up": ["1"], "down": []},
+            "abuse_flaggers": ["1"],
+            "historical_abuse_flaggers": ["1"],
+            "last_activity_at": timezone.now(),
+        }
+    )
+
+    user = User.objects.create(id=1, username="testuser")
+
+    call_command("forum_migrate_course_from_mongodb_to_mysql", "test_course")
+
+    mongo_thread = MongoContent.objects.get(mongo_id=comment_thread_id)
+    assert mongo_thread
+    thread = CommentThread.objects.get(pk=mongo_thread.content_object_id)
+    assert thread.title == "Test Thread"
+    assert thread.body == "Test body"
+
+    read_state = ReadState.objects.get(user=user, course_id="test_course")
+    last_read_time = LastReadTime.objects.filter(
+        read_state=read_state, comment_thread=thread
+    ).first()
+    assert last_read_time is not None
+
+    updated_last_read_time_for_thread = timezone.now()
+    patched_mongodb.users.update_one(
+        {"_id": "1"},
+        {
+            "$set": {
+                "read_states.0.last_read_times": {
+                    str(comment_thread_id): updated_last_read_time_for_thread
+                }
+            }
+        },
+    )
+    call_command("forum_migrate_course_from_mongodb_to_mysql", "test_course")
+    updated_last_read_time = LastReadTime.objects.filter(
+        read_state=read_state, comment_thread=thread
+    ).first()
+    assert updated_last_read_time is not None
+    assert updated_last_read_time.timestamp > last_read_time.timestamp
