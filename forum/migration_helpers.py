@@ -139,10 +139,14 @@ def create_or_update_comment(comment_data: dict[str, Any]) -> None:
             child_count=comment_data.get("child_count", 0),
             created_at=make_aware(comment_data["created_at"]),
             updated_at=make_aware(comment_data["updated_at"]),
+            depth=1 if parent else 0,
         )
         mongo_comment.content_object_id = comment.pk
         mongo_comment.content_type = comment.content_type
         mongo_comment.save()
+        sort_key = f"{parent.pk}-{comment.pk}" if parent else f"{comment.pk}"
+        comment.sort_key = sort_key
+        comment.save()
     else:
         comment = Comment.objects.get(pk=mongo_comment.content_object_id)
 
@@ -236,9 +240,8 @@ def migrate_read_states(db: Database[dict[str, Any]], course_id: str) -> None:
     """Migrate read states from mongo to mysql."""
     users = db.users.find({"course_stats.course_id": course_id})
     for user_data in users:
-        try:
-            user = User.objects.get(id=int(user_data["_id"]))
-        except User.DoesNotExist:
+        user = User.objects.filter(id=int(user_data["_id"])).first()
+        if not user:
             continue
 
         for read_state in user_data.get("read_states", []):
@@ -251,12 +254,20 @@ def migrate_read_states(db: Database[dict[str, Any]], course_id: str) -> None:
                         mongo_id=thread_id
                     ).content_object_id
                     thread = CommentThread.objects.filter(id=thread_id).first()
-                    if thread:
-                        LastReadTime.objects.get_or_create(
+                    if not thread:
+                        continue
+                    existing_read_time = LastReadTime.objects.filter(
+                        read_state=rs, comment_thread=thread
+                    ).first()
+                    if not existing_read_time:
+                        LastReadTime.objects.create(
                             read_state=rs,
                             comment_thread=thread,
                             timestamp=make_aware(timestamp),
                         )
+                    else:
+                        existing_read_time.timestamp = make_aware(timestamp)
+                        existing_read_time.save()
 
 
 def delete_course_data(
