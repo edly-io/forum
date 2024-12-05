@@ -67,6 +67,18 @@ In edx-platform, forum v2 is not enabled by default and edx-platform will keep c
 
 Note that Tutor enables this flag for all forum plugin users, such that you don't have to run this command yourself. If you wish to migrate your courses one by one to the new forum v2 app, you may create the corresponding "Waffle flag course override" objects in your LMS administration panel, at: ``http(s)://<LMS_HOST>/admin/waffle_utils/waffleflagcourseoverridemodel/``.
 
+⚠️⚠️⚠️ Even if the forum v2 toggle is not enabled, edx-platform will make a call to the forum v2 API in some edge cases. That's because edx-platform needs to determine whether it should use forum v2 or cs_comments_service, based on the value of some course waffle flag. In order to access the course wafffle flag, we need to determine the course ID of the current HTTP request. In some requests, the course ID is not available: only the thread ID or the comment ID is. Thus, edx-platform needs to fetch the course ID that is associated to the thread or comment. That information is stored either in MySQL or in MongoDB. Thus, edx-platform needs to call the forum v2 API.
+
+As a consequence, **the forum v2 app needs to have accurate MongoDB configuration settings even if you don't use forum v2**. In a Tutor installation, these settings are set to the right values. In other environments, the following Django settings must be set::
+
+    # Name of the MongoDB database in which forum data is stored
+    FORUM_MONGODB_DATABASE = "cs_comments_service"
+
+    # This setting will be passed to the MongoDB client constructor as follows:
+    # pymongo.MongoClient(**FORUM_MONGODB_CLIENT_PARAMETERS)
+    # Documentation: https://pymongo.readthedocs.io/en/4.4.0/api/pymongo/mongo_client.html#pymongo.mongo_client.MongoClient
+    FORUM_MONGODB_CLIENT_PARAMETERS = {"host": "mongodb"}
+
 MySQL backend toggle
 --------------------
 
