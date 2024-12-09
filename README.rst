@@ -10,9 +10,9 @@ This project is a drop-in replacement of the legacy `cs_comments_service <https:
 Installation
 ************
 
-⚠️ At the moment, the forum is not yet fully integrated in Tutor. Users will need to install the forum plugin from the `regisb/forumv2 <https://github.com/overhangio/tutor-forum/pull/48>`__ branch.
+Starting from the Open edX Sumac release, the forum app is distributed via the `Tutor forum plugin <https://github.com/overhangio/tutor-forum>`__.
 
-The only prerequisite is a working Open edX platform with `Tutor <https://docs.tutor.edly.io/>`__, on the Sumac release (v19+) or the `nightly branch <https://docs.tutor.edly.io/tutorials/nightly.html>`__. Enable the forum by running::
+The only prerequisite for installation is a working Open edX platform with `Tutor <https://docs.tutor.edly.io/>`__, on the Sumac release (v19+) or the `main branch <https://docs.tutor.edly.io/tutorials/main.html>`__. Enable the forum by running::
 
     tutor plugins enable forum
     tutor local launch
