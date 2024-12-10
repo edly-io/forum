@@ -18,13 +18,6 @@ class BaseContents(MongoBaseModel):
     content_type: str = ""
     COLLECTION_NAME: str = "contents"
 
-    def __init__(self) -> None:
-        """
-        Initialize the indexes.
-        """
-        super().__init__()
-        self.create_indexes()
-
     def create_indexes(self) -> None:
         """
         The implementation creates the indexes in the mongodb for the contents collection.
