@@ -127,6 +127,36 @@ To try out changes before applying them, use the ``--dry-run`` option. For insta
 
    ./manage.py lms forum_delete_course_from_mongodb all --dry-run
 
+MongoDB Indexes
+---------------
+
+To optimize MongoDB query performance, it is crucial to create database indexes. The command will create or update indexes and skip them if they already exist.
+
+To create or update MongoDB indexes, execute the following command::
+
+    ./manage.py lms forum_create_mongodb_indexes
+
+Search Indicies
+---------------
+
+Based on your search backend i.e Elasticsearch or Meilisearch, the commands will populate search indexes.
+
+Initialize Forum Indices
+========================
+
+To initialize search indices use ``initialize_forum_indices`` command. It allows you to force the creation of new indices even if they already exist::
+
+    ./manage.py lms initialize_forum_indices
+
+Pass ``--force`` flag to force the creation of new indices.
+
+Rebuild Forum Indices
+=====================
+
+To rebuild search indices from scratch use ``rebuild_forum_indices`` command::
+
+    ./manage.py lms rebuild_forum_indices
+
 .. Deploying
 .. *********
 
